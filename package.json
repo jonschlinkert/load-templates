@@ -1,0 +1,53 @@
+{
+  "name": "template-loader",
+  "description": "Load templates from file paths, globs or objects returning a normalized object.",
+  "version": "0.1.0",
+  "homepage": "https://github.com/jonschlinkert/template-loader",
+  "author": {
+    "name": "Jon Schlinkert",
+    "url": "https://github.com/jonschlinkert"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/jonschlinkert/template-loader.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jonschlinkert/template-loader/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/jonschlinkert/template-loader/blob/master/LICENSE-MIT"
+    }
+  ],
+  "keywords": [
+    "docs",
+    "documentation",
+    "generate",
+    "generator",
+    "markdown",
+    "templates",
+    "verb"
+  ],
+  "main": "index.js",
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "mocha -R spec"
+  },
+  "devDependencies": {
+    "mocha": "*",
+    "should": "^4.0.4",
+    "verb": ">= 0.2.6",
+    "verb-tag-jscomments": ">= 0.1.4"
+  },
+  "dependencies": {
+    "arrayify-compact": "^0.1.0",
+    "config-cache": "^0.1.5",
+    "debug": "^1.0.4",
+    "globby": "^0.1.1",
+    "gray-matter": "^0.4.2",
+    "lodash": "^2.4.1"
+  }
+}
