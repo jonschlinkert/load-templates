@@ -7,33 +7,33 @@
 
 'use strict';
 
-var _ = require('lodash');
+
 var fs = require('fs');
 var path = require('path');
 var util = require('util');
-var glob = require('globby');
+var isAbsolute = require('is-absolute');
 var arrayify = require('arrayify-compact');
-var debug = require('debug')('template-loader');
-var resolve = require('resolve-dep');
-var matter = require('gray-matter');
+var segments = require('path-segments');
 var Cache = require('config-cache');
+var debug = require('debug')('loader');
+var glob = require('globby');
+var matter = require('gray-matter');
+var utils = require('./utils');
+var _ = require('lodash');
 
 
+var name = function(filepath, options) {
+  var opts = _.extend({last: 1, withExt: false}, options);
+  var res = segments(filepath, opts);
+  if (opts.withExt) {
+    return res.replace(/(\.)/g, '\\$1');
+  }
+  return res.replace(/\.[\S]+$/, '');
+};
 
-function parseFile (filepath, obj, options) {
-  debug('parseFile', arguments);
-  var file = _parseFile(filepath, options);
-  file.data = _.extend({}, file.data, obj.data);
-  return file;
-}
-
-function parseString (obj, options) {
-  debug('parseString', arguments);
-  var file =_parseString(obj.content, options);
-  file.data = _.extend({}, file.data, obj.data);
-  return file;
-}
-
+var absolute = function(filepath) {
+  return path.resolve(filepath);
+};
 
 
 /**
@@ -50,15 +50,14 @@ function parseString (obj, options) {
  * ```
  *
  * @class `Loader`
- * @param {Object} `config` Default config settings.
+ * @param {Object} `config` Default config settings, includes options
+ *                          for front matter parsers an renaming.
  * @api public
  */
 
 function Loader(config) {
   Cache.call(this, config);
-  debug('Loader', arguments);
-
-  this.extend(config);
+  this.option(config);
   this.defaultConfig();
 }
 
@@ -72,128 +71,159 @@ util.inherits(Loader, Cache);
  */
 
 Loader.prototype.defaultConfig = function() {
-  this.set('cwd', this.cache.cwd || process.cwd());
-  this.set('templates', this.cache.templates || {});
-  this.set('locals', this.cache.locals || {});
+  debug('defaultConfig', arguments);
+  this.option('cwd', this.options.cwd || process.cwd());
+  this.fn = this.option('rename') || name;
+  this.clear('data');
 };
 
 
 /**
- * Resolve, load, and parse all pages based on type.
+ * Parse files and extract front matter.
  *
- * @param  {mixed}  `pages`   Array, object, function, or string to load pages from.
- * @param  {Object} `options` additional options to pass to loading/parsing methods
- * @return {Array}  a list of pages as Vinyl objects
+ * @param  {String} `str` String to parse.
+ * @param  {Object} `options` Additional options to pass
+ * @return {Array}  a list of files as Vinyl objects
+ * @api public
  */
 
-Loader.prototype.normalize = function(pages, options) {
-  debug('normalize', arguments);
-  options = _.extend({}, this.options, options);
-  var files = [];
-
-  var process = this[utils.typeOf(pages)];
-  if (process) {
-    files = process.call(this, pages, options);
-  }
-  return _.flatten(files);
+Loader.prototype.parse = function (str, options) {
+  return matter(str, _.extend({autodetect: true}, options));
 };
 
 
 /**
- * Resolve pages paths and require them in, calling `.normalize()`
+ * Normalize and flatten `locals` and `data` objects.
+ *
+ * @param  {Object} `obj` The object to normalize.
+ * @return {Object}
+ * @api public
+ */
+
+Loader.prototype.flatten = function (obj) {
+  debug('flatten', arguments);
+
+  this.flattenData(obj.data, 'locals');
+  this.flattenData(obj.data);
+  delete obj.locals;
+  return obj;
+};
+
+
+/**
+ * Resolve, load, and parse all files based on type.
+ *
+ * @param  {*}  `pattern` Array, object, function or string.
+ * @param  {Object} `options` loader options.
+ * @return {Array}  Array of file objects.
+ * @api public
+ */
+
+Loader.prototype.load = function (pattern, options) {
+  options = _.extend({}, options);
+  debug('load', arguments);
+
+  var loader = this[utils.typeOf(pattern)];
+  if (loader) {
+    return loader.call(this, pattern, options);
+  }
+  return;
+};
+
+
+/**
+ * Resolve files paths and require them in, calling `.load()`
  * for futher processing.
  *
- * @param  {String} `str`     Glob pattern used for resolving file paths
- * @param  {Object} `options` Additional options to pass to resolve-dep
- * @return {Array}  a list of pages as Vinyl objects
+ * @param  {String} `pattern` Glob patterns or file paths.
+ * @param  {Object} `options` loader options.
+ * @return {Object}
+ * @api public
  */
 
-Loader.prototype.string = function (str, options) {
-  debug('string', arguments);
-  var resolved = resolve(str, options);
-  debug('resolved', resolved);
+Loader.prototype.string = function (pattern, options) {
+  var opts = _.extend({}, this.options, options);
+  var obj = {};
 
-  return _.flatten(resolved.map(function (filepath) {
-    var ext = path.extname(filepath);
-    var pages = {};
-    if (ext === '.js') {
-      pages = require(filepath);
-    } else {
-      pages = {
-        filepath: filepath
-      };
-    }
-
-    return this.normalize(pages, options);
-  }.bind(this)));
+  if (isAbsolute(pattern)) {
+    var file = fs.readFileSync(pattern, 'utf8');
+    var name = this.fn(pattern, opts);
+    obj[name] = this.parse(file, opts);
+    this.object(obj, options);
+  } else {
+    this.load(glob.sync(pattern, opts).map(absolute));
+  }
+  return this;
 };
 
 
 /**
  * Call the function and pass the results to
- * `normalize` for futher processing.
+ * `load` for futher processing.
  *
- * @param  {Function} `fn`    Function to call.
- * @param  {Object} `options` Additional options to pass
- * @return {Array}  a list of pages as Vinyl objects
+ * @param  {Function} `fn` Function to call.
+ * @param  {Object} `options` loader options.
+ * @return {*}
+ * @api public
  */
 
 Loader.prototype.function = function (fn, options) {
   debug('function', arguments);
-  return this.normalize(fn(), options);
+  return this.load(fn(), options);
 };
 
 
 /**
- * Map an object to Vinyl files
+ * Normalize a template object.
  *
- * @param  {Object} `obj`     object to map
- * @param  {Object} `options` Additional options to pass
- * @return {Array}  a list of pages as Vinyl objects
- * @api private
+ * @param  {Object} `obj` The object to normalize.
+ * @param  {Object} `options` loader options.
+ * @return {Array} Array of template objects.
+ * @api public
  */
 
 Loader.prototype.object = function (obj, options) {
-  debug('object', arguments);
-  // if `obj` has a `filepath` property map it directly
-  if ('filepath' in obj) {
-    options.filepath = obj.filepath;
-    var file = null;
-    if ('content' in obj) {
-      file = parseString(obj, options);
-    } else {
-      file = parseFile(obj.filepath, obj, options);
-    }
-    return [file];
-  }
+  var opts = _.extend({}, options);
+  var data = _.extend({}, opts, opts.data, opts.locals);
+  var file = _.cloneDeep(obj);
 
-  // When the object is a list of filepath/page properties
-  // map each one, calling normalize if needed.
-  return _.flatten(_.keys(obj).map(function (filepath) {
-    var page = obj[filepath];
-    var type = utils.typeOf(page);
-    if (type === 'object') {
-      page.filepath = page.filepath || filepath;
-      return this.object(page, options);
+  debug('object', arguments);
+
+  opts = _.extend({}, this.options, opts);
+  var o = {};
+
+  _.forIn(file, function(value, key) {
+    if (value.hasOwnProperty('content')) {
+      o[key] = this.parse(value.content, opts);
+      o[key].data = _.extend({}, o[key].data, data);
+      this.flatten(o[key]);
+    } else {
+      throw new Error('Loader#object expects a `content` property.');
     }
-    return this.normalize(page, options);
-  }.bind(this)));
+  }.bind(this));
+
+  this.extend(o);
+  return o;
 };
 
 
 /**
- * Call `normalize` for each item in the array.
+ * Call `load` for each item in the array.
  *
- * @param  {Object} `arr`     array to normalize
+ * @param  {Object} `patterns` Glob patterns or array of filepaths.
  * @param  {Object} `options` Additional options to pass
- * @return {Array}  a list of pages as Vinyl objects
+ * @return {Array}  a list of files as Vinyl objects
+ * @api public
  */
 
-Loader.prototype.array = function (arr, options) {
+Loader.prototype.array = function (patterns, options) {
   debug('array', arguments);
-  return _.flatten(arr.map(function (page) {
-    return this.normalize(page, options);
-  }.bind(this)));
+
+  arrayify(patterns).forEach(function (pattern) {
+    this.load(pattern, options);
+  }.bind(this));
+
+  return this;
 };
 
 
