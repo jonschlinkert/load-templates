@@ -35,7 +35,6 @@ describe('template options:', function () {
       });
 
 
-      templates.option('withExt', false);
       templates.load('test/fixtures/*.{md,tmpl}');
       templates.cache.should.have.property('a\\.md');
       templates.cache.should.have.property('a\\.tmpl');
