@@ -40,7 +40,8 @@ var _ = require('lodash');
 
 function Loader(config) {
   Cache.call(this, config);
-  this.defaultConfig(config);
+  this.init(config);
+  this.listen(this);
 }
 util.inherits(Loader, Cache);
 
@@ -51,18 +52,34 @@ util.inherits(Loader, Cache);
  * @api private
  */
 
-Loader.prototype.defaultConfig = function(config) {
-  debug('defaultConfig', arguments);
+Loader.prototype.init = function(config) {
+  debug('init', arguments);
 
-  var opts = _.extend({}, config && config.options);
-  this.option('locals', opts.locals);
-  this.option('withExt', opts.withExt || false);
-  this.option('rename', opts.rename || utils.name);
-  this.option('cwd', opts.cwd || process.cwd());
-  this.option(opts);
+  this.options = _.extend({}, config && config.options);
+  this.option('cwd', this.cache.cwd || process.cwd());
+  this.option('rename', this.cache.rename || utils.rename);
+  this.option('locals', this.cache.locals || {});
+  this.option(this.options);
 
   // Keep the cache clean for storing templates.
   this.omit(['locals', 'data', 'options']);
+};
+
+
+/**
+ * ## .listen
+ *
+ * Setup event listeners on Loader.
+ *
+ * @api private
+ */
+
+Loader.prototype.listen = function() {
+  var loader = this;
+
+  this.on('option', function (key, value) {
+    loader.set('option.' + key, value);
+  });
 };
 
 
@@ -193,9 +210,9 @@ Loader.prototype.function = function (fn, locals) {
  */
 
 Loader.prototype.object = function (obj, options) {
-  var data = this.option('locals');
+  var locals = this.option('locals');
   var opts = _.extend({}, options);
-  var data = _.extend({}, opts, opts.data, opts.locals);
+  var data = _.extend({}, locals, opts, opts.data, opts.locals);
   var file = _.cloneDeep(obj);
   debug('object', arguments);
 

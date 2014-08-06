@@ -35,7 +35,7 @@ exports.typeOf = function(value) {
  * @return {Object}
  */
 
-exports.name = function(filepath, options) {
+exports.rename = function(filepath, options) {
   var opts = _.extend({last: 1, withExt: false}, options);
   var res = segments(filepath, opts);
   if (opts.withExt) {

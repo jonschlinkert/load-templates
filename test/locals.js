@@ -35,29 +35,21 @@ describe('template locals:', function () {
   });
 
   describe('when a `locals` object is passed on the `.load()` method.', function () {
-    it('should move the object to the `data` property for the loaded templates:', function () {
+    xit('should move the object to the `data` property for the loaded templates:', function () {
       var templates = new Loader();
       templates.load('test/fixtures/*.tmpl', {foo: 'bar'});
 
-
-      console.log()
-
-      // console.log(JSON.stringify(a, null, 2));
-
-      // templates.load('a', 'this is content', {locals: {SITE: 'TITLE', BLOG: 'TITLE'}});
-      // templates.get('a').data.should.have.property('SITE');
-      // templates.get('a').data.should.have.property('BLOG');
+      templates.load('a', 'this is content', {locals: {SITE: 'TITLE', BLOG: 'TITLE'}});
+      templates.get('a').data.should.have.property('SITE');
+      templates.get('a').data.should.have.property('BLOG');
     });
 
-    it('should move the object to the `data` property for the loaded templates:', function () {
+    xit('should move the object to the `data` property for the loaded templates:', function () {
       var templates = new Loader();
       templates.load(['test/**/*.md', 'test/**/*.tmpl'], {data: {fff: 'ggg'}, baz: 'quux', locals: {a: 'b'}});
-
-      // console.log(JSON.stringify(a, null, 2));
-
-      // templates.load('a', 'this is content', {locals: {SITE: 'TITLE', BLOG: 'TITLE'}});
-      // templates.get('a').data.should.have.property('SITE');
-      // templates.get('a').data.should.have.property('BLOG');
+      templates.load('a', 'this is content', {locals: {SITE: 'TITLE', BLOG: 'TITLE'}});
+      templates.get('a').data.should.have.property('SITE');
+      templates.get('a').data.should.have.property('BLOG');
     });
   });
 });

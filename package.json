@@ -1,7 +1,7 @@
 {
   "name": "template-loader",
-  "description": "Load templates from file paths, globs or objects returning a normalized object.",
-  "version": "0.1.0",
+  "description": "Load templates from file paths, globs or objects, and cache them as normalized objects.",
+  "version": "0.1.1",
   "homepage": "https://github.com/jonschlinkert/template-loader",
   "author": {
     "name": "Jon Schlinkert",
@@ -52,8 +52,6 @@
     "lodash": "^2.4.1",
     "parse-filepath": "^0.3.0",
     "path-segments": "^0.1.1",
-    "rename-path": "^0.2.0",
-    "resolve-dep": "^0.5.0",
-    "vinyl": "^0.3.2"
+    "rename-path": "^0.2.0"
   }
 }

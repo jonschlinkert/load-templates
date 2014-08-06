@@ -11,31 +11,48 @@ var should = require('should');
 var Loader = require('..');
 var _ = require('lodash');
 
-
 describe('template options:', function () {
-  describe('withExt', function () {
-   xit('should leave the extension on template names.', function () {
-      var templates = new Loader({
-        options: {
-          withExt: true
-        }
+  describe('option events', function () {
+    it('should emit `option` when a value is set', function () {
+      var called = false;
+      var value = '';
+      var templates = new Loader();
+
+      templates.on('option', function (key, val) {
+        called = key;
+        value = val;
       });
+      templates.option('foo', 'bar');
+      called.should.equal('foo');
+      value.should.equal('bar');
+    });
+  });
+
+  describe('withExt', function () {
+    it('should leave the extension on template names.', function () {
+      var templates = new Loader({
+        options: {withExt: true}
+      });
+
+
+      templates.option('withExt', false);
       templates.load('test/fixtures/*.{md,tmpl}');
-
-      var cache = templates.get();
-
-      // These are failing, but I think we should un-escape names
-      // when the `.get()` method is used.
-      cache.should.have.property('a.md');
-      cache.should.have.property('a.tmpl');
-      cache.should.have.property('b.md');
-      cache.should.have.property('b.tmpl');
-
-      // These are passing
       templates.cache.should.have.property('a\\.md');
       templates.cache.should.have.property('a\\.tmpl');
       templates.cache.should.have.property('b\\.md');
       templates.cache.should.have.property('b\\.tmpl');
+    });
+
+    xit('should leave the extension on template names.', function () {
+      var templates = new Loader({
+        options: {withExt: true}
+      });
+
+      templates.load('test/fixtures/*.{md,tmpl}');
+      templates.get().should.have.property('a.md');
+      templates.get().should.have.property('a.tmpl');
+      templates.get().should.have.property('b.md');
+      templates.get().should.have.property('b.tmpl');
     });
   });
 
