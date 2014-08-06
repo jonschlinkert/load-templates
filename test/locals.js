@@ -8,111 +8,56 @@
 'use strict';
 
 var should = require('should');
-var Template = require('..');
+var Loader = require('..');
 var _ = require('lodash');
 
 
 describe('template locals:', function () {
-  describe('when a locals are defined on the constructor.', function () {
-    var template = new Template({
-      locals: {
-        a: 'FIRST',
-        b: 'SECOND',
-        c: 'THIRD',
-        d: 'FOURTH'
-      }
-    });
+  describe('when a `locals` object is passed on the constructor.', function () {
+    it('should move the object to `options`:', function () {
+      var templates = new Loader({locals: {SITE: 'TITLE', BLOG: 'TITLE'}});
 
-    it('should pass the context to templates:', function () {
-      template.layout('a', '\nBEFORE <%= a %> {{body}}\nAFTER <%= a %>', {layout: 'b'});
-      template.layout('b', '\nBEFORE <%= b %> {{body}}\nAFTER <%= b %>', {layout: 'c'});
-      template.layout('c', '\nBEFORE <%= c %> {{body}}\nAFTER <%= c %>', {layout: 'last'});
-      template.layout('last', '\nlast\n{{body}}\nlast');
-
-      template.partial('a', 'This is partial <%= a %>');
-      template.partial('b', 'This is partial <%= b %>');
-      template.partial('c', 'This is partial <%= c %>');
-      template.partial('d', 'This is partial <%= d %>');
-
-      var a = template.process('<%= partial("a") %>', {layout: 'a'});
-      var b = template.process('<%= partial("b") %>', {layout: 'b'});
-      var c = template.process('<%= partial("c") %>', {layout: 'c'});
-      var d = template.process('<%= partial("d") %>', {layout: 'last'});
-
-      a.should.equal('\nlast\n\nBEFORE THIRD \nBEFORE SECOND \nBEFORE FIRST This is partial FIRST\nAFTER FIRST\nAFTER SECOND\nAFTER THIRD\nlast');
-      b.should.equal('\nlast\n\nBEFORE THIRD \nBEFORE SECOND This is partial SECOND\nAFTER SECOND\nAFTER THIRD\nlast');
-      c.should.equal('\nlast\n\nBEFORE THIRD This is partial THIRD\nAFTER THIRD\nlast');
-      d.should.equal('\nlast\nThis is partial FOURTH\nlast');
+      templates.option('locals').should.have.property('SITE');
+      templates.option('locals').should.have.property('BLOG');
+      templates.options.locals.should.have.property('SITE');
+      templates.options.locals.should.have.property('BLOG');
     });
   });
 
-  describe('when a layout is defined in `locals` on the options:', function () {
-    var template = new Template({
-      locals: {
-        a: 'FIRST',
-        b: 'SECOND',
-        c: 'THIRD',
-        d: 'FOURTH'
-      }
-    });
+  describe('when a `locals` object is passed on the `.set()` method for a template.', function () {
+    it('should move the object to the `data` property for that template:', function () {
+      var templates = new Loader();
 
-    it('should pass the context to templates:', function () {
-      template.layout('a', '\nBEFORE <%= a %> {{body}}\nAFTER <%= a %>', {layout: 'b'});
-      template.layout('b', '\nBEFORE <%= b %> {{body}}\nAFTER <%= b %>', {layout: 'c'});
-      template.layout('c', '\nBEFORE <%= c %> {{body}}\nAFTER <%= c %>', {layout: 'last'});
-      template.layout('last', '\nlast\n{{body}}\nlast');
-
-      template.partial('a', 'This is partial <%= a %>');
-      template.partial('b', 'This is partial <%= b %>');
-      template.partial('c', 'This is partial <%= c %>');
-      template.partial('d', 'This is partial <%= d %>');
-
-      var a = template.process('<%= partial("a") %>', {layout: 'a'});
-      var b = template.process('<%= partial("b") %>', {layout: 'b'});
-      var c = template.process('<%= partial("c") %>', {layout: 'c'});
-      var d = template.process('<%= partial("d") %>', {layout: 'last'});
-
-      a.should.equal('\nlast\n\nBEFORE THIRD \nBEFORE SECOND \nBEFORE FIRST This is partial FIRST\nAFTER FIRST\nAFTER SECOND\nAFTER THIRD\nlast');
-      b.should.equal('\nlast\n\nBEFORE THIRD \nBEFORE SECOND This is partial SECOND\nAFTER SECOND\nAFTER THIRD\nlast');
-      c.should.equal('\nlast\n\nBEFORE THIRD This is partial THIRD\nAFTER THIRD\nlast');
-      d.should.equal('\nlast\nThis is partial FOURTH\nlast');
+      templates.set('a', 'this is content', {locals: {SITE: 'TITLE', BLOG: 'TITLE'}});
+      templates.get('a').data.should.have.property('SITE');
+      templates.get('a').data.should.have.property('BLOG');
     });
   });
 
-
-  describe('when is passed directly to the process method.', function () {
-    it('should pass the context to templates:', function () {
-      var template = new Template({
-        locals: {
-          a: 'FIRST',
-          b: 'SECOND',
-          c: 'THIRD',
-          d: 'FOURTH',
-          layout: 'a'
-        }
-      });
-
-      template.layout('a', '\nBEFORE <%= title %> {{body}}\nAFTER <%= title %>', {layout: 'b'});
-      template.layout('b', '\nBEFORE <%= title %> {{body}}\nAFTER <%= title %>', {layout: 'c'});
-      template.layout('c', '\nBEFORE <%= title %> {{body}}\nAFTER <%= title %>', {layout: 'last'});
-      template.layout('last', '\nlast\n{{body}}\nlast');
-
-      template.partial('a', 'This is partial <%= a %>');
-      template.partial('b', 'This is partial <%= b %>');
-      template.partial('c', 'This is partial <%= c %>');
-      template.partial('d', 'This is partial <%= d %>');
-
-      var a = template.process('<%= partial("a") %>', {title: 'FIRST'});
-      var b = template.process('<%= partial("b") %>', {title: 'SECOND'});
-      var c = template.process('<%= partial("c") %>', {title: 'THIRD'});
-      var d = template.process('<%= partial("d") %>', {title: 'FOURTH'});
+  describe('when a `locals` object is passed on the `.load()` method.', function () {
+    it('should move the object to the `data` property for the loaded templates:', function () {
+      var templates = new Loader();
+      templates.load('test/fixtures/*.tmpl', {foo: 'bar'});
 
 
-      a.should.equal('\nlast\n\nBEFORE THIRD \nBEFORE SECOND \nBEFORE FIRST This is partial FIRST\nAFTER FIRST\nAFTER SECOND\nAFTER THIRD\nlast');
-      b.should.equal('\nlast\n\nBEFORE THIRD \nBEFORE SECOND \nBEFORE FIRST This is partial SECOND\nAFTER FIRST\nAFTER SECOND\nAFTER THIRD\nlast');
-      c.should.equal('\nlast\n\nBEFORE THIRD \nBEFORE SECOND \nBEFORE FIRST This is partial THIRD\nAFTER FIRST\nAFTER SECOND\nAFTER THIRD\nlast');
-      d.should.equal('\nlast\n\nBEFORE THIRD \nBEFORE SECOND \nBEFORE FIRST This is partial FOURTH\nAFTER FIRST\nAFTER SECOND\nAFTER THIRD\nlast');
+      console.log()
+
+      // console.log(JSON.stringify(a, null, 2));
+
+      // templates.load('a', 'this is content', {locals: {SITE: 'TITLE', BLOG: 'TITLE'}});
+      // templates.get('a').data.should.have.property('SITE');
+      // templates.get('a').data.should.have.property('BLOG');
+    });
+
+    it('should move the object to the `data` property for the loaded templates:', function () {
+      var templates = new Loader();
+      templates.load(['test/**/*.md', 'test/**/*.tmpl'], {data: {fff: 'ggg'}, baz: 'quux', locals: {a: 'b'}});
+
+      // console.log(JSON.stringify(a, null, 2));
+
+      // templates.load('a', 'this is content', {locals: {SITE: 'TITLE', BLOG: 'TITLE'}});
+      // templates.get('a').data.should.have.property('SITE');
+      // templates.get('a').data.should.have.property('BLOG');
     });
   });
-
 });

@@ -14,35 +14,41 @@ describe('template data:', function () {
     it('should normalize `data` passed as a second arg:', function () {
       var templates = new Loader();
       templates.load({a: {content: 'A'}}, {data: {aaa: 'bbb'}});
-
       templates.get('a').should.have.property('content');
       templates.get('a').should.have.property('data');
     });
 
-    // it('should normalize `locals` passed as a second arg:', function () {
-    //   var templates = new Loader();
+    it('should normalize `locals` passed as a second arg:', function () {
+      var templates = new Loader();
+      templates.load({b: {content: 'B'}}, {locals: {bbb: 'ccc'}});
+      templates.get('b').should.have.property('content');
+      templates.get('b').should.have.property('data');
+    });
 
-    //   templates.load({a: {content: 'A'}}, {data: {aaa: 'bbb'}});
-    //   templates.load({b: {content: 'B'}}, {locals: {bbb: 'ccc'}});
-    //   templates.load({c: {content: 'C'}}, {xxx: 'yyy'});
+    it('should flatten `locals` and `data`:', function () {
+      var templates = new Loader();
+      templates.load({a: {content: 'A'}}, {
+        data: {aaa: 'bbb'},
+        locals: {bbb: 'ccc'}
+      });
+      templates.get('a').should.have.property('content');
+      templates.get('a').should.have.property('data');
+      templates.get('a.data').should.have.property('aaa');
+      templates.get('a.data').should.have.property('bbb');
+      templates.get('a').should.not.have.property('locals');
+    });
 
-    //   templates.getTemplate('a').should.have.property('content');
-    //   templates.getTemplate('a').should.have.property('data');
-    // });
+    it('should move properties onto the `data` object:', function () {
+      var templates = new Loader();
+      templates.load({a: {layout: 'b', content: 'A above\n{{body}}\nA below' }});
 
-    // it('should normalize `data` passed as a second arg:', function () {
-    //   var templates = new Loader();
+      templates.get('a').data.should.have.property('layout');
+      templates.get('a.data').should.have.property('layout');
 
-    //   templates.load({a: {content: 'A'}}, {data: {aaa: 'bbb'}});
-    //   templates.load({b: {content: 'B'}}, {locals: {bbb: 'ccc'}});
-    //   templates.load({c: {content: 'C'}}, {xxx: 'yyy'});
-
-    //   templates.getTemplate('a').should.have.property('content');
-    //   templates.getTemplate('a').should.have.property('data');
-    //   templates.getTemplate('b').should.have.property('data');
-    //   templates.getTemplate('b').should.not.have.property('locals');
-    //   templates.getTemplate('b').should.not.have.property('locals');
-    // });
-
+      templates.get('a').data.should.not.have.property('locals');
+      templates.get('a').data.should.not.have.property('original');
+      templates.get('a').data.should.not.have.property('content');
+      templates.get('a').data.should.not.have.property('data');
+    });
   });
 });

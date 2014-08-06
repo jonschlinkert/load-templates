@@ -9,12 +9,15 @@
 
 var should = require('should');
 var Loader = require('..');
-var template = new Loader();
 var _ = require('lodash');
 
 
-describe('template front-matter:', function () {
-  describe('when templates have front matter:', function () {
+describe('template utils:', function () {
+  describe('name', function () {
+
+  });
+
+  describe('.keys()', function () {
 
   });
 });

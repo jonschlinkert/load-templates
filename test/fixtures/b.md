@@ -1,1 +1,6 @@
-hello {%= name %}
+---
+layout: c
+---
+B above
+{{body}}
+B below
