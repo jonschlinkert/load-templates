@@ -38,7 +38,7 @@ var _ = require('lodash');
 
 function loader(options) {
   loader.init(options);
-  return loader.cache;
+  return loader;
 }
 
 
@@ -146,11 +146,12 @@ loader.option = function(key, value) {
  */
 
 loader.parse = function (str, options) {
-  var content = matter(str, _.extend({
-    autodetect: true
-  }, options));
-
-  return content.replace(/^\s+/, '');
+  if (str) {
+    var file = matter(str, _.extend({autodetect: true}, options));
+    file.content = file.content.replace(/^\s*/, '');
+    return file;
+  }
+  return str;
 };
 
 
