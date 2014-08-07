@@ -15,7 +15,7 @@ var isAbsolute = require('is-absolute');
 var arrayify = require('arrayify-compact');
 var Cache = require('config-cache');
 var matter = require('gray-matter');
-var debug = require('debug')('loader');
+var debug = require('debug')('template-loader');
 var utils = require('./utils');
 var _ = require('lodash');
 
@@ -43,6 +43,7 @@ function Loader(config) {
   this.init(config);
   this.listen(this);
 }
+
 util.inherits(Loader, Cache);
 
 
@@ -55,16 +56,14 @@ util.inherits(Loader, Cache);
 Loader.prototype.init = function(config) {
   debug('init', arguments);
 
-  this.options = _.extend({}, config && config.options);
+  _.extend(this.options, config && config.options);
   this.option('cwd', this.cache.cwd || process.cwd());
   this.option('rename', this.cache.rename || utils.rename);
   this.option('locals', this.cache.locals || {});
-  this.option(this.options);
 
   // Keep the cache clean for storing templates.
   this.omit(['locals', 'data', 'options']);
 };
-
 
 /**
  * ## .listen
@@ -174,7 +173,6 @@ Loader.prototype.string = function (pattern, locals) {
   if (isAbsolute(pattern)) {
     var file = fs.readFileSync(pattern, 'utf8');
     var name = fn(pattern, opts);
-
     obj[name] = this.parse(file, opts);
     this.object(obj, locals);
   } else {
@@ -220,13 +218,18 @@ Loader.prototype.object = function (obj, options) {
   var o = {};
 
   _.forIn(file, function(value, key) {
-    if (value.hasOwnProperty('content')) {
+    if (utils.typeOf(value) === 'object' && value.hasOwnProperty('content')) {
       o[key] = this.parse(value.content, opts);
       o[key].data = _.extend({}, value, o[key].data, data);
-      this.flatten(o[key]);
+    } else if (utils.typeOf(value) === 'string') {
+      o[key] = this.parse(value, opts);
+      o[key].data = _.extend({}, o[key].data, data);
     } else {
-      throw new Error('Loader#object expects a `content` property.');
+      throw new Error('Loader#object cannot normalize:', obj);
     }
+
+    this.flatten(o[key]);
+
   }.bind(this));
   this.extend(o);
   return o;
