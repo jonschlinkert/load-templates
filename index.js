@@ -9,11 +9,9 @@
 
 
 var fs = require('fs');
-var util = require('util');
 var glob = require('globby');
 var isAbsolute = require('is-absolute');
 var arrayify = require('arrayify-compact');
-var Cache = require('config-cache');
 var matter = require('gray-matter');
 var debug = require('debug')('template-loader');
 var utils = require('./utils');
@@ -38,13 +36,28 @@ var _ = require('lodash');
  * @api public
  */
 
-function Loader(config) {
-  Cache.call(this, config);
-  this.init(config);
-  this.listen(this);
+function loader(options) {
+  loader.init(options);
+  return loader;
 }
 
-util.inherits(Loader, Cache);
+
+/**
+ * Options cache
+ *
+ * @type {Object}
+ */
+
+loader.options = {};
+
+
+/**
+ * Template cache
+ *
+ * @type {Object}
+ */
+
+loader.cache = {};
 
 
 /**
@@ -53,32 +66,74 @@ util.inherits(Loader, Cache);
  * @api private
  */
 
-Loader.prototype.init = function(config) {
+loader.init = function(opts) {
   debug('init', arguments);
+  loader.options = {};
+  loader.cache = {};
 
-  _.extend(this.options, config && config.options);
-  this.option('cwd', this.cache.cwd || process.cwd());
-  this.option('rename', this.cache.rename || utils.rename);
-  this.option('locals', this.cache.locals || {});
-
-  // Keep the cache clean for storing templates.
-  this.omit(['locals', 'data', 'options']);
+  loader.extend(opts);
+  loader.fallback('rename', utils.rename);
+  loader.fallback('cwd', process.cwd());
+  loader.fallback('locals', {});
 };
 
+
 /**
- * ## .listen
- *
- * Setup event listeners on Loader.
+ * Extend the options.
  *
  * @api private
  */
 
-Loader.prototype.listen = function() {
-  var loader = this;
+loader.extend = function(obj) {
+  return _.extend(loader.options, obj);
+};
 
-  this.on('option', function (key, value) {
-    loader.set('option.' + key, value);
-  });
+
+/**
+ * Extend the options.
+ *
+ * @api private
+ */
+
+loader.fallback = function(key, value) {
+  return loader.option(key) ?
+    loader.option(key) :
+    loader.option(key, value);
+};
+
+
+/**
+ * ## .option
+ *
+ * Set or get an option.
+ *
+ * ```js
+ * loader.option('a', true)
+ * loader.option('a')
+ * // => true
+ * ```
+ *
+ * @method option
+ * @param {String} `key`
+ * @param {*} `value`
+ * @return {*}
+ * @api public
+ */
+
+loader.option = function(key, value) {
+  var args = [].slice.call(arguments);
+
+  if (args.length === 1 && typeof key === 'string') {
+    return loader.options[key];
+  }
+
+  if (typeof key === 'object') {
+    _.extend.apply(_, [loader.options].concat(args));
+    return loader;
+  }
+
+  loader.options[key] = value;
+  return loader;
 };
 
 
@@ -90,7 +145,7 @@ Loader.prototype.listen = function() {
  * @api public
  */
 
-Loader.prototype.parse = function (str, options) {
+loader.parse = function (str, options) {
   return matter(str, _.extend({autodetect: true}, options));
 };
 
@@ -104,15 +159,32 @@ Loader.prototype.parse = function (str, options) {
  * @api public
  */
 
-Loader.prototype.set = function (name, str, options) {
-  var obj = {};
+loader.set = function (name, str, options) {
+  var o = {};
   if (utils.typeOf(str) === 'string') {
-    obj[name] = {content: str};
+    o[name] = {
+      content: str
+    };
   } else {
-    obj[name] = str;
+    o[name] = str;
   }
-  this.object(obj, options);
-  return this;
+  loader.object(o, options);
+  return loader;
+};
+
+
+/**
+ * Get a template from the cache.
+ *
+ * @param  {String} `key` The name of the template to get.
+ * @api public
+ */
+
+loader.get = function (key) {
+  if (!key) {
+    return loader.cache;
+  }
+  return loader.cache[key];
 };
 
 
@@ -124,13 +196,13 @@ Loader.prototype.set = function (name, str, options) {
  * @api public
  */
 
-Loader.prototype.flatten = function (obj) {
+loader.flatten = function (o, name) {
   debug('flatten', arguments);
 
-  this.flattenData(obj.data, ['locals', 'content', 'original']);
-  this.flattenData(obj.data);
-  delete obj.locals;
-  return obj;
+  utils.flattenData(o.data, ['locals', 'content', 'original']);
+  utils.flattenData(o.data);
+  delete o.locals;
+  return o;
 };
 
 
@@ -143,13 +215,14 @@ Loader.prototype.flatten = function (obj) {
  * @api public
  */
 
-Loader.prototype.load = function (pattern, options) {
-  options = _.extend({}, options);
+loader.load = function (pattern, locals) {
+  var args = [].slice.call(arguments);
+  var opts = _.extend({}, locals);
   debug('load', arguments);
 
-  var loader = this[utils.typeOf(pattern)];
-  if (loader) {
-    return loader.call(this, pattern, options);
+  var method = loader[utils.typeOf(pattern)];
+  if (method) {
+    return method.apply(loader, args);
   }
   return;
 };
@@ -165,21 +238,118 @@ Loader.prototype.load = function (pattern, options) {
  * @api public
  */
 
-Loader.prototype.string = function (pattern, locals) {
-  var opts = _.extend({}, this.options, locals);
-  var fn = this.option('rename');
-  var obj = {};
+loader.string = function (name, content, locals) {
+  var opts = _.extend({}, loader.options, locals);
+  var fn = loader.option('rename');
+  var o = {};
 
-  if (isAbsolute(pattern)) {
-    var file = fs.readFileSync(pattern, 'utf8');
-    var name = fn(pattern, opts);
-    obj[name] = this.parse(file, opts);
-    this.object(obj, locals);
-  } else {
-    var arr = glob.sync(pattern, opts);
-    this.load(arr.map(utils.absolute), locals);
+  if (utils.typeOf(content) === 'object') {
+    locals = content;
+    content = null;
   }
-  return this;
+
+  if (isAbsolute(name)) {
+    var file = fs.readFileSync(name, 'utf8');
+    var name = fn(name, opts);
+    o[name] = loader.parse(file, opts);
+    loader.object(o, locals);
+  } else {
+    var arr = glob.sync(name, opts);
+    if (arr.length > 0) {
+      loader.load(arr.map(utils.absolute), locals);
+    } else {
+      o[name] = {
+        content: content,
+        data: locals
+      };
+      loader.object(o);
+    }
+  }
+
+  return loader;
+};
+
+
+/**
+ * Normalize a template object.
+ *
+ * @param  {Object} `obj` The object to normalize.
+ * @param  {Object} `options` Locals or loader options.
+ * @api public
+ */
+
+loader.object = function (obj, locals) {
+  debug('object', arguments);
+
+  var globals = loader.option('locals');
+  var opts = _.defaults({}, locals, globals);
+  var data = _.defaults({}, opts.locals, opts.data, opts);
+  var file = _.cloneDeep(obj);
+
+  opts = _.extend({}, loader.options, opts);
+  var o = {};
+
+  _.forIn(file, function(value, key) {
+    if (utils.typeOf(value) === 'object' &&
+        value.hasOwnProperty('content')) {
+      o[key] = loader.parse(value.content, opts);
+      o[key].data = _.extend({}, value, o[key].data, data);
+      _.extend(o[key].data, o[key].data.data);
+      _.extend(o[key].data, o[key].data.locals);
+      o[key].data = _.omit(o[key].data, ['original', 'locals', 'data', 'content']);
+    } else if (utils.typeOf(value) === 'string') {
+      o[key] = loader.parse(value, opts);
+      o[key].data = _.extend({}, o[key].data, data);
+    } else {
+      throw new Error('Loader#object cannot normalize:', obj);
+    }
+    loader.flatten(o[key]);
+  }.bind(loader));
+
+  _.extend.apply(_, [loader.cache].concat(o));
+  return o;
+};
+
+
+/**
+ * Load multiple template objects.
+ *
+ * @param  {Object} `objects` Template objects.
+ * @param  {Object} `options` loader options.
+ * @api public
+ */
+
+loader.objects = function (objects, locals) {
+  _.forIn(objects, function (value, key) {
+    var o = {};
+
+    if (utils.typeOf(value) === 'string') {
+      value = {content: value};
+    }
+
+    o[key] = value;
+    loader.object(o, locals);
+  }.bind(loader));
+};
+
+
+/**
+ * Call `load` for each item in the array.
+ *
+ * @param  {Object} `patterns` Glob patterns or array of filepaths.
+ * @param  {Object} `options` Additional options to pass
+ * @return {Array}  a list of files as Vinyl objects
+ * @api public
+ */
+
+loader.array = function (patterns, locals) {
+  debug('array', arguments);
+
+  arrayify(patterns).forEach(function (pattern) {
+    loader.load(pattern, locals);
+  }.bind(loader));
+
+  return loader;
 };
 
 
@@ -193,88 +363,9 @@ Loader.prototype.string = function (pattern, locals) {
  * @api public
  */
 
-Loader.prototype.function = function (fn, locals) {
+loader.function = function (fn, locals) {
   debug('function', arguments);
-  return this.load(fn(), locals);
-};
-
-
-/**
- * Normalize a template object.
- *
- * @param  {Object} `obj` The object to normalize.
- * @param  {Object} `options` Locals or loader options.
- * @api public
- */
-
-Loader.prototype.object = function (obj, options) {
-  var locals = this.option('locals');
-  var opts = _.extend({}, options);
-  var data = _.extend({}, locals, opts, opts.data, opts.locals);
-  var file = _.cloneDeep(obj);
-  debug('object', arguments);
-
-  opts = _.extend({}, this.options, opts);
-  var o = {};
-
-  _.forIn(file, function(value, key) {
-    if (utils.typeOf(value) === 'object' && value.hasOwnProperty('content')) {
-      o[key] = this.parse(value.content, opts);
-      o[key].data = _.extend({}, value, o[key].data, data);
-    } else if (utils.typeOf(value) === 'string') {
-      o[key] = this.parse(value, opts);
-      o[key].data = _.extend({}, o[key].data, data);
-    } else {
-      throw new Error('Loader#object cannot normalize:', obj);
-    }
-
-    this.flatten(o[key]);
-
-  }.bind(this));
-  this.extend(o);
-  return o;
-};
-
-
-/**
- * Load multiple template objects.
- *
- * @param  {Object} `objects` Template objects.
- * @param  {Object} `options` loader options.
- * @api public
- */
-
-Loader.prototype.objects = function (objects, options) {
-  _.forIn(objects, function (value, key) {
-    var o = {};
-
-    if (utils.typeOf(value) === 'string') {
-      value = {content: value};
-    }
-
-    o[key] = value;
-    this.object(o, options);
-  }.bind(this));
-};
-
-
-/**
- * Call `load` for each item in the array.
- *
- * @param  {Object} `patterns` Glob patterns or array of filepaths.
- * @param  {Object} `options` Additional options to pass
- * @return {Array}  a list of files as Vinyl objects
- * @api public
- */
-
-Loader.prototype.array = function (patterns, options) {
-  debug('array', arguments);
-
-  arrayify(patterns).forEach(function (pattern) {
-    this.load(pattern, options);
-  }.bind(this));
-
-  return this;
+  return loader.load(fn(), locals);
 };
 
 
@@ -282,4 +373,4 @@ Loader.prototype.array = function (patterns, options) {
  * Export `Loader`
  */
 
-module.exports = Loader;
+module.exports = loader;
