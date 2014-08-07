@@ -38,7 +38,7 @@ var _ = require('lodash');
 
 function loader(options) {
   loader.init(options);
-  return loader;
+  return loader.cache;
 }
 
 
@@ -146,7 +146,11 @@ loader.option = function(key, value) {
  */
 
 loader.parse = function (str, options) {
-  return matter(str, _.extend({autodetect: true}, options));
+  var content = matter(str, _.extend({
+    autodetect: true
+  }, options));
+
+  return content.replace(/^\s+/, '');
 };
 
 
