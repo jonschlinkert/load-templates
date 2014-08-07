@@ -23,6 +23,33 @@ exports.typeOf = function(value) {
 
 
 /**
+ * Flatten the `name` property on the given `data` object
+ * (e.g. `data.data`, like when files named `data.json`
+ * or `data.yml` are used), the value of `data.data`'s
+ * is flattened to the root `data` object.
+ *
+ * @method flattenData
+ * @param {Object} `data`
+ * @return {Object} Returns the flattened object.
+ * @api private
+ */
+
+exports.flattenData = function(data, name) {
+  name = name || 'data';
+
+  name = !Array.isArray(name) ? [name] : name;
+  name.forEach(function (prop) {
+    if (data && data.hasOwnProperty(prop)) {
+      data = _.extend({}, data, data[prop]);
+      delete data[prop];
+    }
+  });
+
+  return data;
+};
+
+
+/**
  * Naming function, to enable customizing how
  * template names are derived from file paths.
  *

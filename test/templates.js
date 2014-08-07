@@ -9,7 +9,7 @@
 
 var assert = require('assert');
 var should = require('should');
-var Template = require('..');
+var loader = require('..');
 var _ = require('lodash');
 
 
@@ -17,7 +17,7 @@ describe('template templates', function () {
 
   describe('.template():', function () {
     it('should add a template to `cache`.', function () {
-      var template = new Template();
+      var template = loader();
 
       template.set('a', 'This is template <%= a %>');
       template.set('b', 'This is template <%= b %>');
@@ -27,7 +27,7 @@ describe('template templates', function () {
     });
 
     it('should get templates from the cache', function () {
-      var template = new Template();
+      var template = loader();
 
       template.set('a', 'This is template <%= a %>');
       template.set('b', 'This is template <%= b %>');
@@ -40,7 +40,7 @@ describe('template templates', function () {
     });
 
     it('should extend locals onto the cache.', function () {
-      var template = new Template();
+      var template = loader();
       template.set('a', 'This is template <%= a %>', {a: 'AAA'});
       template.set('b', 'This is template <%= b %>', {b: 'BBB'});
 
@@ -53,21 +53,29 @@ describe('template templates', function () {
   });
 
   describe('.templates():', function () {
-    var template = new Template();
-
-    template.objects({
-      a: 'This is template <%= a %>',
-      b: 'This is template <%= b %>',
-      c: 'This is template <%= c %>',
-      d: 'This is template <%= d %>'
-    });
 
     it('should add multiple templates to `cache`.', function () {
+      var template = loader();
+      template.objects({
+        a: 'This is template <%= a %>',
+        b: 'This is template <%= b %>',
+        c: 'This is template <%= c %>',
+        d: 'This is template <%= d %>'
+      });
+
       var cache = Object.keys(template.cache);
       cache.should.have.length(4);
     });
 
     it('should get templates from the cache', function () {
+      var template = loader();
+
+      template.objects({
+        a: 'This is template <%= a %>',
+        b: 'This is template <%= b %>',
+        c: 'This is template <%= c %>',
+        d: 'This is template <%= d %>'
+      });
       var a = template.get('a');
       var b = template.get('b');
 
@@ -78,7 +86,7 @@ describe('template templates', function () {
 
   describe('when templates are defined using a `<%= template() %>` tag:', function () {
     it('should process them with the given context.', function () {
-      var template = new Template();
+      var template = loader();
 
       template.objects({
         a: 'This is template <%= a %>',

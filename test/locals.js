@@ -8,14 +8,14 @@
 'use strict';
 
 var should = require('should');
-var Loader = require('..');
+var loader = require('..');
 var _ = require('lodash');
 
 
 describe('template locals:', function () {
   describe('when a `locals` object is passed on the constructor.', function () {
     it('should move the object to `options`:', function () {
-      var templates = new Loader({locals: {SITE: 'TITLE', BLOG: 'TITLE'}});
+      var templates = loader({locals: {SITE: 'TITLE', BLOG: 'TITLE'}});
 
       templates.option('locals').should.have.property('SITE');
       templates.option('locals').should.have.property('BLOG');
@@ -26,26 +26,41 @@ describe('template locals:', function () {
 
   describe('when a `locals` object is passed on the `.set()` method for a template.', function () {
     it('should move the object to the `data` property for that template:', function () {
-      var templates = new Loader();
+      var templates = loader();
 
       templates.set('a', 'this is content', {locals: {SITE: 'TITLE', BLOG: 'TITLE'}});
       templates.get('a').data.should.have.property('SITE');
       templates.get('a').data.should.have.property('BLOG');
     });
+
+    it('should merge with locals defined in the constructor:', function () {
+      var templates = loader({locals: {SITE: 'GLOBAL'}});
+
+      templates.set('a', 'this is content', {locals: {}});
+      templates.get('a').data.should.have.property('SITE');
+      templates.get('a').data.SITE.should.equal('GLOBAL');
+    });
+
+    it('should have preference over locals defined in the constructor:', function () {
+      var templates = loader({locals: {SITE: 'GLOBAL'}});
+
+      templates.set('a', 'this is content', {locals: {SITE: 'TITLE'}});
+      templates.get('a').data.should.have.property('SITE');
+      templates.get('a').data.SITE.should.equal('TITLE');
+    });
   });
 
   describe('when a `locals` object is passed on the `.load()` method.', function () {
-    xit('should move the object to the `data` property for the loaded templates:', function () {
-      var templates = new Loader();
-      templates.load('test/fixtures/*.tmpl', {foo: 'bar'});
-
-      templates.load('a', 'this is content', {locals: {SITE: 'TITLE', BLOG: 'TITLE'}});
+    it('should move the object to the `data` property for the loaded templates:', function () {
+      var templates = loader();
+      // templates.load('test/fixtures/*.tmpl', {foo: 'bar'});
+      templates.load('a', 'this is content', { SITE: 'TITLE', BLOG: 'TITLE' });
       templates.get('a').data.should.have.property('SITE');
       templates.get('a').data.should.have.property('BLOG');
     });
 
-    xit('should move the object to the `data` property for the loaded templates:', function () {
-      var templates = new Loader();
+    it('should move the object to the `data` property for the loaded templates:', function () {
+      var templates = loader();
       templates.load(['test/**/*.md', 'test/**/*.tmpl'], {data: {fff: 'ggg'}, baz: 'quux', locals: {a: 'b'}});
       templates.load('a', 'this is content', {locals: {SITE: 'TITLE', BLOG: 'TITLE'}});
       templates.get('a').data.should.have.property('SITE');

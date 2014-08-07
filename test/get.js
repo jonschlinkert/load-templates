@@ -6,7 +6,7 @@
  */
 
 var should = require('should');
-var Loader = require('..');
+var loader = require('..');
 
 
 describe('template get:', function () {
@@ -14,28 +14,28 @@ describe('template get:', function () {
     describe('when template are defined as objects:', function () {
 
       it('should get a `load()`ed template object by name:', function () {
-        var templates = new Loader();
+        var templates = loader();
         templates.load({a: {content: 'A'}}, {data: {aaa: 'bbb'}});
         templates.get('a').should.have.property('content');
         templates.get('a').should.have.property('data');
       });
 
       it('should get a `.set()` template object by name:', function () {
-        var templates = new Loader();
+        var templates = loader();
         templates.set('a', {content: 'A'}, {data: {aaa: 'bbb'}});
         templates.get('a').should.have.property('content');
         templates.get('a').should.have.property('data');
       });
 
       it('should get a nested property from a template object:', function () {
-        var templates = new Loader();
+        var templates = loader();
         templates.load({b: {content: 'B'}}, {locals: {bbb: 'ccc', ddd: {eee: 'fff'}}});
-        templates.get('b.data').should.have.property('bbb');
-        templates.get('b.data.ddd.eee').should.equal('fff');
+        templates.get('b').data.should.have.property('bbb');
+        templates.get('b').data.ddd.eee.should.equal('fff');
       });
 
       it('should get templates from objects:', function () {
-        var templates = new Loader();
+        var templates = loader();
 
         templates.load({a: {content: 'A'}}, {data: {aaa: 'bbb'}});
         templates.load({b: {content: 'B'}}, {locals: {bbb: 'ccc'}});
@@ -43,8 +43,8 @@ describe('template get:', function () {
 
         templates.get('a').should.have.property('content');
         templates.get('a').should.have.property('data');
-        templates.get('b.data').should.have.property('bbb');
-        templates.get('c.data').should.have.property('xxx');
+        templates.get('b').data.should.have.property('bbb');
+        templates.get('c').data.should.have.property('xxx');
         templates.get('b').should.have.property('data');
         templates.get('b').should.not.have.property('locals');
         templates.get('b').should.not.have.property('locals');

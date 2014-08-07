@@ -6,16 +6,17 @@
  */
 
 var should = require('should');
-var Template = require('..');
+var loader = require('..');
 
 
 describe('template globals:', function () {
   describe('when context is passed to the constructor::', function () {
     it('when context is passed to the constructor:', function () {
-      var templates = new Template({
+      var templates = loader({
         title: 'Page!',
         layout: 'a'
       });
+
       templates.load({base: {content: 'base!\n{{body}}\nbase!' }});
     });
   });
