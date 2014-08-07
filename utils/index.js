@@ -39,7 +39,7 @@ exports.rename = function(filepath, options) {
   var opts = _.extend({last: 1, withExt: false}, options);
   var res = segments(filepath, opts);
   if (opts.withExt) {
-    return res.replace(/(\.)/g, '\\$1');
+    return res.replace(/(\.)/g, '\.');
   }
   return res.replace(/\.[\S]+$/, '');
 };
