@@ -8,8 +8,7 @@
 'use strict';
 
 var should = require('should');
-var Loader = require('..');
-var template = new Loader();
+var loader = require('..');
 var _ = require('lodash');
 
 

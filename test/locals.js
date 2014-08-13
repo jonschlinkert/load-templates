@@ -53,14 +53,15 @@ describe('template locals:', function () {
   describe('when a `locals` object is passed on the `.load()` method.', function () {
     it('should move the object to the `data` property for the loaded templates:', function () {
       var templates = loader();
-      // templates.load('test/fixtures/*.tmpl', {foo: 'bar'});
-      templates.load('a', 'this is content', { SITE: 'TITLE', BLOG: 'TITLE' });
+
+      templates.load('a', 'this is content', {locals: { SITE: 'TITLE', BLOG: 'TITLE' }});
       templates.get('a').data.should.have.property('SITE');
       templates.get('a').data.should.have.property('BLOG');
     });
 
     it('should move the object to the `data` property for the loaded templates:', function () {
       var templates = loader();
+
       templates.load(['test/**/*.md', 'test/**/*.tmpl'], {data: {fff: 'ggg'}, baz: 'quux', locals: {a: 'b'}});
       templates.load('a', 'this is content', {locals: {SITE: 'TITLE', BLOG: 'TITLE'}});
       templates.get('a').data.should.have.property('SITE');

@@ -8,12 +8,13 @@
 'use strict';
 
 
+var arrayify = require('arrayify-compact');
+var debug = require('debug')('template-loader');
 var fs = require('fs');
 var glob = require('globby');
 var isAbsolute = require('is-absolute');
-var arrayify = require('arrayify-compact');
 var matter = require('gray-matter');
-var debug = require('debug')('template-loader');
+var resolve = require('resolve-dep');
 var utils = require('./utils');
 var _ = require('lodash');
 
@@ -68,13 +69,27 @@ loader.cache = {};
 
 loader.init = function(opts) {
   debug('init', arguments);
-  loader.options = {};
-  loader.cache = {};
+  this.options = {};
+  this.cache = {};
 
-  loader.extend(opts);
-  loader.fallback('rename', utils.rename);
-  loader.fallback('cwd', process.cwd());
-  loader.fallback('locals', {});
+  this.extend(opts);
+  this.fallback('rename', utils.rename);
+  this.fallback('cwd', process.cwd());
+  this.fallback('locals', {});
+};
+
+
+/**
+ * Fallback on default options if
+ * they are not defined by the user.
+ *
+ * @api private
+ */
+
+loader.fallback = function(key, value) {
+  return this.options[key] ?
+    this.option(key) :
+    this.option(key, value);
 };
 
 
@@ -85,20 +100,7 @@ loader.init = function(opts) {
  */
 
 loader.extend = function(obj) {
-  return _.extend(loader.options, obj);
-};
-
-
-/**
- * Extend the options.
- *
- * @api private
- */
-
-loader.fallback = function(key, value) {
-  return loader.option(key) ?
-    loader.option(key) :
-    loader.option(key, value);
+  return _.extend(this.options, obj);
 };
 
 
@@ -124,16 +126,16 @@ loader.option = function(key, value) {
   var args = [].slice.call(arguments);
 
   if (args.length === 1 && typeof key === 'string') {
-    return loader.options[key];
+    return this.options[key];
   }
 
   if (typeof key === 'object') {
-    _.extend.apply(_, [loader.options].concat(args));
-    return loader;
+    _.extend.apply(_, [this.options].concat(args));
+    return this;
   }
 
-  loader.options[key] = value;
-  return loader;
+  this.options[key] = value;
+  return this;
 };
 
 
@@ -173,8 +175,8 @@ loader.set = function (name, str, options) {
   } else {
     o[name] = str;
   }
-  loader.object(o, options);
-  return loader;
+  this.object(o, options);
+  return this;
 };
 
 
@@ -187,9 +189,9 @@ loader.set = function (name, str, options) {
 
 loader.get = function (key) {
   if (!key) {
-    return loader.cache;
+    return this.cache;
   }
-  return loader.cache[key];
+  return this.cache[key];
 };
 
 
@@ -201,7 +203,7 @@ loader.get = function (key) {
  * @api public
  */
 
-loader.flatten = function (o, name) {
+loader.flatten = function (o) {
   debug('flatten', arguments);
 
   utils.flattenData(o.data, ['locals', 'content', 'original']);
@@ -220,9 +222,8 @@ loader.flatten = function (o, name) {
  * @api public
  */
 
-loader.load = function (pattern, locals) {
+loader.load = function (pattern) {
   var args = [].slice.call(arguments);
-  var opts = _.extend({}, locals);
   debug('load', arguments);
 
   var method = loader[utils.typeOf(pattern)];
@@ -244,8 +245,8 @@ loader.load = function (pattern, locals) {
  */
 
 loader.string = function (name, content, locals) {
-  var opts = _.extend({}, loader.options, locals);
-  var fn = loader.option('rename');
+  var opts = _.extend({}, this.options, locals);
+  var fn = this.option('rename');
   var o = {};
 
   if (utils.typeOf(content) === 'object') {
@@ -254,24 +255,29 @@ loader.string = function (name, content, locals) {
   }
 
   if (isAbsolute(name)) {
-    var file = fs.readFileSync(name, 'utf8');
-    var name = fn(name, opts);
-    o[name] = loader.parse(file, opts);
-    loader.object(o, locals);
+    var filepath = name;
+    var file = fs.readFileSync(filepath, 'utf8');
+    name = fn(name, opts);
+
+    o[name] = this.parse(file, opts);
+    o[name].path = filepath;
+
+    this.object(o, locals);
   } else {
     var arr = glob.sync(name, opts);
     if (arr.length > 0) {
-      loader.load(arr.map(utils.absolute), locals);
+      this.load(arr.map(utils.absolute), locals);
     } else {
       o[name] = {
+        path: name,
         content: content,
         data: locals
       };
-      loader.object(o);
+      this.object(o);
     }
   }
 
-  return loader;
+  return this;
 };
 
 
@@ -286,33 +292,22 @@ loader.string = function (name, content, locals) {
 loader.object = function (obj, locals) {
   debug('object', arguments);
 
-  var globals = loader.option('locals');
+  var globals = this.option('locals');
   var opts = _.defaults({}, locals, globals);
   var data = _.defaults({}, opts.locals, opts.data, opts);
-  var file = _.cloneDeep(obj);
 
-  opts = _.extend({}, loader.options, opts);
+  opts = _.extend({}, this.options, opts);
   var o = {};
 
-  _.forIn(file, function(value, key) {
-    if (utils.typeOf(value) === 'object' &&
-        value.hasOwnProperty('content')) {
-      o[key] = loader.parse(value.content, opts);
-      o[key].data = _.extend({}, value, o[key].data, data);
-      _.extend(o[key].data, o[key].data.data);
-      _.extend(o[key].data, o[key].data.locals);
-      o[key].data = _.omit(o[key].data, ['original', 'locals', 'data', 'content']);
-    } else if (utils.typeOf(value) === 'string') {
-      o[key] = loader.parse(value, opts);
-      o[key].data = _.extend({}, o[key].data, data);
-    } else {
-      throw new Error('Loader#object cannot normalize:', obj);
-    }
-    loader.flatten(o[key]);
-  }.bind(loader));
+  if (!obj.content) {
+  	this.objects(obj, data, opts);
+  } else {
+    var name = obj.name || obj.path;
+    o = this.normalize(obj, name, data, opts);
+  	_.extend.apply(_, [this.cache].concat(o));
+  }
 
-  _.extend.apply(_, [loader.cache].concat(o));
-  return o;
+  return this;
 };
 
 
@@ -324,17 +319,46 @@ loader.object = function (obj, locals) {
  * @api public
  */
 
-loader.objects = function (objects, locals) {
-  _.forIn(objects, function (value, key) {
-    var o = {};
+loader.objects = function (objects, data, opts) {
+  debug('objects', arguments);
+  var o = {};
 
-    if (utils.typeOf(value) === 'string') {
+  _.forIn(objects, function(value, key) {
+    if (utils.typeOf(value) === 'object' && value.hasOwnProperty('content')) {
+    	o = this.normalize(value, key, data, opts);
+    } else if (utils.typeOf(value) === 'string') {
       value = {content: value};
+      o[key] = this.normalize(value, key, data, opts);
+    } else {
+      throw new Error('Loader#object cannot normalize:', value);
     }
+    this.flatten(o[key]);
 
-    o[key] = value;
-    loader.object(o, locals);
-  }.bind(loader));
+    _.extend.apply(_, [this.cache].concat(o));
+  }.bind(this));
+
+  return this;
+};
+
+
+/**
+ * Call `load` for each item in the array.
+ *
+ * @param  {Object} `patterns` Glob patterns or array of filepaths.
+ * @param  {Object} `options` Additional options to pass
+ * @return {Array}  a list of files as Vinyl objects
+ * @api public
+ */
+
+loader.normalize = function (value, key, data, opts) {
+	var o = {};
+  o[key] = this.parse(value.content, opts);
+  o[key].data = _.extend({}, value, o[key].data, data);
+  _.extend(o[key].data, o[key].data.data);
+  _.extend(o[key].data, o[key].data.locals);
+  o[key].path = key;
+  o[key].data = _.omit(o[key].data, ['original', 'locals', 'data', 'content']);
+  return o;
 };
 
 
@@ -351,10 +375,10 @@ loader.array = function (patterns, locals) {
   debug('array', arguments);
 
   arrayify(patterns).forEach(function (pattern) {
-    loader.load(pattern, locals);
-  }.bind(loader));
+    this.load(pattern, locals);
+  }.bind(this));
 
-  return loader;
+  return this;
 };
 
 
@@ -370,8 +394,46 @@ loader.array = function (patterns, locals) {
 
 loader.function = function (fn, locals) {
   debug('function', arguments);
-  return loader.load(fn(), locals);
+
+  var helper = fn();
+  if (utils.typeOf(helper) === 'object') {
+    return helper;
+  }
+  return this.load(helper, locals);
 };
+
+
+/**
+ * Resolve modules by `name` and require them. `name` can
+ * be a module name, filepath or glob pattern.
+ *
+ * @param  {String} `name` npm module name, file path or glob pattern to resolve
+ * @param  {Object} `options` Options to pass to [resolve-dep].
+ * @api public
+ */
+
+loader.resolve = function (name, options) {
+  debug('resolve', arguments);
+
+  var resolved = resolve(name);
+  var results = {};
+
+  resolved.forEach(function (filepath) {
+    try {
+      var helper = require(filepath);
+      if (utils.typeOf(helper) === 'object') {
+        _.extend(results, helper);
+      } else {
+        _.extend(results, this.load(helper, options));
+      }
+    } catch(err) {
+      return err;
+    }
+  });
+
+  return results;
+};
+
 
 
 /**
