@@ -41,8 +41,8 @@ describe('template templates', function () {
 
     it('should extend locals onto the cache.', function () {
       var template = loader();
-      template.set('a', 'This is template <%= a %>', {a: 'AAA'});
-      template.set('b', 'This is template <%= b %>', {b: 'BBB'});
+      template.set('a', 'This is template <%= a %>', {locals: {a: 'AAA'}});
+      template.set('b', 'This is template <%= b %>', {locals: {b: 'BBB'}});
 
       var a = template.get('a');
       var b = template.get('b');

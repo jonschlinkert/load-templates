@@ -294,7 +294,7 @@ loader.object = function (obj, locals) {
 
   var globals = this.option('locals');
   var opts = _.defaults({}, locals, globals);
-  var data = _.defaults({}, opts.locals, opts.data, opts);
+  var data = _.defaults({}, opts.locals, opts.data, globals);
 
   opts = _.extend({}, this.options, opts);
   var o = {};
@@ -356,7 +356,7 @@ loader.normalize = function (value, key, data, opts) {
   o[key].data = _.extend({}, value, o[key].data, data);
   _.extend(o[key].data, o[key].data.data);
   _.extend(o[key].data, o[key].data.locals);
-  o[key].path = key;
+  o[key].path = o[key].data.path || key;
   o[key].data = _.omit(o[key].data, ['original', 'locals', 'data', 'content']);
   return o;
 };

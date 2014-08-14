@@ -44,7 +44,7 @@ describe('template get:', function () {
         templates.get('a').should.have.property('content');
         templates.get('a').should.have.property('data');
         templates.get('b').data.should.have.property('bbb');
-        templates.get('c').data.should.have.property('xxx');
+        templates.get('c').data.should.not.have.property('xxx');
         templates.get('b').should.have.property('data');
         templates.get('b').should.not.have.property('locals');
         templates.get('b').should.not.have.property('locals');
