@@ -69,27 +69,30 @@ loader.cache = {};
 
 loader.init = function(opts) {
   debug('init', arguments);
+  opts = _.cloneDeep(opts);
+
   this.options = {};
   this.cache = {};
 
   this.extend(opts);
-  this.fallback('rename', utils.rename);
-  this.fallback('cwd', process.cwd());
-  this.fallback('locals', {});
+  this.option('rename', utils.rename);
+  this.option('cwd', process.cwd());
+  this.option('locals', {});
+  this.overrides(opts);
 };
 
 
 /**
- * Fallback on default options if
- * they are not defined by the user.
+ * Override default options with user-defined `opts`
+ * during initialization.
  *
  * @api private
  */
 
-loader.fallback = function(key, value) {
-  return this.options[key] ?
-    this.option(key) :
+loader.overrides = function(opts) {
+  _.forIn(opts, function (value, key) {
     this.option(key, value);
+  }.bind(this));
 };
 
 
@@ -356,7 +359,7 @@ loader.normalize = function (value, key, data, opts) {
   o[key].data = _.extend({}, value, o[key].data, data);
   _.extend(o[key].data, o[key].data.data);
   _.extend(o[key].data, o[key].data.locals);
-  o[key].path = key;
+  o[key].path = o[key].data.path || key;
   o[key].data = _.omit(o[key].data, ['original', 'locals', 'data', 'content']);
   return o;
 };
