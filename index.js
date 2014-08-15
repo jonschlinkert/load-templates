@@ -297,7 +297,7 @@ loader.object = function (obj, locals) {
 
   var globals = this.option('locals');
   var opts = _.defaults({}, locals, globals);
-  var data = _.defaults({}, opts.locals, opts.data, opts);
+  var data = _.defaults({}, opts.locals, opts.data, globals);
 
   opts = _.extend({}, this.options, opts);
   var o = {};
