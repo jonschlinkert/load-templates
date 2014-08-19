@@ -90,9 +90,11 @@ loader.init = function(opts) {
  */
 
 loader.overrides = function(opts) {
-  _.forIn(opts, function (value, key) {
-    this.option(key, value);
-  }.bind(this));
+  if (opts && Object.keys(opts).length) {
+    _.forIn(opts, function (value, key) {
+      this.option(key, value);
+    }.bind(this));
+  }
 };
 
 
@@ -151,12 +153,9 @@ loader.option = function(key, value) {
  */
 
 loader.parse = function (str, options) {
-  if (str) {
-    var file = matter(str, _.extend({autodetect: true}, options));
-    file.content = file.content.replace(/^\s*/, '');
-    return file;
-  }
-  return str;
+  var file = matter(str, _.extend({autodetect: true}, options));
+  file.content = file.content.replace(/^\s*/, '');
+  return file;
 };
 
 
@@ -171,6 +170,7 @@ loader.parse = function (str, options) {
 
 loader.set = function (name, str, options) {
   var o = {};
+
   if (utils.typeOf(str) === 'string') {
     o[name] = {
       content: str
@@ -178,6 +178,7 @@ loader.set = function (name, str, options) {
   } else {
     o[name] = str;
   }
+
   this.object(o, options);
   return this;
 };
@@ -233,7 +234,6 @@ loader.load = function (pattern) {
   if (method) {
     return method.apply(loader, args);
   }
-  return;
 };
 
 
@@ -306,7 +306,7 @@ loader.object = function (obj, locals) {
   	this.objects(obj, data, opts);
   } else {
     var name = obj.name || obj.path;
-    o = this.normalize(obj, name, data, opts);
+    o = this.normalize(name, obj, data, opts);
   	_.extend.apply(_, [this.cache].concat(o));
   }
 
@@ -328,10 +328,10 @@ loader.objects = function (objects, data, opts) {
 
   _.forIn(objects, function(value, key) {
     if (utils.typeOf(value) === 'object' && value.hasOwnProperty('content')) {
-    	o = this.normalize(value, key, data, opts);
+    	o = this.normalize(key, value, data, opts);
     } else if (utils.typeOf(value) === 'string') {
       value = {content: value};
-      o[key] = this.normalize(value, key, data, opts);
+      o[key] = this.normalize(key, value, data, opts);
     } else {
       throw new Error('Loader#object cannot normalize:', value);
     }
@@ -353,10 +353,13 @@ loader.objects = function (objects, data, opts) {
  * @api public
  */
 
-loader.normalize = function (value, key, data, opts) {
-	var o = {};
-  o[key] = this.parse(value.content, opts);
-  o[key].data = _.extend({}, value, o[key].data, data);
+loader.normalize = function (key, file, data, opts) {
+  file = _.extend({}, file);
+  var o = {};
+
+  o[key] = this.parse(file.content, opts);
+
+  o[key].data = _.extend({}, file, o[key].data, data);
   _.extend(o[key].data, o[key].data.data);
   _.extend(o[key].data, o[key].data.locals);
   o[key].path = o[key].data.path || key;
