@@ -17,10 +17,11 @@ var templates = new Loader();
 ```
 
 ## API
-### Loader
+### [loader](index.js#L40)
 
-Create a new instance of `Loader`, optionally
-passing default `options`.
+Create a new instance of `Loader`, optionally passing default `options`.
+
+* `options` **{Object}**: Default options for front-matter and template naming.  
 
 **Example:**
 
@@ -29,20 +30,14 @@ var Loader = require('template-loader');
 var templates = new Loader();
 ```
 
-* `options` {Object}: Default options for front-matter and template naming.   
 
-
-Options cache
-  
-
-
-Template cache
-  
-
-
-### .option
+### [.option](index.js#L130)
 
 Set or get an option.
+
+* `key` **{String}**  
+* `value` **{*}**  
+* returns: {*}  
 
 ```js
 loader.option('a', true)
@@ -50,101 +45,109 @@ loader.option('a')
 // => true
 ```
 
-* `key` {String} 
-* `value` {*}  
-* `return` {*} 
+
+### [.parse](index.js#L155)
 
 
-Parse files and extract front matter.
 
-* `str` {String}: String to parse. 
-* `options` {Object}: Options to pass to [gray-matter].   
-
-
-Set templates on the cache.
-
-* `name` {String}: Template name 
-* `str` {String}: String to parse. 
-* `options` {Object}: loader options   
+* `str` **{String}**: String to parse.  
+* `options` **{Object}**: Options to pass to [gray-matter].  Parse files and extract front matter.
 
 
-Get a template from the cache.
-
-* `key` {String}: The name of the template to get.   
+### [.set](index.js#L171)
 
 
-Normalize and flatten `locals` and `data` objects.
 
-* `obj` {Object}: The object to normalize.  
-* `return` {Object} 
-
-
-Resolve, load, and parse all files based on type.
-
-* `pattern` {*}: Array, object, function or string. 
-* `options` {Object}: loader options.  
-* `return` {Array}  Array of file objects. 
+* `name` **{String}**: Template name  
+* `str` **{String}**: String to parse.  
+* `options` **{Object}**: loader options  Set templates on the cache.
 
 
-Resolve files paths and require them in, calling `.load()`
+### [.get](index.js#L194)
+
+
+
+* `key` **{String}**: The name of the template to get.  Get a template from the cache.
+
+
+### [.flatten](index.js#L210)
+
+
+
+* `obj` **{Object}**: The object to normalize.  
+* returns: {Object}  Normalize and flatten `locals` and `data` objects.
+
+
+### [.load](index.js#L229)
+
+
+
+* `pattern` **{*}**: Array, object, function or string.  
+* `options` **{Object}**: loader options.  
+* returns **{Array}**: Array of file objects.  Resolve, load, and parse all files based on type.
+
+
+### [.string](index.js#L250)
+
+
+
+* `pattern` **{String}**: Glob patterns or file paths.  
+* `options` **{Object}**: loader options.  
+* returns: {Object}  Resolve files paths and require them in, calling `.load()`
 for futher processing.
 
-* `pattern` {String}: Glob patterns or file paths. 
-* `options` {Object}: loader options.  
-* `return` {Object} 
+
+### [.object](index.js#L295)
 
 
-Normalize a template object.
 
-* `obj` {Object}: The object to normalize. 
-* `options` {Object}: Locals or loader options.   
-
-
-Load multiple template objects.
-
-* `objects` {Object}: Template objects. 
-* `options` {Object}: loader options.   
+* `obj` **{Object}**: The object to normalize.  
+* `options` **{Object}**: Locals or loader options.  Normalize a template object.
 
 
-Call `load` for each item in the array.
-
-* `patterns` {Object}: Glob patterns or array of filepaths. 
-* `options` {Object}: Additional options to pass  
-* `return` {Array}  a list of files as Vinyl objects 
+### [.objects](index.js#L325)
 
 
-Call the function and pass the results to
+
+* `objects` **{Object}**: Template objects.  
+* `options` **{Object}**: loader options.  Load multiple template objects.
+
+
+### [.normalize](index.js#L356)
+
+
+
+* `patterns` **{Object}**: Glob patterns or array of filepaths.  
+* `options` **{Object}**: Additional options to pass  
+* returns **{Array}**: a list of files as Vinyl objects  Call `load` for each item in the array.
+
+
+### [.array](index.js#L380)
+
+
+
+* `patterns` **{Object}**: Glob patterns or array of filepaths.  
+* `options` **{Object}**: Additional options to pass  
+* returns **{Array}**: a list of files as Vinyl objects  Call `load` for each item in the array.
+
+
+### [.function](index.js#L401)
+
+
+
+* `fn` **{Function}**: Function to call.  
+* `locals` **{Object}**: Locals or loader options.  
+* returns: {*}  Call the function and pass the results to
 `load` for futher processing.
 
-* `fn` {Function}: Function to call. 
-* `locals` {Object}: Locals or loader options.  
-* `return` {*} 
+
+### [.resolve](index.js#L421)
 
 
-Resolve modules by `name` and require them. `name` can
+
+* `name` **{String}**: npm module name, file path or glob pattern to resolve  
+* `options` **{Object}**: Options to pass to [resolve-dep].  Resolve modules by `name` and require them. `name` can
 be a module name, filepath or glob pattern.
-
-* `name` {String}: npm module name, file path or glob pattern to resolve 
-* `options` {Object}: Options to pass to [resolve-dep].   
-
-
-Call the function and pass the results to
-`load` for futher processing.
-
-* `fn` {Function}: Function to call. 
-* `locals` {Object}: Locals or loader options.  
-* `return` {*} 
-
-
-Call the function and pass the results to
-`load` for futher processing.
-
-* `fn` {Function}: Function to call. 
-* `locals` {Object}: Locals or loader options.  
-* `return` {*} 
-
-
-Export `Loader`
 
 ### .set
 
@@ -213,4 +216,4 @@ Released under the MIT license
 
 ***
 
-_This file was generated by [verb-cli](https://github.com/assemble/verb-cli) on August 12, 2014._
+_This file was generated by [verb-cli](https://github.com/assemble/verb-cli) on August 19, 2014._

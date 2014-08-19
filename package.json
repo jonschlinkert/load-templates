@@ -1,7 +1,7 @@
 {
   "name": "template-loader",
   "description": "Load templates from file paths, globs or objects, and cache them as normalized objects.",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "homepage": "https://github.com/jonschlinkert/template-loader",
   "author": {
     "name": "Jon Schlinkert",
