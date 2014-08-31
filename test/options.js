@@ -8,35 +8,31 @@
 'use strict';
 
 var should = require('should');
-var loader = require('..');
+var Loader = require('..');
 var _ = require('lodash');
 
 describe('template options:', function () {
-  describe('withExt', function () {
-    describe('.set()', function () {
-      it('should leave the extension on template names.', function () {
-        var templates = loader({withExt: true});
-
-
-        templates.load('test/fixtures/*.{md,tmpl}');
-        templates.cache.should.have.property('a.md');
-        templates.cache.should.have.property('a.tmpl');
-        templates.cache.should.have.property('b.md');
-        templates.cache.should.have.property('b.tmpl');
-      });
+  describe('.option()', function () {
+    it('should get default options.', function () {
+      var loader = new Loader();
+      loader.option('locals').should.eql({});
+      loader.option('rename').should.be.a.function;
+      loader.option('cwd').should.equal(process.cwd());
     });
 
-    describe('when .get() is used', function () {
-      it('should leave the extension on template names.', function () {
-        var templates = loader({withExt: true});
-        templates.load('test/fixtures/*.{md,tmpl}');
-        templates.cache.should.have.property('a.md');
-        templates.cache.should.have.property('a.tmpl');
-        templates.cache.should.have.property('b.md');
-        templates.cache.should.have.property('b.tmpl');
-      });
+    it('should set and get an option.', function () {
+      var loader = new Loader();
+      loader.option('a', 'b');
+      loader.option('a').should.equal('b');
     });
 
+    it('should override default options.', function () {
+      var loader = new Loader();
+      loader.option('locals', {a: 'b'});
+      loader.option('cwd', 'tmp');
+
+      loader.option('locals').should.eql({a: 'b'});
+      loader.option('cwd').should.equal('tmp');
+    });
   });
-
 });

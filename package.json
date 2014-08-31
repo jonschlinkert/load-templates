@@ -50,6 +50,7 @@
     "is-absolute": "^0.1.4",
     "lodash": "^2.4.1",
     "parse-filepath": "^0.3.0",
+    "parser-utils": "^0.2.0",
     "path-segments": "^0.1.1",
     "rename-path": "^0.2.0",
     "resolve-dep": "^0.5.0"
