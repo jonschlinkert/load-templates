@@ -179,7 +179,7 @@ loader.set = function (name, str, options) {
     o[name] = str;
   }
 
-  this.object(o, options);
+  this._object(o, options);
   return this;
 };
 
@@ -230,7 +230,7 @@ loader.load = function (pattern) {
   var args = [].slice.call(arguments);
   debug('load', arguments);
 
-  var method = loader[utils.typeOf(pattern)];
+  var method = loader['_' + utils.typeOf(pattern)];
   if (method) {
     return method.apply(loader, args);
   }
@@ -247,7 +247,7 @@ loader.load = function (pattern) {
  * @api public
  */
 
-loader.string = function (name, content, locals) {
+loader._string = function (name, content, locals) {
   var opts = _.extend({}, this.options, locals);
   var fn = this.option('rename');
   var o = {};
@@ -265,7 +265,7 @@ loader.string = function (name, content, locals) {
     o[name] = this.parse(file, opts);
     o[name].path = filepath;
 
-    this.object(o, locals);
+    this._object(o, locals);
   } else {
     var arr = glob.sync(name, opts);
     if (arr.length > 0) {
@@ -276,7 +276,7 @@ loader.string = function (name, content, locals) {
         content: content,
         data: locals
       };
-      this.object(o);
+      this._object(o);
     }
   }
 
@@ -292,7 +292,7 @@ loader.string = function (name, content, locals) {
  * @api public
  */
 
-loader.object = function (obj, locals) {
+loader._object = function (obj, locals) {
   debug('object', arguments);
 
   var globals = this.option('locals');
@@ -353,31 +353,7 @@ loader.objects = function (objects, data, opts) {
  * @api public
  */
 
-loader.normalize = function (key, file, data, opts) {
-  file = _.extend({}, file);
-  var o = {};
-
-  o[key] = this.parse(file.content, opts);
-
-  o[key].data = _.extend({}, file, o[key].data, data);
-  _.extend(o[key].data, o[key].data.data);
-  _.extend(o[key].data, o[key].data.locals);
-  o[key].path = o[key].data.path || key;
-  o[key].data = _.omit(o[key].data, ['original', 'locals', 'data', 'content']);
-  return o;
-};
-
-
-/**
- * Call `load` for each item in the array.
- *
- * @param  {Object} `patterns` Glob patterns or array of filepaths.
- * @param  {Object} `options` Additional options to pass
- * @return {Array}  a list of files as Vinyl objects
- * @api public
- */
-
-loader.array = function (patterns, locals) {
+loader._array = function (patterns, locals) {
   debug('array', arguments);
 
   arrayify(patterns).forEach(function (pattern) {
@@ -398,7 +374,7 @@ loader.array = function (patterns, locals) {
  * @api public
  */
 
-loader.function = function (fn, locals) {
+loader._function = function (fn, locals) {
   debug('function', arguments);
 
   var helper = fn();
@@ -406,6 +382,30 @@ loader.function = function (fn, locals) {
     return helper;
   }
   return this.load(helper, locals);
+};
+
+
+/**
+ * Call `load` for each item in the array.
+ *
+ * @param  {Object} `patterns` Glob patterns or array of filepaths.
+ * @param  {Object} `options` Additional options to pass
+ * @return {Array}  a list of files as Vinyl objects
+ * @api public
+ */
+
+loader.normalize = function (key, file, data, opts) {
+  file = _.extend({}, file);
+  var o = {};
+
+  o[key] = this.parse(file.content, opts);
+
+  o[key].data = _.extend({}, file, o[key].data, data);
+  _.extend(o[key].data, o[key].data.data);
+  _.extend(o[key].data, o[key].data.locals);
+  o[key].path = o[key].data.path || key;
+  o[key].data = _.omit(o[key].data, ['original', 'locals', 'data', 'content']);
+  return o;
 };
 
 
