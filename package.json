@@ -1,33 +1,88 @@
 {
-  "name": "template-loader",
+  "name": "load-templates",
   "description": "Load templates from file paths, globs or objects, and cache them as normalized objects.",
-  "version": "0.2.0",
-  "homepage": "https://github.com/jonschlinkert/template-loader",
+  "version": "0.3.0",
+  "homepage": "https://github.com/jonschlinkert/load-templates",
   "author": {
     "name": "Jon Schlinkert",
     "url": "https://github.com/jonschlinkert"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/jonschlinkert/template-loader.git"
+    "url": "git://github.com/jonschlinkert/load-templates.git"
   },
   "bugs": {
-    "url": "https://github.com/jonschlinkert/template-loader/issues"
+    "url": "https://github.com/jonschlinkert/load-templates/issues"
   },
   "licenses": [
     {
       "type": "MIT",
-      "url": "https://github.com/jonschlinkert/template-loader/blob/master/LICENSE-MIT"
+      "url": "https://github.com/jonschlinkert/load-templates/blob/master/LICENSE-MIT"
     }
   ],
   "keywords": [
+    "assemble",
+    "atpl",
+    "cache",
+    "compile",
+    "consolidate",
+    "content",
+    "data",
+    "delimiters",
+    "delims",
     "docs",
     "documentation",
+    "dot",
+    "dust",
+    "dustjs-helpers",
+    "dustjs-linkedin",
+    "eco",
+    "ect",
+    "ejs",
+    "engine",
+    "engines",
+    "express",
+    "front",
     "generate",
     "generator",
+    "gray-matter",
+    "haml-coffee",
+    "hamljs",
+    "handlebars",
+    "hogan.js",
+    "jade",
+    "jazz",
+    "jqtpl",
+    "liquor",
+    "lo-dash",
+    "lodash",
     "markdown",
+    "matter",
+    "mocha",
+    "mote",
+    "mustache",
+    "noop",
+    "nunjucks",
+    "parse",
+    "parser",
+    "parsers",
+    "pass-through",
+    "process",
+    "qejs",
+    "ractive",
+    "render",
+    "should",
+    "swig",
+    "template",
     "templates",
-    "verb"
+    "templayed",
+    "toffee",
+    "underscore",
+    "verb",
+    "view",
+    "walrus",
+    "whiskers",
+    "yaml"
   ],
   "main": "index.js",
   "engines": {
@@ -44,15 +99,7 @@
   },
   "dependencies": {
     "arrayify-compact": "^0.1.0",
-    "async": "^0.9.0",
-    "debug": "^1.0.4",
     "globby": "^0.1.1",
-    "is-absolute": "^0.1.4",
-    "lodash": "^2.4.1",
-    "parse-filepath": "^0.3.0",
-    "parser-utils": "^0.2.0",
-    "path-segments": "^0.1.1",
-    "rename-path": "^0.2.0",
-    "resolve-dep": "^0.5.0"
+    "lodash": "^2.4.1"
   }
 }
