@@ -8,6 +8,7 @@ var _ = require('lodash');
 var fs = require('fs');
 var path = require('path');
 var glob = require('globby');
+var isRelative = require('is-relative');
 var arrayify = require('arrayify-compact');
 var extend = _.extend;
 
@@ -111,10 +112,14 @@ loader.string = function (key, value, options) {
     file[key].content = value;
   } else {
     var patterns = arrayify(key).map(function(pattern) {
+      if (!isRelative) {
+        return pattern;
+      }
       return loader._cwd(pattern);
     });
 
     files = glob.sync(patterns, {nonull: false});
+
     if (files.length > 0) {
       files.forEach(function (filepath) {
         var key = loader.rename(filepath);
