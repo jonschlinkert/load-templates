@@ -29,8 +29,6 @@ function Loader(options) {
   Arrange.call(this, options);
   this.cache = {};
   this.defaultOptions();
-
-  // this.options = _.omit(this.options, this.optsKeys());
 }
 
 util.inherits(Loader, Arrange);
@@ -83,9 +81,9 @@ Loader.prototype.load = function () {
   }
 
   if (multiple) {
-    return this.loadMultiple.apply(this, args);
+    return this.loadPlural.apply(this, args);
   } else {
-    return this.loadOne.apply(this, args);
+    return this.loadSingle.apply(this, args);
   }
 };
 
@@ -146,40 +144,92 @@ Loader.prototype.normalize = function (key, value, locals, options) {
   locals = locals || {};
 
   var opts = _.extend({}, options, locals.options);
+
   if (opts.normalize) {
     return opts.normalize.apply(this, arguments);
+  }
+
+  if (typeOf(value) === 'string') {
+    value = {content: value};
+  }
+
+  if (!value.hasOwnProperty('path')) {
+    value.path = key;
   }
 
   return value;
 };
 
 
-Loader.prototype.loadOne = function (key, value, locals, options) {
-  if (typeOf(key) === 'object') {
-    options = locals;
-    locals = value;
-    value = key;
-    key = value.path;
+Loader.prototype.siftObject = function (obj, prop) {
+  var o = {};
+  if (obj && typeOf(obj) === 'object') {
+    if (this.hasDeepKey(obj, prop)) {
+      o = _.find(obj, prop)[prop];
+    } else if (_.has(obj, prop)) {
+      o = _.extend({}, obj[prop]);
+    }
   }
+  return o;
+};
 
-  if (!key || typeOf(key) !== 'string') {
-    throw new Error('a `path` property must be defined.');
+
+Loader.prototype.siftObjects = function (arr, prop) {
+  var o = {};
+
+  arr.forEach(function(obj) {
+    _.extend(o, this.siftObject(obj, prop));
+  }.bind(this));
+
+  return o;
+};
+
+
+Loader.prototype.siftLocals = function (key, value, locals) {
+  if (locals) {
+    return _.omit(locals, ['options']);
   }
+  return this.siftObjects([key, value], 'locals');
+};
+
+
+Loader.prototype.siftOptions = function (key, value, locals, options) {
+  if (options) {
+    return options;
+  }
+  return this.siftObjects([key, value, locals], 'options');
+};
+
+
+Loader.prototype.loadSingle = function (key, value, locals, options) {
+  var args = [].slice.call(arguments);
+  var o = {};
+
+  if (typeOf(key) === 'object') {
+    if (this.hasDeepKey(key, 'path')) {
+      o = key;
+    } else {
+      o[key] = value;
+    }
+  }
+  // console.log(this.siftLocals(key, value, locals))
+
+  // if (!key || typeOf(key) !== 'string') {
+  //   throw new Error('a `path` property must be defined.');
+  // }
 
   var opts = _.extend({}, this.options, options);
   var name = this.renameKey(key, opts);
 
-  value = this.normalize(key, value, locals, options);
-  if (!value.hasOwnProperty('path')) {
-    value.path = key;
-  }
-
-  return this.set(name, this.normalize(key, value, locals, options));
+  this.set(name, this.normalize(key, value, locals, options));
+  return this.cache;
 };
 
-Loader.prototype.loadMultiple = function (patterns, locals, options) {
+
+
+Loader.prototype.loadPlural = function (patterns, locals, options) {
   if (typeOf(patterns) === 'object' && !Array.isArray(patterns) && patterns.hasOwnProperty('path')) {
-    return this.loadOne(patterns, locals);
+    return this.loadSingle(patterns, locals);
   }
 
   if (!Array.isArray(patterns)) {
@@ -189,14 +239,13 @@ Loader.prototype.loadMultiple = function (patterns, locals, options) {
   var opts = _.extend({}, this.options, options);
   var files = glob.sync(patterns, _.extend({nonull: false}, opts));
 
-
   if (files.length) {
     _.reduce(files, function (acc, filepath) {
       var file = this.parse(this.read(filepath), opts);
 
       _.extend(file, {path: filepath});
 
-      this.loadOne(filepath, file, locals, opts);
+      this.loadSingle(filepath, file, locals, opts);
       return acc;
     }.bind(this), this.cache);
   } else {
@@ -208,11 +257,11 @@ Loader.prototype.loadMultiple = function (patterns, locals, options) {
   //   if (typeof value === 'string') {
   //     glob.sync(value).forEach(function (fp) {
   //       var name = this.renameKey(fp, opts);
-  //       this.loadOne(name, this.read(fp), locals, options);
+  //       this.loadSingle(name, this.read(fp), locals, options);
   //     }.bind(this));
   //   } else {
   //     var name = this.renameKey(value, opts);
-  //     this.loadOne(name, locals, options);
+  //     this.loadSingle(name, locals, options);
   //   }
   //   return acc;
   // }.bind(this), this.cache);
