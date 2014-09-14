@@ -19,19 +19,23 @@ describe('.detectContent()', function () {
   });
 
   describe('when the first arg is a string:', function () {
-    describe('when the first argument is a string, and only one argument is passed:', function () {
+    describe('when only one argument is passed:', function () {
       it('should assume the first arg is a file path and attempt to read it:', function () {
         loader.detectContent('test/fixtures/a.md').should.equal('---\ntitle: AAA\n---\nThis is fixture a.md');
       });
     });
 
-    describe('when the first argument is a string, and the second is an object:', function () {
+    describe('when the second is an object:', function () {
+      it('should assume the `path` property on the second arg is a file path and attempt to read it:', function () {
+        loader.detectContent('foo', {path: 'test/fixtures/a.md'}).should.equal('---\ntitle: AAA\n---\nThis is fixture a.md');
+      });
+
       it('should assume the first arg is a file path and attempt to read it:', function () {
         loader.detectContent('test/fixtures/a.md', {a: 'b'}).should.equal('---\ntitle: AAA\n---\nThis is fixture a.md');
       });
     });
 
-    describe('when the first argument is a string, and the second is an string:', function () {
+    describe('when the second is an string:', function () {
       it('should assume the second arg is the content and should not try to read the first arg as a file path:', function () {
         loader.detectContent('test/fixtures/a.md', 'this is content').should.equal('this is content');
         loader.detectContent('abc.md', 'this is content').should.equal('this is content');

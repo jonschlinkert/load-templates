@@ -161,8 +161,22 @@ Loader.prototype.normalize = function (key, value, locals, options) {
 };
 
 
-Loader.prototype.detectString = function (lookup, key, value, re) {
-  if (typeOf(value) === 'object' && value.hasOwnProperty(lookup)) {
+Loader.prototype.detectString = function (lookup, key, value, options) {
+  var args = _.initial([].slice.call(arguments, 1));
+  if (typeOf(value) === 'undefined') {
+    args = args.filter(Boolean);
+  }
+
+  var opts = _.extend({}, options);
+  var re = opts.re;
+
+  if (typeOf(key) === 'string' && (args.length === 1 || typeOf(value) === 'object')) {
+    if (value && value.hasOwnProperty(lookup)) {
+      return value.path;
+    } else {
+      return key;
+    }
+  } else if (typeOf(value) === 'object' && value.hasOwnProperty(lookup)) {
     return value[lookup];
   } else if (typeOf(key) === 'object' && key.hasOwnProperty(lookup)) {
     return key[lookup];
@@ -179,21 +193,14 @@ Loader.prototype.detectString = function (lookup, key, value, re) {
 };
 
 Loader.prototype.detectPath = function (key, value, re) {
-  var pathRe = re || /[\.\\]/;
-
-  if (typeOf(key) === 'string' && (arguments.length === 1 || typeOf(value) === 'object')) {
-    if (value && value.hasOwnProperty('path')) {
-      return value.path;
-    } else {
-      return key;
-    }
-  } else if (typeOf(key) === 'string' && typeOf(value) === 'string') {
+  if (typeOf(key) === 'string' && typeOf(value) === 'string') {
     return key;
   } else {
-    return this.detectString('path', key, value, pathRe);
+    return this.detectString('path', key, value, {
+      re: re || /[\.\\]/
+    });
   }
 };
-
 
 Loader.prototype.detectContent = function (key, value) {
   if (typeOf(key) === 'string' && (arguments.length === 1 || typeOf(value) === 'object')) {
