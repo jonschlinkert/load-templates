@@ -44,6 +44,7 @@ Loader.prototype.defaultOptions = function() {
   this.option('cwd', process.cwd());
 };
 
+
 Loader.prototype.set = function (key, value) {
   if (typeOf(value) === 'string') {
     value = {content: value};
@@ -51,6 +52,7 @@ Loader.prototype.set = function (key, value) {
   this.cache[key] = value;
   return this;
 };
+
 
 Loader.prototype.extendCache = function() {
   var args = [].slice.call(arguments);
@@ -67,9 +69,11 @@ Loader.prototype.extendCache = function() {
   return this;
 };
 
+
 Loader.prototype.get = function (key) {
   return this.cache[key];
 };
+
 
 Loader.prototype.load = function () {
   var args = [].slice.call(arguments);
@@ -96,9 +100,23 @@ Loader.prototype.load = function () {
  * @api public
  */
 
+Loader.prototype.glob = function (patterns, options) {
+  return glob.sync(patterns, _.extend({}, this.options, {
+    nonull: false
+  }, options));
+};
+
+
+/**
+ * Read the given file. `fs.readFileSync` is used by default.
+ *
+ * @param  {String} `filepath` The path of the file to read.
+ * @param  {Object} `Options` Options or `locals`.
+ * @api public
+ */
+
 Loader.prototype.read = function (filepath, options) {
   var opts = _.extend({}, this.options, options);
-
   if (opts.read) {
     return opts.read(filepath);
   }
@@ -142,7 +160,6 @@ Loader.prototype.renameKey = function (filepath, options) {
 
 Loader.prototype.normalize = function (key, value, locals, options) {
   locals = locals || {};
-
   var opts = _.extend({}, options, locals.options);
 
   if (opts.normalize) {
@@ -156,7 +173,6 @@ Loader.prototype.normalize = function (key, value, locals, options) {
   if (!value.hasOwnProperty('path')) {
     value.path = key;
   }
-
   return value;
 };
 
@@ -166,16 +182,17 @@ Loader.prototype.detectString = function (lookup, key, value, options) {
   if (typeOf(value) === 'undefined') {
     args = args.filter(Boolean);
   }
-
   var opts = _.extend({}, options);
   var re = opts.re;
 
   if (typeOf(key) === 'string' && (args.length === 1 || typeOf(value) === 'object')) {
-    if (value && value.hasOwnProperty(lookup)) {
+
+    if (value && value.hasOwnProperty('path')) {
       return value.path;
     } else {
       return key;
     }
+
   } else if (typeOf(value) === 'object' && value.hasOwnProperty(lookup)) {
     return value[lookup];
   } else if (typeOf(key) === 'object' && key.hasOwnProperty(lookup)) {
@@ -204,11 +221,15 @@ Loader.prototype.detectPath = function (key, value, re) {
 
 Loader.prototype.detectContent = function (key, value) {
   if (typeOf(key) === 'string' && (arguments.length === 1 || typeOf(value) === 'object')) {
-    if (value && value.hasOwnProperty('path')) {
-      return this.read(value.path);
+
+    if (value && value.hasOwnProperty('content')) {
+      return value.content;
+    } else if (value && value.hasOwnProperty('path')) {
+      return this.glob(value.path);
     } else {
-      return this.read(key);
+      return this.glob(key);
     }
+
   } else if (typeOf(key) === 'string' && typeOf(value) === 'string') {
     return value;
   } else {
@@ -217,34 +238,13 @@ Loader.prototype.detectContent = function (key, value) {
 };
 
 
-// Loader.prototype.detectContent = function (key, value) {
-//   var args = [].slice.call(arguments);
-
-//   if (typeOf(key) === 'string' && (args.length === 1 || typeOf(value) === 'object')) {
-//     return this.read(key);
-//   } else if (typeOf(key) === 'string' && typeOf(value) === 'string') {
-//     return value;
-//   } else if (typeOf(value) === 'object' && value.hasOwnProperty('content')) {
-//     return value.content;
-//   } else if (typeOf(key) === 'object' && key.hasOwnProperty('content')) {
-//     return key.content;
-//   } else if (typeOf(key) === 'object' && _.keys(key).length === 1 && !!_.find(key, 'content')) {
-//     return _.find(key, 'content').content;
-//   } else if (typeOf(key) === 'object' && _.keys(key).length === 1) {
-//     return _.keys(key)[0];
-//   } else {
-//     throw new Error('A valid file path, content string or `content` property count not be found.');
-//   }
-// };
-
-
-Loader.prototype.detectObject = function (obj, prop) {
+Loader.prototype.detectObject = function (obj, key) {
   var o = {};
   if (obj && typeOf(obj) === 'object') {
-    if (this.hasDeepKey(obj, prop)) {
-      o = _.find(obj, prop)[prop];
-    } else if (_.has(obj, prop)) {
-      o = _.extend({}, obj[prop]);
+    if (this.hasDeepKey(obj, key)) {
+      o = _.find(obj, key)[key];
+    } else if (_.has(obj, key)) {
+      o = _.extend({}, obj[key]);
     }
   }
   return o;
@@ -293,11 +293,6 @@ Loader.prototype.loadSingle = function (key, value, locals, options) {
       o[key] = value;
     }
   }
-  // console.log(this.detectLocals(key, value, locals))
-
-  // if (!key || typeOf(key) !== 'string') {
-  //   throw new Error('a `path` property must be defined.');
-  // }
 
   var opts = _.extend({}, this.options, options);
   var name = this.renameKey(key, opts);
@@ -318,7 +313,7 @@ Loader.prototype.loadPlural = function (patterns, locals, options) {
   }
 
   var opts = _.extend({}, this.options, options);
-  var files = glob.sync(patterns, _.extend({nonull: false}, opts));
+  var files = this.glob(patterns, opts);
 
   if (files.length) {
     _.reduce(files, function (acc, filepath) {
