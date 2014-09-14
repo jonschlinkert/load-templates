@@ -161,47 +161,77 @@ Loader.prototype.normalize = function (key, value, locals, options) {
 };
 
 
-Loader.prototype.findPath = function (key, value, re) {
-  re = re || /[\.\\]/;
+Loader.prototype.detectString = function (lookup, key, value, re) {
+  if (typeOf(value) === 'object' && value.hasOwnProperty(lookup)) {
+    return value[lookup];
+  } else if (typeOf(key) === 'object' && key.hasOwnProperty(lookup)) {
+    return key[lookup];
+  } else if (typeOf(key) === 'object' && _.keys(key).length === 1) {
 
-  if (typeOf(key) === 'string' && typeOf(value) === 'string') {
+    if (_.any(key, lookup)) {
+      return _.find(key, lookup)[lookup];
+    } else if (re ? re.test(_.findKey(key)) : !!_.findKey(key)) {
+      return _.findKey(key);
+    } else {
+      throw new Error('Could not detect `' + lookup + '`.');
+    }
+  }
+};
+
+Loader.prototype.detectPath = function (key, value, re) {
+  var pathRe = re || /[\.\\]/;
+
+  if (typeOf(key) === 'string' && (arguments.length === 1 || typeOf(value) === 'object')) {
+    if (value && value.hasOwnProperty('path')) {
+      return value.path;
+    } else {
+      return key;
+    }
+  } else if (typeOf(key) === 'string' && typeOf(value) === 'string') {
     return key;
-  } else if (typeOf(value) === 'object' && value.hasOwnProperty('path')) {
-    return value.path;
-  } else if (typeOf(key) === 'object' && key.hasOwnProperty('path')) {
-    return key.path;
-  } else if (typeOf(key) === 'object' && _.keys(key).length === 1 && !!_.find(key, 'path')) {
-    return _.find(key, 'path').path;
-  } else if (typeOf(key) === 'object' && _.keys(key).length === 1 && re.test(_.keys(key)[0])) {
-    return _.keys(key)[0];
   } else {
-    throw new Error('A file path or `path` property count not be found.');
+    return this.detectString('path', key, value, pathRe);
   }
 };
 
 
-Loader.prototype.findContent = function (key, value) {
-  var args = [].slice.call(arguments);
-
-  if (typeOf(key) === 'string' && (args.length === 1 || typeOf(value) === 'object')) {
-    return this.read(key);
+Loader.prototype.detectContent = function (key, value) {
+  if (typeOf(key) === 'string' && (arguments.length === 1 || typeOf(value) === 'object')) {
+    if (value && value.hasOwnProperty('path')) {
+      return this.read(value.path);
+    } else {
+      return this.read(key);
+    }
   } else if (typeOf(key) === 'string' && typeOf(value) === 'string') {
     return value;
-  } else if (typeOf(value) === 'object' && value.hasOwnProperty('content')) {
-    return value.content;
-  } else if (typeOf(key) === 'object' && key.hasOwnProperty('content')) {
-    return key.content;
-  } else if (typeOf(key) === 'object' && _.keys(key).length === 1 && !!_.find(key, 'content')) {
-    return _.find(key, 'content').content;
-  } else if (typeOf(key) === 'object' && _.keys(key).length === 1) {
-    return _.keys(key)[0];
   } else {
-    throw new Error('A valid file path, content string or `content` property count not be found.');
+    return this.detectString('content', key, value);
   }
 };
 
 
-Loader.prototype.siftObject = function (obj, prop) {
+// Loader.prototype.detectContent = function (key, value) {
+//   var args = [].slice.call(arguments);
+
+//   if (typeOf(key) === 'string' && (args.length === 1 || typeOf(value) === 'object')) {
+//     return this.read(key);
+//   } else if (typeOf(key) === 'string' && typeOf(value) === 'string') {
+//     return value;
+//   } else if (typeOf(value) === 'object' && value.hasOwnProperty('content')) {
+//     return value.content;
+//   } else if (typeOf(key) === 'object' && key.hasOwnProperty('content')) {
+//     return key.content;
+//   } else if (typeOf(key) === 'object' && _.keys(key).length === 1 && !!_.find(key, 'content')) {
+//     return _.find(key, 'content').content;
+//   } else if (typeOf(key) === 'object' && _.keys(key).length === 1) {
+//     return _.keys(key)[0];
+//   } else {
+//     throw new Error('A valid file path, content string or `content` property count not be found.');
+//   }
+// };
+
+
+Loader.prototype.detectObject = function (obj, prop) {
   var o = {};
   if (obj && typeOf(obj) === 'object') {
     if (this.hasDeepKey(obj, prop)) {
@@ -214,34 +244,34 @@ Loader.prototype.siftObject = function (obj, prop) {
 };
 
 
-Loader.prototype.siftObjects = function (arr, prop) {
+Loader.prototype.detectObjects = function (arr, prop) {
   return _.reduce(arr, function (acc, value) {
-    return _.extend(acc, this.siftObject(value, prop));
+    return _.extend(acc, this.detectObject(value, prop));
   }.bind(this), {});
 };
 
 
-Loader.prototype.siftLocals = function (key, value, locals) {
+Loader.prototype.detectLocals = function (key, value, locals) {
   if (locals) {
     return _.omit(locals, ['options', 'data']);
   }
-  return this.siftObjects([key, value], 'locals');
+  return this.detectObjects([key, value], 'locals');
 };
 
 
-Loader.prototype.siftData = function (key, value, locals) {
+Loader.prototype.detectData = function (key, value, locals) {
   if (locals) {
     return _.pick(locals, ['data']);
   }
-  return this.siftObjects([key, value], 'data');
+  return this.detectObjects([key, value], 'data');
 };
 
 
-Loader.prototype.siftOptions = function (key, value, locals, options) {
+Loader.prototype.detectOptions = function (key, value, locals, options) {
   if (options) {
     return options;
   }
-  return this.siftObjects([key, value, locals], 'options');
+  return this.detectObjects([key, value, locals], 'options');
 };
 
 
@@ -256,7 +286,7 @@ Loader.prototype.loadSingle = function (key, value, locals, options) {
       o[key] = value;
     }
   }
-  // console.log(this.siftLocals(key, value, locals))
+  // console.log(this.detectLocals(key, value, locals))
 
   // if (!key || typeOf(key) !== 'string') {
   //   throw new Error('a `path` property must be defined.');
