@@ -7,11 +7,14 @@
 
 'use strict';
 
+var fs = require('fs');
 var path = require('path');
 var assert = require('assert');
 var should = require('should');
+var matter = require('gray-matter');
 var Loader = require('..');
 var loader = new Loader();
+var _ = require('lodash');
 
 
 var fixture = function(filepath) {
@@ -69,6 +72,76 @@ describe('.load()', function () {
     loader = new Loader();
   });
 
+  describe('.read():', function () {
+    it('should use the default read method.', function () {
+      var templates = loader.load('test/fixtures/*.txt', true);
+      templates.get('a.txt').should.have.property('content', 'This is fixture a.txt');
+    });
+
+    it('should use a user-defined read method defined on the constructor.', function () {
+      loader = new Loader({
+        read: function(filepath) {
+          return fs.readFileSync(filepath, 'utf8') + ':foo';
+        }
+      });
+      var templates = loader.load('test/fixtures/*.txt', true);
+      templates.get('a.txt').should.have.property('content', 'This is fixture a.txt:foo');
+    });
+  });
+
+  describe('.parse():', function () {
+    it('should use the default `.parse()` method.', function () {
+      var templates = loader.load('test/fixtures/*.txt', true);
+      templates.get('a.txt').data.should.have.property('title', 'AAA');
+    });
+
+    it('should use a user-defined `.parse()` method defined on the constructor.', function () {
+      loader = new Loader({
+        parse: function(str) {
+          return _.extend(matter(str), {foo: 'bar'});
+        }
+      });
+      var templates = loader.load('test/fixtures/*.txt', true);
+      templates.get('a.txt').should.have.property('foo', 'bar');
+    });
+  });
+
+  describe('.normalize():', function () {
+    it('should use the default `.normalize()` method.', function () {
+      var templates = loader.load('test/fixtures/*.txt', true);
+      templates.get('a.txt').data.should.have.property('title', 'AAA');
+    });
+
+    it('should use a user-defined `.normalize()` method defined on the constructor.', function () {
+      loader = new Loader({
+        normalize: function(file) {
+          console.log(file)
+          return file;
+        }
+      });
+      var templates = loader.load('test/fixtures/*.txt', true);
+      templates.get('a.txt').should.have.property('foo', 'bar');
+    });
+  });
+
+  describe('.renameKey():', function () {
+    it('should use the default renameKey method.', function () {
+      var templates = loader.load('test/fixtures/*.txt', true);
+      templates.get('a.txt').should.have.property('path', 'test/fixtures/a.txt');
+    });
+
+    it('should use a user-defined renameKey method defined on the constructor.', function () {
+      loader = new Loader({
+        renameKey: function(filepath) {
+          return path.basename(filepath, path.extname(filepath));
+        }
+      });
+      var templates = loader.load('test/fixtures/*.txt', true);
+      templates.cache.should.have.property('a');
+      templates.get('a').should.have.property('path', 'test/fixtures/a.txt');
+    });
+  });
+
   describe('when the key is a string:', function () {
     it('should load when the content is a string.', function () {
       var templates = loader.load('a.md', 'b');
@@ -80,10 +153,15 @@ describe('.load()', function () {
       templates.get('a.md').should.have.property('content', 'c');
     });
 
+    it('should load templates onto the cache:', function () {
+      var templates = loader.load('a.md', {content: 'c'});
+      templates.cache['a.md'].should.have.property('content', 'c');
+    });
+
     it('should load when the key is a filepath.', function () {
       var templates = loader.load('test/fixtures/*.md', true);
-      console.log(templates)
-      templates.get('a.md').should.have.property('content', 'c');
+      templates.get('a.md').should.have.property('path', 'test/fixtures/a.md');
+      templates.get('a.md').should.have.property('content', 'This is fixture a.md');
     });
   });
 });

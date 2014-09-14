@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "homepage": "https://github.com//loader",
   "author": {
-    "name": "",
-    "url": "https://github.com/null"
+    "name": "Jon Schlinkert",
+    "url": "https://github.com/jonschlinkert"
   },
   "repository": {
     "type": "git",
@@ -44,5 +44,8 @@
     "markdown",
     "templates",
     "verb"
-  ]
+  ],
+  "dependencies": {
+    "chalk": "^0.5.1"
+  }
 }
