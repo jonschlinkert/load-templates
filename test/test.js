@@ -13,7 +13,7 @@ var assert = require('assert');
 var should = require('should');
 var matter = require('gray-matter');
 var Loader = require('..');
-var loader = new Loader();
+var loader;
 var _ = require('lodash');
 
 
@@ -67,15 +67,15 @@ var options = {
 // console.log(o);
 
 
-describe('.load()', function () {
+describe('.detectPath()', function () {
   beforeEach(function() {
     loader = new Loader();
   });
 
   describe('.read():', function () {
     it('should use the default read method.', function () {
-      var templates = loader.load('test/fixtures/*.txt', true);
-      templates.get('a.txt').should.have.property('content', 'This is fixture a.txt');
+      loader.load('test/fixtures/*.txt', true);
+      loader.get('a.txt').should.have.property('content', 'This is fixture a.txt');
     });
 
     it('should use a user-defined read method defined on the constructor.', function () {
@@ -84,15 +84,16 @@ describe('.load()', function () {
           return fs.readFileSync(filepath, 'utf8') + ':foo';
         }
       });
-      var templates = loader.load('test/fixtures/*.txt', true);
-      templates.get('a.txt').should.have.property('content', 'This is fixture a.txt:foo');
+
+      loader.load('test/fixtures/*.txt', true);
+      loader.get('a.txt').should.have.property('content', 'This is fixture a.txt:foo');
     });
   });
 
   describe('.parse():', function () {
     it('should use the default `.parse()` method.', function () {
-      var templates = loader.load('test/fixtures/*.txt', true);
-      templates.get('a.txt').data.should.have.property('title', 'AAA');
+      loader.load('test/fixtures/*.txt', true);
+      loader.get('a.txt').data.should.have.property('title', 'AAA');
     });
 
     it('should use a user-defined `.parse()` method defined on the constructor.', function () {
@@ -101,33 +102,44 @@ describe('.load()', function () {
           return _.extend(matter(str), {foo: 'bar'});
         }
       });
-      var templates = loader.load('test/fixtures/*.txt', true);
-      templates.get('a.txt').should.have.property('foo', 'bar');
+      loader.load('test/fixtures/*.txt', true);
+      loader.get('a.txt').should.have.property('foo', 'bar');
     });
   });
 
   describe('.normalize():', function () {
     it('should use the default `.normalize()` method.', function () {
-      var templates = loader.load('test/fixtures/*.txt', true);
-      templates.get('a.txt').data.should.have.property('title', 'AAA');
+      loader.load('test/fixtures/*.txt', true);
+      loader.get('a.txt').data.should.have.property('title', 'AAA');
     });
 
     it('should use a user-defined `.normalize()` method defined on the constructor.', function () {
       loader = new Loader({
-        normalize: function(file) {
-          console.log(file)
-          return file;
+        normalize: function(key, value, locals, options) {
+          return key;
         }
       });
-      var templates = loader.load('test/fixtures/*.txt', true);
-      templates.get('a.txt').should.have.property('foo', 'bar');
+      loader.load('test/fixtures/*.txt', true);
+      loader.get('a.txt').should.eql({content: 'a.txt'});
+    });
+
+    it('should use a user-defined `.normalize()` method defined on the constructor.', function () {
+      loader = new Loader({
+        normalize: function(key, value, locals, options) {
+          value.locals = {foo: 'bar'};
+          return value;
+        }
+      });
+      loader.load('test/fixtures/*.txt', true);
+      loader.get('a.txt').should.have.property('data');
+      loader.get('a.txt').should.have.property('locals', {foo: 'bar'});
     });
   });
 
   describe('.renameKey():', function () {
     it('should use the default renameKey method.', function () {
-      var templates = loader.load('test/fixtures/*.txt', true);
-      templates.get('a.txt').should.have.property('path', 'test/fixtures/a.txt');
+      loader.load('test/fixtures/*.txt', true);
+      loader.get('a.txt').should.have.property('path', 'test/fixtures/a.txt');
     });
 
     it('should use a user-defined renameKey method defined on the constructor.', function () {
@@ -136,154 +148,129 @@ describe('.load()', function () {
           return path.basename(filepath, path.extname(filepath));
         }
       });
-      var templates = loader.load('test/fixtures/*.txt', true);
-      templates.cache.should.have.property('a');
-      templates.get('a').should.have.property('path', 'test/fixtures/a.txt');
+      loader.load('test/fixtures/*.txt', true);
+      loader.cache.should.have.property('a');
+      loader.get('a').should.have.property('path', 'test/fixtures/a.txt');
     });
   });
 
   describe('when the key is a string:', function () {
     it('should load when the content is a string.', function () {
-      var templates = loader.load('a.md', 'b');
-      templates.get('a.md').should.have.property('content', 'b');
+      loader.load('a.md', 'b');
+      loader.get('a.md').should.have.property('content', 'b');
     });
 
     it('should load when content is a property on an object.', function () {
-      var templates = loader.load('a.md', {content: 'c'});
-      templates.get('a.md').should.have.property('content', 'c');
+      loader.load('a.md', {content: 'c'});
+      loader.get('a.md').should.have.property('content', 'c');
     });
 
     it('should load templates onto the cache:', function () {
-      var templates = loader.load('a.md', {content: 'c'});
-      templates.cache['a.md'].should.have.property('content', 'c');
+      loader.load('a.md', {content: 'c'});
+      loader.cache['a.md'].should.have.property('content', 'c');
     });
 
     it('should load when the key is a filepath.', function () {
-      var templates = loader.load('test/fixtures/*.md', true);
-      templates.get('a.md').should.have.property('path', 'test/fixtures/a.md');
-      templates.get('a.md').should.have.property('content', 'This is fixture a.md');
+      loader.load('test/fixtures/*.md', true);
+      loader.get('a.md').should.have.property('path', 'test/fixtures/a.md');
+      loader.get('a.md').should.have.property('content', 'This is fixture a.md');
     });
   });
 });
 
 
-// describe('loader', function () {
-//   beforeEach(function() {
-//     loader = new Loader();
-//   });
+describe('loader', function () {
+  beforeEach(function() {
+    loader = new Loader();
+  });
 
-//   describe('string', function () {
-//     it('should load templates from a string glob pattern', function () {
-//       var templates = loader.load('test/fixtures/**/*.{txt,md}', true);
-//       console.log(templates);
-//       templates.should.be.an.object;
-//     });
+  describe('string', function () {
+    it('should load templates from a string glob pattern', function () {
+      loader.load('test/fixtures/**/*.{txt,md}', true);
+      loader.should.be.an.object;
+    });
 
-//     // it('should normalize data passed as a second param', function () {
-//     //   var templates = loader.load('pages/*.txt', {name: 'Brian Woodward'});
-//     //   var key = fixture('pages/a.txt');
+    it('should normalize data passed as a second param', function () {
+      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward', a: 'b'}, true);
+      loader.cache.should.be.an.object;
+      loader.get('a.txt').should.have.property('data');
+      loader.get('a.txt').locals.name.should.equal('Brian Woodward');
+    });
 
-//     //   templates.should.be.an.object;
-//     //   templates.should.have.property(key);
-//     //   templates[key].should.have.property('data');
-//     //   templates[key].data.name.should.equal('Brian Woodward');
-//     // });
+    it('should create a path property from the filepath.', function () {
+      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'}, true);
+      loader.cache.should.be.an.object;
+      loader.get('a.txt').should.have.property('path');
+    });
 
-//     // it('should create a path property from the filepath.', function () {
-//     //   var templates = loader.load('pages/*.txt', {name: 'Brian Woodward'});
-//     //   var key = fixture('pages/a.txt');
+    it('should normalize content passed as a second param', function () {
+      loader.load('foo/bar/abc.md', 'This is content.', {name: 'Jon Schlinkert'});
+      loader.cache.should.be.an.object;
+      loader.get('abc.md').should.have.property('locals');
+      loader.get('abc.md').content.should.equal('This is content.');
+      loader.get('abc.md').locals.name.should.equal('Jon Schlinkert');
+    });
 
-//     //   templates.should.be.an.object;
-//     //   templates.should.have.property(key);
-//     //   templates[key].should.have.property('path');
-//     //   templates[key].path.should.equal(key);
-//     // });
+    it('should normalize locals passed as a second param', function () {
+      loader.load(['test/fixtures/*.txt'], {name: 'Brian Woodward'}, true);
+      loader.cache.should.be.an.object;
+      loader.get('a.txt').should.have.property('locals');
+      loader.get('a.txt').locals.name.should.equal('Brian Woodward');
+    });
+  });
 
-//     // it('should normalize content passed as a second param', function () {
-//     //   var templates = loader.load('abc.md', 'This is content.', {name: 'Jon Schlinkert'});
-//     //   var key = 'abc.md';
+  describe('array', function () {
+    it('should load templates from an array glob pattern', function () {
+      loader.load(['test/fixtures/*.txt'], true);
 
-//     //   templates.should.be.an.object;
-//     //   templates.should.have.property(key);
-//     //   templates[key].should.have.property('data');
-//     //   templates[key].content.should.equal('This is content.');
-//     //   templates[key].data.name.should.equal('Jon Schlinkert');
-//     // });
+      loader.cache.should.be.an.object;
+      loader.get('a.txt').should.have.property('path');
+      loader.get('a.txt').should.have.property('data');
+      loader.get('a.txt').should.have.property('content');
+    });
 
-//     // it('should normalize data passed as a second param', function () {
-//     //   var templates = loader.load(['pages/*.txt'], {name: 'Brian Woodward'});
-//     //   var key = fixture('pages/a.txt');
+    it('should normalize locals passed as a second param', function () {
+      loader.load(['test/fixtures/*.txt'], {name: 'Brian Woodward'}, true);
 
-//     //   templates.should.be.an.object;
-//     //   templates.should.have.property(key);
-//     //   templates[key].should.have.property('data');
-//     //   templates[key].data.name.should.equal('Brian Woodward');
-//     // });
-//   });
+      loader.cache.should.be.an.object;
+      loader.get('a.txt').should.have.property('locals');
+      loader.get('a.txt').locals.name.should.equal('Brian Woodward');
+    });
 
-//   // describe('array', function () {
-//   //   it('should load templates from an array glob pattern', function () {
-//   //     var templates = loader.load(['pages/*.txt']);
-//   //     var key = fixture('pages/a.txt');
+    it('should create a path property from the filepath.', function () {
+      loader.load(['test/fixtures/*.txt'], {name: 'Brian Woodward'}, true);
 
-//   //     templates.should.be.an.object;
-//   //     templates.should.have.property(key);
-//   //     templates[key].should.have.property('path');
-//   //     templates[key].should.have.property('data');
-//   //     templates[key].should.have.property('content');
-//   //   });
+      loader.cache.should.be.an.object;
+      loader.get('a.txt').should.have.property('path');
+    });
+  });
 
-//   //   it('should normalize data passed as a second param', function () {
-//   //     var templates = loader.load(['pages/*.txt'], {name: 'Brian Woodward'});
-//   //     var key = fixture('pages/a.txt');
+  describe('object', function () {
+    it('should load loader from an object', function () {
+      loader.load({'foo/bar.md': {content: 'this is content.'}});
 
-//   //     templates.should.be.an.object;
-//   //     templates.should.have.property(key);
-//   //     templates[key].should.have.property('data');
-//   //     templates[key].data.name.should.equal('Brian Woodward');
-//   //   });
+      loader.cache.should.be.an.object;
+      loader.get('bar.md').should.have.property('path');
+      loader.get('bar.md').should.have.property('locals');
+      loader.get('bar.md').should.have.property('content');
+    });
 
-//   //   it('should create a path property from the filepath.', function () {
-//   //     var templates = loader.load(['pages/*.txt'], {name: 'Brian Woodward'});
-//   //     var key = fixture('pages/a.txt');
+    it('should normalize data passed as a second param', function () {
+      loader.load({'foo/bar.md': {content: 'this is content.'}}, {foo: 'bar'});
 
-//   //     templates.should.be.an.object;
-//   //     templates.should.have.property(key);
-//   //     templates[key].should.have.property('path');
-//   //     templates[key].path.should.equal(key);
-//   //   });
-//   // });
-
-//   // describe('object', function () {
-//   //   it('should load templates from an object', function () {
-//   //     var templates = loader.load({'foo/bar.md': {content: 'this is content.'}});
-//   //     var key = 'foo/bar.md';
-
-//   //     templates.should.be.an.object;
-//   //     templates.should.have.property(key);
-//   //     templates[key].should.have.property('path');
-//   //     templates[key].should.have.property('data');
-//   //     templates[key].should.have.property('content');
-//   //   });
-
-//   //   it('should normalize data passed as a second param', function () {
-//   //     var templates = loader.load({'foo/bar.md': {content: 'this is content.'}}, {foo: 'bar'});
-//   //     var key = 'foo/bar.md';
-
-//   //     templates.should.be.an.object;
-//   //     templates.should.have.property(key);
-//   //     templates[key].should.have.property('data');
-//   //     templates[key].data.should.eql({foo: 'bar'});
-//   //   });
-//   // });
-// });
+      loader.cache.should.be.an.object;
+      loader.get('bar.md').should.have.property('data');
+      loader.get('bar.md').data.should.eql({foo: 'bar'});
+    });
+  });
+});
 
 // describe('template load:', function () {
 //   describe('.load():', function () {
 //     describe('when template are defined as objects:', function () {
 
 //       // it('should load loader from objects:', function () {
-//       //   var templates = loader.load({a: {layout: 'b', content: 'A above\n{{body}}\nA below' }});
+//       //   loader.load({a: {layout: 'b', content: 'A above\n{{body}}\nA below' }});
 
 //       //   templates.should.have.property('a');
 //       //   templates.a.data.should.have.property('layout');
@@ -336,53 +323,42 @@ describe('.load()', function () {
 // describe('loader', function () {
 //   describe('string', function () {
 //     it('should load templates from a string glob pattern', function () {
-//       var templates = loader.load('pages/*.txt');
-//       var key = fixture('pages/a.txt');
+//       loader.load('pages/*.txt');
 
 //       templates.should.be.an.object;
-//       templates.should.have.property(key);
 //       templates[key].should.have.property('path');
 //       templates[key].should.have.property('data');
 //       templates[key].should.have.property('content');
 //     });
 
 //     it('should normalize data passed as a second param', function () {
-//       var templates = loader.load('pages/*.txt', {name: 'Brian Woodward'});
-//       var key = fixture('pages/a.txt');
+//       loader.load('pages/*.txt', {name: 'Brian Woodward'});
 
 //       templates.should.be.an.object;
-//       templates.should.have.property(key);
 //       templates[key].should.have.property('data');
 //       templates[key].data.name.should.equal('Brian Woodward');
 //     });
 
 //     it('should create a path property from the filepath.', function () {
-//       var templates = loader.load('pages/*.txt', {name: 'Brian Woodward'});
-//       var key = fixture('pages/a.txt');
+//       loader.load('pages/*.txt', {name: 'Brian Woodward'});
 
 //       templates.should.be.an.object;
-//       templates.should.have.property(key);
 //       templates[key].should.have.property('path');
-//       templates[key].path.should.equal(key);
 //     });
 
 //     it('should normalize content passed as a second param', function () {
-//       var templates = loader.load('abc.md', 'This is content.', {name: 'Jon Schlinkert'});
-//       var key = 'abc.md';
+//       loader.load('abc.md', 'This is content.', {name: 'Jon Schlinkert'});
 
 //       templates.should.be.an.object;
-//       templates.should.have.property(key);
 //       templates[key].should.have.property('data');
 //       templates[key].content.should.equal('This is content.');
 //       templates[key].data.name.should.equal('Jon Schlinkert');
 //     });
 
 //     it('should normalize data passed as a second param', function () {
-//       var templates = loader.load(['pages/*.txt'], {name: 'Brian Woodward'});
-//       var key = fixture('pages/a.txt');
+//       loader.load(['pages/*.txt'], {name: 'Brian Woodward'});
 
 //       templates.should.be.an.object;
-//       templates.should.have.property(key);
 //       templates[key].should.have.property('data');
 //       templates[key].data.name.should.equal('Brian Woodward');
 //     });
