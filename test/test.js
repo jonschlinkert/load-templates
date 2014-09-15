@@ -255,12 +255,12 @@ describe('loader', function () {
       loader.get('bar.md').should.have.property('content');
     });
 
-    it('should normalize data passed as a second param', function () {
+    it('should normalize locals passed as a second param', function () {
       loader.load({'foo/bar.md': {content: 'this is content.'}}, {foo: 'bar'});
 
       loader.cache.should.be.an.object;
-      loader.get('bar.md').should.have.property('data');
-      loader.get('bar.md').data.should.eql({foo: 'bar'});
+      loader.get('bar.md').should.have.property('locals');
+      loader.get('bar.md').locals.should.eql({foo: 'bar'});
     });
   });
 });
