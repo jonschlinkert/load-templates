@@ -56,7 +56,7 @@ describe('.aggregate() options', function () {
   });
 
   it('should return options passed on the `locals`.', function () {
-    var options = loader.aggregate('options', 3, ['test/fixtures/*.txt', 'abc', {a: 'b', options: {optB: 'b'}}]);
+    var options = loader.aggregate('options', 3, ['test/fixtures/*.txt', 'abc', {a: 'b', options: {optB: 'b'}}], ['options']);
     options.should.have.property('optB', 'b');
     options.should.not.have.property('options');
   });
