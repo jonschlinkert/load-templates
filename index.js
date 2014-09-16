@@ -31,15 +31,11 @@ function Loader(options) {
 }
 
 
-Loader.prototype.set = function (key, value, locals, options) {
+Loader.prototype.set = function (key, value) {
   debug('set: %j', arguments);
 
-  if (utils.typeOf(value) === 'string') {
-    var str = String(value);
-    value = {};
-    value.locals = locals || {};
-    value.options = options || {};
-    value.content = str;
+  if (utils.isString(value)) {
+    value = {content: value};
   }
 
   this.cache[key] = value;
@@ -49,6 +45,114 @@ Loader.prototype.set = function (key, value, locals, options) {
 
 Loader.prototype.get = function (key) {
   return this.cache[key];
+};
+
+Loader.prototype.load = function () {
+  var args = [].slice.call(arguments);
+  var last = args[args.length - 1];
+  var multiple = false;
+
+  if (utils.typeOf(last) === 'boolean') {
+    multiple = last;
+  }
+
+  if (multiple) {
+    return this.loadPlural.apply(this, args);
+  } else {
+    return this.loadSingle.apply(this, args);
+  }
+};
+
+
+Loader.prototype.loadSingle = function (key, value, locals, options) {
+  options = this.extractOptions(key, value, locals, options);
+  locals = this.extractLocals(key, value, locals, options, true);
+
+  if (utils.isObject(key)) {
+    value = {content: this.pickContent(key, value)};
+    key = this.pickPath(key, value);
+  }
+
+  var opts = _.extend({}, this.options, options);
+  var name = this.renameKey(key, opts);
+
+  this.set(name, this.normalize(key, value, locals, options));
+  return this.cache;
+};
+
+Loader.prototype.loadPlural = function (patterns, locals, options) {
+  if (utils.isObject(patterns) && patterns.hasOwnProperty('path')) {
+    return this.loadSingle(patterns, locals);
+  }
+
+  patterns = !Array.isArray(patterns) ? [patterns] : patterns;
+  var data = this.extractLocals(patterns, locals, options, true);
+
+  var opts = _.extend({}, this.options, options);
+  this.reduceFiles(patterns, data, opts);
+  return this.cache;
+};
+
+
+Loader.prototype.detectString = function (lookup, key, value, options) {
+  var args = _.initial([].slice.call(arguments, 1));
+  if (utils.typeOf(value) === 'undefined') {
+    args = args.filter(Boolean);
+  }
+  var opts = _.extend({}, options);
+  var re = opts.re;
+
+  if (utils.isString(key) && (args.length === 1 || utils.isObject(value))) {
+
+    if (value && value.hasOwnProperty('path')) {
+      return value.path;
+    } else {
+      return key;
+    }
+
+  } else if (utils.isObject(value) && value.hasOwnProperty(lookup)) {
+    return value[lookup];
+  } else if (utils.isObject(key) && key.hasOwnProperty(lookup)) {
+    return key[lookup];
+  } else if (utils.isObject(key) && _.keys(key).length === 1) {
+
+    if (_.any(key, lookup)) {
+      return _.find(key, lookup)[lookup];
+    } else if (re ? re.test(_.findKey(key)) : !!_.findKey(key)) {
+      return _.findKey(key);
+    } else {
+      throw new Error('Could not detect `' + lookup + '`.');
+    }
+  }
+};
+
+Loader.prototype.pickPath = function (key, value, re) {
+  if (utils.isString(key) && utils.isString(value)) {
+    return key;
+  } else {
+    return this.detectString('path', key, value, {
+      re: re || /[\.\\]/
+    });
+  }
+};
+
+
+Loader.prototype.pickContent = function (key, value) {
+  if (utils.isString(key) && (arguments.length === 1 || utils.isObject(value))) {
+
+    if (value && value.hasOwnProperty('content')) {
+      return value.content;
+    } else if (value && value.hasOwnProperty('path')) {
+      return this.reduceFiles(value.path);
+    } else {
+      return this.reduceFiles(key);
+    }
+
+  } else if (utils.isString(key) && utils.isString(value)) {
+    return value;
+  } else {
+    return this.detectString('content', key, value);
+  }
 };
 
 
@@ -66,7 +170,7 @@ Loader.prototype.reduceFiles = function (patterns, locals, options) {
     patterns = [patterns];
   }
 
-  var opts = this.pickOptions(patterns, locals, options);
+  var opts = this.extractOptions(patterns, locals, options);
   opts = _.extend({}, this.options, opts);
 
   var files = utils.glob(patterns, options);
@@ -85,6 +189,55 @@ Loader.prototype.reduceFiles = function (patterns, locals, options) {
     this.loadSingle(name, file, locals, opts);
     return acc;
   }.bind(this), this.cache);
+};
+
+
+Loader.prototype.reduceObjects = function (key, arr) {
+  return _.reduce(arr, function (acc, value) {
+    return _.extend(acc, utils.findProperty(value, key));
+  }.bind(this), {});
+};
+
+
+Loader.prototype.extractLocals = function (key, value, locals, options) {
+  var args = [].slice.call(arguments);
+
+  if (utils.typeOf(_.last(args)) === 'boolean' && args.length === 4) {
+    options = locals;
+    locals = utils.isObject(value) ? value : {};
+    value = utils.isObject(key) ? key : {};
+    key = {};
+  }
+
+  if (locals) {
+    return _.omit(locals, ['options', 'data']);
+  }
+
+  return this.reduceObjects('locals', [key, value]);
+};
+
+
+Loader.prototype.extractData = function (key, value, locals) {
+  var data = {};
+
+  if (locals) {
+    data = _.extend({}, data, _.pick(locals, ['data']));
+  }
+
+  if (value && utils.isObject(value)) {
+    data = _.extend({}, data, _.pick(value, ['data']));
+  }
+
+  if (key && utils.isObject(key)) {
+    data = _.extend({}, data, _.pick(key, ['data']));
+  }
+
+  return data;
+};
+
+
+Loader.prototype.extractOptions = function (key, value, locals, options) {
+  return options ? options : this.reduceObjects('options', [key, value, locals]);
 };
 
 
@@ -111,15 +264,15 @@ Loader.prototype.normalize = function (key, value, locals, options) {
     return opts.normalize.apply(this, arguments);
   }
 
-  if (utils.typeOf(value) === 'string') {
+  if (utils.isString(value)) {
     var str = String(value);
     value = {};
     value.content = str;
     o.content = str;
   }
 
-  if (utils.typeOf(value) === 'object') {
-    if (!value.hasOwnProperty('path') && utils.typeOf(key) === 'string') {
+  if (utils.isObject(value)) {
+    if (!value.hasOwnProperty('path') && utils.isString(key)) {
       o.path = key;
     }
   }
@@ -130,161 +283,5 @@ Loader.prototype.normalize = function (key, value, locals, options) {
   debug('normalize [value]: %j', o);
   return o;
 };
-
-
-Loader.prototype.detectString = function (lookup, key, value, options) {
-  var args = _.initial([].slice.call(arguments, 1));
-  if (utils.typeOf(value) === 'undefined') {
-    args = args.filter(Boolean);
-  }
-  var opts = _.extend({}, options);
-  var re = opts.re;
-
-  if (utils.typeOf(key) === 'string' && (args.length === 1 || utils.typeOf(value) === 'object')) {
-
-    if (value && value.hasOwnProperty('path')) {
-      return value.path;
-    } else {
-      return key;
-    }
-
-  } else if (utils.typeOf(value) === 'object' && value.hasOwnProperty(lookup)) {
-    return value[lookup];
-  } else if (utils.typeOf(key) === 'object' && key.hasOwnProperty(lookup)) {
-    return key[lookup];
-  } else if (utils.typeOf(key) === 'object' && _.keys(key).length === 1) {
-
-    if (_.any(key, lookup)) {
-      return _.find(key, lookup)[lookup];
-    } else if (re ? re.test(_.findKey(key)) : !!_.findKey(key)) {
-      return _.findKey(key);
-    } else {
-      throw new Error('Could not detect `' + lookup + '`.');
-    }
-  }
-};
-
-Loader.prototype.pickPath = function (key, value, re) {
-  if (utils.typeOf(key) === 'string' && utils.typeOf(value) === 'string') {
-    return key;
-  } else {
-    return this.detectString('path', key, value, {
-      re: re || /[\.\\]/
-    });
-  }
-};
-
-
-Loader.prototype.pickContent = function (key, value) {
-  if (utils.typeOf(key) === 'string' && (arguments.length === 1 || utils.typeOf(value) === 'object')) {
-
-    if (value && value.hasOwnProperty('content')) {
-      return value.content;
-    } else if (value && value.hasOwnProperty('path')) {
-      return this.reduceFiles(value.path);
-    } else {
-      return this.reduceFiles(key);
-    }
-
-  } else if (utils.typeOf(key) === 'string' && utils.typeOf(value) === 'string') {
-    return value;
-  } else {
-    return this.detectString('content', key, value);
-  }
-};
-
-
-Loader.prototype.reduceObjects = function (arr, key) {
-  return _.reduce(arr, function (acc, value) {
-    return _.extend(acc, utils.findProperty(value, key));
-  }.bind(this), {});
-};
-
-
-Loader.prototype.pickLocals = function (key, value, locals, options) {
-  var args = [].slice.call(arguments);
-
-  if (utils.typeOf(_.last(args)) === 'boolean' && args.length === 4) {
-    options = locals;
-    locals = utils.typeOf(value) === 'object' ? value : {};
-    value = utils.typeOf(key) === 'object' ? key : {};
-    key = {};
-  }
-
-  if (locals) {
-    return _.omit(locals, ['options', 'data']);
-  }
-
-  return this.reduceObjects([key, value], 'locals');
-};
-
-
-Loader.prototype.pickData = function (key, value, locals) {
-  if (locals) {
-    return _.pick(locals, ['data']);
-  }
-
-  return this.reduceObjects([key, value], 'data');
-};
-
-
-Loader.prototype.pickOptions = function (key, value, locals, options) {
-  if (options) {
-    return _.extend({}, options);
-  }
-  return this.reduceObjects([key, value, locals], 'options');
-};
-
-
-Loader.prototype.loadSingle = function (key, value, locals, options) {
-  options = this.pickOptions(key, value, locals, options);
-  locals = this.pickLocals(key, value, locals, options, true);
-
-  if (utils.typeOf(key) === 'object') {
-    value = {content: this.pickContent(key, value)};
-    key = this.pickPath(key, value);
-  }
-
-  var opts = _.extend({}, this.options, options);
-  var name = this.renameKey(key, opts);
-
-  this.set(name, this.normalize(key, value, locals, options));
-  return this.cache;
-};
-
-
-
-Loader.prototype.loadPlural = function (patterns, locals, options) {
-  if (utils.typeOf(patterns) === 'object' && !Array.isArray(patterns) && patterns.hasOwnProperty('path')) {
-    return this.loadSingle(patterns, locals);
-  }
-
-  patterns = !Array.isArray(patterns) ? [patterns] : patterns;
-  var data = this.pickLocals(patterns, locals, options, true);
-
-  var opts = _.extend({}, this.options, options);
-  this.reduceFiles(patterns, data, opts);
-  return this.cache;
-};
-
-
-
-Loader.prototype.load = function () {
-  var args = [].slice.call(arguments);
-  var last = args[args.length - 1];
-  var multiple = false;
-
-  if (utils.typeOf(last) === 'boolean') {
-    multiple = last;
-  }
-
-  if (multiple) {
-    return this.loadPlural.apply(this, args);
-  } else {
-    return this.loadSingle.apply(this, args);
-  }
-};
-
-
 
 module.exports = Loader;
