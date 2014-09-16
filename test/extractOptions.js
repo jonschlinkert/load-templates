@@ -13,34 +13,34 @@ var Loader = require('..');
 var loader;
 
 
-describe('.pickOptions()', function () {
+describe('.extractOptions()', function () {
   beforeEach(function() {
     loader = new Loader();
   });
 
   it('should return options that are passed directly.', function () {
-    var options = loader.pickOptions('test/fixtures/*.txt', 'abc', {a: 'b'}, {optA: 'a'});
+    var options = loader.extractOptions('test/fixtures/*.txt', 'abc', {a: 'b'}, {optA: 'a'});
     options.should.have.property('optA', 'a');
   });
 
   it('should return options passed on the `locals`.', function () {
-    var options = loader.pickOptions('test/fixtures/*.txt', 'abc', {a: 'b', options: {optB: 'b'}});
+    var options = loader.extractOptions('test/fixtures/*.txt', 'abc', {a: 'b', options: {optB: 'b'}});
     options.should.have.property('optB', 'b');
     options.should.not.have.property('options');
   });
 
   it('should return options that are passed on the `value` object.', function () {
-    var options = loader.pickOptions('test/fixtures/*.txt', {options: {optC: 'd'}});
+    var options = loader.extractOptions('test/fixtures/*.txt', {options: {optC: 'd'}});
     options.should.have.property('optC', 'd');
   });
 
   it('should return options that are passed on the `key` object.', function () {
-    var options = loader.pickOptions({options: {optE: 'f'}});
+    var options = loader.extractOptions({options: {optE: 'f'}});
     options.should.have.property('optE', 'f');
   });
 
   it('should return options nested on the `key` object.', function () {
-    var options = loader.pickOptions({'a/b/c.md': {options: {optG: 'h'}}});
+    var options = loader.extractOptions({'a/b/c.md': {options: {optG: 'h'}}});
     options.should.have.property('optG', 'h');
   });
 });

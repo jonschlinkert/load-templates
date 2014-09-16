@@ -13,34 +13,34 @@ var Loader = require('..');
 var loader;
 
 
-describe('.pickLocals()', function () {
+describe('.extractLocals()', function () {
   beforeEach(function() {
     loader = new Loader();
   });
 
   it('should return locals that are passed directly.', function () {
-    var locals = loader.pickLocals('test/fixtures/*.txt', 'abc', {a: 'b'});
+    var locals = loader.extractLocals('test/fixtures/*.txt', 'abc', {a: 'b'});
     locals.should.have.property('a', 'b');
   });
 
   it('should omit `options` from the locals object.', function () {
-    var locals = loader.pickLocals('test/fixtures/*.txt', 'abc', {a: 'b', options: {}});
+    var locals = loader.extractLocals('test/fixtures/*.txt', 'abc', {a: 'b', options: {}});
     locals.should.have.property('a', 'b');
     locals.should.not.have.property('options');
   });
 
   it('should return locals passed on the `value` object.', function () {
-    var locals = loader.pickLocals('test/fixtures/*.txt', {locals: {c: 'd'}});
+    var locals = loader.extractLocals('test/fixtures/*.txt', {locals: {c: 'd'}});
     locals.should.have.property('c', 'd');
   });
 
   it('should return locals passed on the `key` object.', function () {
-    var locals = loader.pickLocals({locals: {e: 'f'}});
+    var locals = loader.extractLocals({locals: {e: 'f'}});
     locals.should.have.property('e', 'f');
   });
 
   it('should return locals nested on the `key` object.', function () {
-    var locals = loader.pickLocals({'a/b/c.md': {locals: {g: 'h'}}});
+    var locals = loader.extractLocals({'a/b/c.md': {locals: {g: 'h'}}});
     locals.should.have.property('g', 'h');
   });
 });
