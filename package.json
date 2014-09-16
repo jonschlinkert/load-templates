@@ -46,6 +46,7 @@
     "verb"
   ],
   "dependencies": {
-    "chalk": "^0.5.1"
+    "chalk": "^0.5.1",
+    "debug": "^2.0.0"
   }
 }
