@@ -27,7 +27,7 @@ var utils = require('./lib/utils');
  */
 
 function Loader(options) {
-  this.rootKeys = ['options', 'path', 'content', 'data', 'locals'];
+  this.rootKeys = ['options', 'path', 'content', 'locals'];
   this.options = options || {};
   this.cache = {};
 }
@@ -74,9 +74,11 @@ Loader.prototype.loadSingle = function (key, value, locals, options) {
   var newKey = this.findKey(key, value);
   o.path = this.findPath(key, value);
   o.content = this.findContent(key, value);
-  o.locals = this.findLocals(args);
+  o.locals = this.findLocals(args, ['data']);
+  // o.data = this.findLocals(args, ['locals']);
 
-  // if the first two args are strings,
+  // scrub the locals so they aren't picked up by `data`
+
   if (utils.isString(args[0]) && utils.isString(args[1])) {
     args[2] = _.pick(args[2], 'options');
   }
@@ -96,21 +98,13 @@ Loader.prototype.loadSingle = function (key, value, locals, options) {
 
 Loader.prototype.loadPlural = function (patterns, locals, options) {
   var args = [].slice.call(arguments);
+  var locs = this.findLocals(args, ['data']);
+  var opts = this.findOptions(args);
 
-  if (utils.isObject(patterns)) {
-    if (patterns.hasOwnProperty('path')) {
-      return this.loadSingle(patterns, locals);
-    }
-    // else {
-    //   // todo: load multiple objects
-    // }
+  var files = this.reduceFiles(patterns, locs, {options: opts});
+  if (!files) {
+    return this.loadSingle(patterns, locals, options);
   }
-
-  patterns = !Array.isArray(patterns) ? [patterns] : patterns;
-  var locs = this.findLocals(args);
-
-  var opts = _.extend({}, this.options, options);
-  this.reduceFiles(patterns, locs, {options: opts});
   return this.cache;
 };
 
@@ -158,24 +152,42 @@ Loader.prototype.detectString = function (lookup, key, value, options) {
 
 Loader.prototype.findLocals = function (args, omitKeys) {
   var omissions = _.union(this.rootKeys, omitKeys);
-  var locals = this.aggregate('locals', 2, args, omissions);
+  var locals = this.aggregate('locals', 2, args);
 
   // As a last resort, if `aggregate` found nothing...
-  if (locals && utils.isObject(locals) && Object.keys(locals).length === 0) {
-    if (args && utils.isObject(args[0])) {
-      var keys = Object.keys(args[0]);
-      keys.forEach(function(key) {
-        _.extend(locals, _.omit(args[0][key], this.rootKeys));
-      }.bind(this));
-    } else {
-      locals = {};
-    }
+  if (args && Object.keys(locals).length === 0) {
+    locals = _.reduce(args[0], function(acc, value, key) {
+      if (this.rootKeys.indexOf(key) === -1) {
+        acc = utils.siftData(value, 'locals', this.rootKeys).locals;
+      }
+      return acc;
+    }.bind(this), {});
   }
-  return locals;
+
+  return _.omit(locals, omissions);
 };
 
+Loader.prototype.findData = function (args, omitKeys) {
+  var omissions = _.union(this.rootKeys, omitKeys);
+  var data = this.aggregate('data', 2, args);
+
+  // As a last resort, if `aggregate` found nothing...
+  if (args && Object.keys(data).length === 0) {
+    data = _.reduce(args[0], function(acc, value, key) {
+      if (this.rootKeys.indexOf(key) === -1) {
+        acc = utils.siftData(value, 'data', this.rootKeys).data;
+      }
+      return acc;
+    }.bind(this), {});
+  }
+
+  return _.omit(data, omissions);
+};
+
+
 Loader.prototype.findOptions = function (args, omitKeys) {
-  return this.aggregate('options', 3, args, _.union(this.rootKeys, omitKeys));
+  var omissions = _.union(this.rootKeys, omitKeys);
+  return this.aggregate('options', 3, args, omissions);
 };
 
 Loader.prototype.findPath = function (key, value) {
@@ -236,6 +248,12 @@ Loader.prototype.renameKey = function (filepath, options) {
     return opts.renameKey.call(this, filepath, opts);
   }
 
+  // Not meant to be comprehensive, just let the user know
+  // if it looks like a glob pattern didn't expand.
+  if (/[*{\[\]}]/.test(filepath)) {
+    console.log(chalk.red('Oooops, are you sure "' + filepath + '" is a valid path? Looks like it didn\'t expand.'));
+  }
+
   debug('opts.renameKey: %s', filepath);
   return path.basename(filepath, opts);
 };
@@ -250,15 +268,12 @@ Loader.prototype.renameKey = function (filepath, options) {
  * @api public
  */
 
-Loader.prototype.reduceFiles = function (patterns, locals, options) {
+Loader.prototype.reduceFiles = function (pattern, locals, options) {
   var args = [].slice.call(arguments);
 
-  if (!Array.isArray(patterns)) {
-    patterns = [patterns];
-  }
-
+  var patterns = !Array.isArray(pattern) ? [pattern] : pattern;
   var opts = this.findOptions(args);
-  var locs = this.findLocals(args);
+  var locs = this.findLocals(args, ['data']);
 
   opts = _.extend({}, this.options, opts);
 

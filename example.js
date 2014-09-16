@@ -58,9 +58,9 @@ Engine.prototype.create = function (type, plural, options) {
 };
 
 var engine = new Engine({
-  rename: function (filepath) {
-    return path.basename(filepath);
-  },
+  // renameKey: function (filepath) {
+  //   return path.basename(filepath);
+  // },
   // parse: function (filepath) {
   //   return matter.read(filepath);
   // },
@@ -77,8 +77,8 @@ var engine = new Engine({
 
 // engine.layouts('test/fixtures/two/*.md', {name: 'Brian Woodward'});
 // engine.layouts('test/fixtures/three/*.md', {name: 'Brian Woodward'});
-// engine.page('foo.md', 'This is content', {name: 'Jon Schlinkert'});
-// engine.page({'bar.md': {path: 'a/b/c.md', name: 'Jon Schlinkert'}});
+// engine.page('foo1.md', 'This is content', {name: 'Jon Schlinkert'});
+// engine.page({'bar1.md': {path: 'a/b/c.md', name: 'Jon Schlinkert'}});
 // engine.page({'baz.md': {path: 'a/b/c.md', name: 'Jon Schlinkert'}}, {go: true});
 // engine.pages(['test/fixtures/a.txt'], {name: 'Brian Woodward'});
 // engine.layouts('test/fixtures/*.md', 'flflflfl', {name: 'Brian Woodward'});
@@ -88,8 +88,8 @@ var engine = new Engine({
 // engine.layouts('layouts/a.md', {foo: 'bar'});
 // engine.page('abc.md', 'This is content.', {name: 'Jon Schlinkert'});
 // engine.page('pages/a.md', 'This is content.', {name: 'Jon Schlinkert'});
-// engine.page({'foo/bar.md': {content: 'this is content.', data: {a: 'a'}}});
-engine.page({path: 'one/two.md', content: 'this is content.', data: {b: 'b'}});
+engine.page({'foo/bar.md': {content: 'this is content.', data: {a: 'a'}}});
+// engine.page({path: 'one/two.md', content: 'this is content.', data: {b: 'b'}});
 // engine.page({'foo/baz.md': {}}, {blah: 'blah'}); // bad format
 
 var cache = util.inspect(engine, null, 10);
