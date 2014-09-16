@@ -20,7 +20,7 @@ describe('.renameKey()', function () {
   });
 
   it('should use the default renameKey method.', function () {
-    loader.load('test/fixtures/*.txt', true);
+    loader.load('test/fixtures/*.txt');
     loader.get('a.txt').should.have.property('path', 'test/fixtures/a.txt');
   });
 
@@ -30,7 +30,7 @@ describe('.renameKey()', function () {
         return path.basename(filepath, path.extname(filepath));
       }
     });
-    loader.load('test/fixtures/*.txt', true);
+    loader.load('test/fixtures/*.txt');
     loader.cache.should.have.property('a');
     loader.get('a').should.have.property('path', 'test/fixtures/a.txt');
   });

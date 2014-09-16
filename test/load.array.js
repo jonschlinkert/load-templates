@@ -21,24 +21,26 @@ describe('when templates are formatted as arrays', function () {
   });
 
   it('should load templates from an array glob pattern', function () {
-    loader.load(['test/fixtures/*.txt'], true);
+    loader.load(['test/fixtures/*.txt']);
 
     loader.cache.should.be.an.object;
     loader.get('a.txt').should.have.property('path');
     loader.get('a.txt').should.have.property('data');
+    loader.get('a.txt').data.should.eql({title: 'AAA'});
     loader.get('a.txt').should.have.property('content');
   });
 
   it('should normalize locals passed as a second param', function () {
-    loader.load(['test/fixtures/*.txt'], {name: 'Brian Woodward'}, true);
+    loader.load(['test/fixtures/*.txt'], {name: 'Brian Woodward'});
 
     loader.cache.should.be.an.object;
+    loader.get('a.txt').data.should.eql({title: 'AAA'});
     loader.get('a.txt').should.have.property('locals');
     loader.get('a.txt').locals.name.should.equal('Brian Woodward');
   });
 
   it('should create a path property from the filepath.', function () {
-    loader.load(['test/fixtures/*.txt'], {name: 'Brian Woodward'}, true);
+    loader.load(['test/fixtures/*.txt'], {name: 'Brian Woodward'});
 
     loader.cache.should.be.an.object;
     loader.get('a.txt').should.have.property('path');

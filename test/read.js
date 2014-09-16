@@ -14,14 +14,14 @@ var should = require('should');
 var Loader = require('..');
 var loader;
 
-describe('.glob()', function () {
+describe('.read()', function () {
   beforeEach(function() {
     loader = new Loader();
   });
 
   describe('.read():', function () {
     it('should use the default read method.', function () {
-      loader.load('test/fixtures/*.txt', true);
+      loader.load('test/fixtures/*.txt');
       loader.get('a.txt').should.have.property('content', 'This is fixture a.txt');
     });
 
@@ -32,8 +32,23 @@ describe('.glob()', function () {
         }
       });
 
-      loader.load('test/fixtures/*.txt', true);
+      loader.load('test/fixtures/*.txt');
       loader.get('a.txt').should.have.property('content', 'This is fixture a.txt:foo');
+    });
+
+    it('should use a user-defined read method defined on the `load` method.', function () {
+      loader = new Loader();
+
+      loader.load('test/fixtures/*.txt', {
+        options: {
+          read: function(filepath) {
+            return fs.readFileSync(filepath, 'utf8') + ':bar';
+          }
+        }
+      });
+      loader.get('a.txt').should.have.property('data');
+      loader.get('a.txt').data.should.eql({title: 'AAA'});
+      loader.get('a.txt').should.have.property('content', 'This is fixture a.txt:bar');
     });
   });
 });

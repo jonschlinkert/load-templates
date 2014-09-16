@@ -23,7 +23,7 @@ describe('.parse()', function () {
   });
 
   it('should use the default `.parse()` method.', function () {
-    loader.load('test/fixtures/*.txt', true);
+    loader.load('test/fixtures/*.txt');
     loader.get('a.txt').data.should.have.property('title', 'AAA');
   });
 
@@ -33,7 +33,7 @@ describe('.parse()', function () {
         return _.extend(matter(str), {foo: 'bar'});
       }
     });
-    loader.load('test/fixtures/*.txt', true);
+    loader.load('test/fixtures/*.txt');
     loader.get('a.txt').should.have.property('foo', 'bar');
   });
 });

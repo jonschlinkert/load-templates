@@ -1,12 +1,7 @@
 'use strict';
 
-var fs = require('fs');
 var path = require('path');
-var util = require('util');
-var chalk = require('chalk');
 var debug = require('debug')('load-templates');
-var matter = require('gray-matter');
-var glob = require('globby');
 var _ = require('lodash');
 var utils = require('./lib/utils');
 
@@ -50,62 +45,56 @@ Loader.prototype.get = function (key) {
 };
 
 
-Loader.prototype.load = function () {
-  var args = [].slice.call(arguments);
-  var last = args[args.length - 1];
-  var multiple = false;
-
-  if (utils.typeOf(last) === 'boolean') {
-    multiple = last;
-  }
-
-  if (multiple) {
-    return this.loadPlural.apply(this, args);
-  } else {
-    return this.loadSingle.apply(this, args);
-  }
-};
-
-
-Loader.prototype.loadSingle = function (key, value, locals, options) {
+Loader.prototype.load = function (key, value, locals, options) {
   var args = [].slice.call(arguments);
   var o = {};
 
-  var newKey = this.findKey(key, value);
-  o.path = this.findPath(key, value);
-  o.content = this.findContent(key, value);
-  o.locals = this.findLocals(args, ['data']);
-  // o.data = this.findLocals(args, ['locals']);
 
-  // scrub the locals so they aren't picked up by `data`
-
-  if (utils.isString(args[0]) && utils.isString(args[1])) {
-    args[2] = _.pick(args[2], 'options');
+  if ((args.length === 1 && utils.isString(key)) || Array.isArray(key)) {
+    // there should never be four args when the first value is a file path
+    var files = this.reduceFiles(key, value, locals);
+    if (files) {
+      return this.cache;
+    }
+    o.path = key;
   }
 
-  o.options = options || this.findOptions(args);
+  var newKey = this.findKey(key, value);
+
+  o.path = this.findPath(key, value);
+  o.content = this.findContent(key, value);
+
+  // If content is an object, we can assume that it's the result of
+  // file paths being parsed into template objects. This means that
+  // the first argument must have been glob pattern or filepath, in
+  // which case there should only be three args. e.g.:
+  //
+  //   - the first arg is a file path or glob pattern
+  //   - second arg is locals, possibly an options prop
+  //   - third arg is options.
+  //   - NO fourth arg;
+
+  if (utils.isObject(o.content)) {
+    o.locals = value;
+    o.options = _.extend({}, locals, value && value.options);
+  } else {
+    o.locals = this.findLocals(args, ['data']);
+    o.options = this.findOptions(args);
+  }
 
   var opts = _.extend({}, this.options, o.options);
   var name = this.renameKey(newKey, opts);
 
   if (!utils.isObject(o.content)) {
     this.set(name, o);
+    return this.cache;
+  } else {
+    return _.transform(o.content, function (acc, value, key) {
+      value.locals = _.extend({}, value.locals, o.locals);
+      value.options = _.extend({}, value.options, o.options);
+      acc[name] = value;
+    }.bind(this), this.cache);
   }
-
-  return this.cache;
-};
-
-
-Loader.prototype.loadPlural = function (patterns, locals, options) {
-  var args = [].slice.call(arguments);
-  var locs = this.findLocals(args, ['data']);
-  var opts = this.findOptions(args);
-
-  var files = this.reduceFiles(patterns, locs, {options: opts});
-  if (!files) {
-    return this.loadSingle(patterns, locals, options);
-  }
-  return this.cache;
 };
 
 
@@ -113,15 +102,13 @@ Loader.prototype.aggregate = function () {
   return utils.aggregateValues.apply(this, arguments);
 };
 
-Loader.prototype.detectString = function (lookup, key, value, options) {
+Loader.prototype.detectString = function (lookup, key, value) {
   var args = _.initial([].slice.call(arguments, 1));
+  var o;
 
   if (utils.typeOf(value) === 'undefined') {
     args = args.filter(Boolean);
   }
-
-  var opts = _.extend({}, options);
-  var o;
 
   if (utils.isString(key) && (args.length === 1 || utils.isObject(value))) {
     if (value && value.hasOwnProperty('path')) {
@@ -248,12 +235,6 @@ Loader.prototype.renameKey = function (filepath, options) {
     return opts.renameKey.call(this, filepath, opts);
   }
 
-  // Not meant to be comprehensive, just let the user know
-  // if it looks like a glob pattern didn't expand.
-  if (/[*{\[\]}]/.test(filepath)) {
-    console.log(chalk.red('Oooops, are you sure "' + filepath + '" is a valid path? Looks like it didn\'t expand.'));
-  }
-
   debug('opts.renameKey: %s', filepath);
   return path.basename(filepath, opts);
 };
@@ -272,9 +253,10 @@ Loader.prototype.reduceFiles = function (pattern, locals, options) {
   var args = [].slice.call(arguments);
 
   var patterns = !Array.isArray(pattern) ? [pattern] : pattern;
-  var opts = this.findOptions(args);
+  var opts = options || this.findOptions(args);
   var locs = this.findLocals(args, ['data']);
 
+  // Extend `this.options` outside the loop
   opts = _.extend({}, this.options, opts);
 
   var files = utils.glob(patterns, options);
@@ -285,7 +267,7 @@ Loader.prototype.reduceFiles = function (pattern, locals, options) {
   }
 
   return _.reduce(files, function (acc, filepath) {
-    var name = this.renameKey(filepath, opts);
+    var name = this.renameKey.call(this, filepath, opts);
     var str = utils.read.call(this, filepath, opts);
     var o = utils.parse.call(this, str, opts);
 

@@ -101,29 +101,29 @@ describe('when templates are formatted as strings', function () {
 
   describe('load multiple templates:', function () {
     it('should load the template onto the cache:', function () {
-      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'}, true);
+      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'});
       loader.cache.should.be.an.object;
       loader.cache['a.txt'].should.exist;
     });
 
     it('should detect locals passed as a second param', function () {
-      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'}, true);
+      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'});
       loader.get('a.txt').should.have.property('locals');
       loader.get('a.txt').locals.should.have.property('name', 'Brian Woodward');
     });
 
     it('should create the `path` property from the filepath.', function () {
-      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'}, true);
+      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'});
       loader.get('a.txt').should.have.property('path', 'test/fixtures/a.txt');
     });
 
     it('should get front-matter from files:', function () {
-      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'}, true);
+      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'});
       loader.get('a.txt').should.have.property('data', {title: 'AAA'});
     });
 
     it('should load templates from a string glob pattern', function () {
-      loader.load('test/fixtures/*.txt', true);
+      loader.load('test/fixtures/*.txt');
 
       loader.cache.should.be.an.object;
       loader.cache['a.txt'].should.have.property('path', 'test/fixtures/a.txt');
@@ -134,31 +134,31 @@ describe('when templates are formatted as strings', function () {
 
     describe('when the key is a glob pattern:', function () {
       it('should load when the key is a filepath.', function () {
-        loader.load('test/fixtures/*.md', true);
+        loader.load('test/fixtures/*.md');
         loader.get('a.md').should.have.property('path', 'test/fixtures/a.md');
         loader.get('a.md').should.have.property('content', 'This is fixture a.md');
       });
 
       it('should load templates from a string glob pattern', function () {
-        loader.load('test/fixtures/**/*.{txt,md}', true);
+        loader.load('test/fixtures/**/*.{txt,md}');
         loader.should.be.an.object;
       });
 
       it('should normalize data passed as a second param', function () {
-        loader.load('test/fixtures/*.txt', {name: 'Brian Woodward', a: 'b'}, true);
+        loader.load('test/fixtures/*.txt', {name: 'Brian Woodward', a: 'b'});
         loader.cache.should.be.an.object;
         loader.get('a.txt').should.have.property('data');
         loader.get('a.txt').locals.name.should.equal('Brian Woodward');
       });
 
       it('should create a path property from the filepath.', function () {
-        loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'}, true);
+        loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'});
         loader.cache.should.be.an.object;
         loader.get('a.txt').should.have.property('path');
       });
 
       it('should normalize locals passed as a second param', function () {
-        loader.load(['test/fixtures/*.txt'], {name: 'Brian Woodward'}, true);
+        loader.load(['test/fixtures/*.txt'], {name: 'Brian Woodward'});
         loader.cache.should.be.an.object;
         loader.get('a.txt').should.have.property('locals');
         loader.get('a.txt').locals.name.should.equal('Brian Woodward');
@@ -166,24 +166,24 @@ describe('when templates are formatted as strings', function () {
     });
 
     it('should detect locals passed as a second param', function () {
-      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'}, true);
+      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'});
       loader.get('a.txt').should.have.property('locals');
       loader.get('a.txt').locals.should.have.property('name', 'Brian Woodward');
     });
 
     it('should create the `path` property from the filepath.', function () {
-      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'}, true);
+      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'});
       loader.get('a.txt').should.have.property('path', 'test/fixtures/a.txt');
     });
 
     it('should get front-matter from files:', function () {
-      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'}, true);
+      loader.load('test/fixtures/*.txt', {name: 'Brian Woodward'});
       loader.get('a.txt').should.have.property('data', {title: 'AAA'});
     });
 
-    // it.only('should detect locals when passed as a second param', function () {
-    //   loader.load(['test/fixtures/*.txt'], {name: 'Brian Woodward'}, true);
-    //   loader.get('abc.md').should.have.property('locals', {name: 'Brian Woodward'});
-    // });
+    it('should detect locals when passed as a second param', function () {
+      loader.load(['test/fixtures/three/*.md'], {name: 'Brian Woodward'});
+      loader.get('i.md').should.have.property('locals', {name: 'Brian Woodward'});
+    });
   });
 });

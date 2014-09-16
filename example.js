@@ -86,11 +86,11 @@ var engine = new Engine({
 // engine.layouts('layouts/*.txt', 'flflflfl', {name: 'Brian Woodward'});
 
 // engine.layouts('layouts/a.md', {foo: 'bar'});
-// engine.page('abc.md', 'This is content.', {name: 'Jon Schlinkert'});
-// engine.page('pages/a.md', 'This is content.', {name: 'Jon Schlinkert'});
+engine.page('abc.md', 'This is content.', {name: 'Jon Schlinkert'});
+engine.page('pages/a.md', 'This is content.', {name: 'Jon Schlinkert'});
 engine.page({'foo/bar.md': {content: 'this is content.', data: {a: 'a'}}});
-// engine.page({path: 'one/two.md', content: 'this is content.', data: {b: 'b'}});
-// engine.page({'foo/baz.md': {}}, {blah: 'blah'}); // bad format
+engine.page({path: 'one/two.md', content: 'this is content.', data: {b: 'b'}});
+engine.page({'foo/baz.md': {}}, {blah: 'blah'}); // bad format
 
 var cache = util.inspect(engine, null, 10);
 console.log(cache);
