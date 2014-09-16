@@ -27,6 +27,7 @@ var utils = require('./lib/utils');
  */
 
 function Loader(options) {
+  this.options = options || {};
   this.cache = {};
 }
 
@@ -47,6 +48,7 @@ Loader.prototype.get = function (key) {
   return this.cache[key];
 };
 
+
 Loader.prototype.load = function () {
   var args = [].slice.call(arguments);
   var last = args[args.length - 1];
@@ -65,36 +67,49 @@ Loader.prototype.load = function () {
 
 
 Loader.prototype.loadSingle = function (key, value, locals, options) {
-  options = this.extractOptions(key, value, locals, options);
-  locals = this.extractLocals(key, value, locals, options, true);
+  var args = [].slice.call(arguments);
+  var o = {};
+
+  options = options || this.findOptions(args);
+  locals = this.findLocals(args);
 
   if (utils.isObject(key)) {
-    value = {content: this.pickContent(key, value)};
-    key = this.pickPath(key, value);
+    value = {content: this.findContent(key, value)};
+    key = this.findPath(key, value);
+  console.log(value)
   }
+
+  value.locals = locals;
+  value.options = options;
 
   var opts = _.extend({}, this.options, options);
   var name = this.renameKey(key, opts);
 
-  this.set(name, this.normalize(key, value, locals, options));
+  this.set(name, value);
   return this.cache;
 };
 
 Loader.prototype.loadPlural = function (patterns, locals, options) {
+  var args = [].slice.call(arguments);
+
   if (utils.isObject(patterns) && patterns.hasOwnProperty('path')) {
     return this.loadSingle(patterns, locals);
   }
 
   patterns = !Array.isArray(patterns) ? [patterns] : patterns;
-  var data = this.extractLocals(patterns, locals, options, true);
+  var locs = this.findLocals(args);
 
   var opts = _.extend({}, this.options, options);
-  this.reduceFiles(patterns, data, opts);
+  this.reduceFiles(patterns, locs, opts);
   return this.cache;
 };
 
 
-Loader.prototype.detectString = function (lookup, key, value, options) {
+Loader.prototype.aggregate = function () {
+  return utils.aggregateValues.apply(this, arguments);
+};
+
+Loader.prototype.detect = function (lookup, key, value, options) {
   var args = _.initial([].slice.call(arguments, 1));
   if (utils.typeOf(value) === 'undefined') {
     args = args.filter(Boolean);
@@ -126,18 +141,41 @@ Loader.prototype.detectString = function (lookup, key, value, options) {
   }
 };
 
-Loader.prototype.pickPath = function (key, value, re) {
+
+Loader.prototype.findLocals = function (args, omit) {
+  var o = this.aggregate('locals', 2, args, _.union(['options'], omit));
+
+  // if (!Object.keys(o).length && typeof args[1] === 'object') {
+  //   o = args[1];
+  // }
+
+  return o;
+};
+
+Loader.prototype.findOptions = function (args, omit) {
+  var o = this.aggregate('options', 3, args, omit);
+
+  // if (!Object.keys(o).length && typeof args[2] === 'object') {
+  //   o = args[2];
+  // }
+
+  return o;
+};
+
+
+
+Loader.prototype.findPath = function (key, value, re) {
   if (utils.isString(key) && utils.isString(value)) {
     return key;
   } else {
-    return this.detectString('path', key, value, {
+    return this.detect('path', key, value, {
       re: re || /[\.\\]/
     });
   }
 };
 
 
-Loader.prototype.pickContent = function (key, value) {
+Loader.prototype.findContent = function (key, value) {
   if (utils.isString(key) && (arguments.length === 1 || utils.isObject(value))) {
 
     if (value && value.hasOwnProperty('content')) {
@@ -151,7 +189,7 @@ Loader.prototype.pickContent = function (key, value) {
   } else if (utils.isString(key) && utils.isString(value)) {
     return value;
   } else {
-    return this.detectString('content', key, value);
+    return this.detect('content', key, value);
   }
 };
 
@@ -166,27 +204,32 @@ Loader.prototype.pickContent = function (key, value) {
  */
 
 Loader.prototype.reduceFiles = function (patterns, locals, options) {
+  var args = [].slice.call(arguments);
+
   if (!Array.isArray(patterns)) {
     patterns = [patterns];
   }
 
-  var opts = this.extractOptions(patterns, locals, options);
+  var opts = this.findOptions(args);
+  var locs = this.findLocals(args);
+
   opts = _.extend({}, this.options, opts);
 
   var files = utils.glob(patterns, options);
   debug('reduceFiles [files]: %j', files);
 
   return _.reduce(files, function (acc, filepath) {
-    var file = utils.parse(utils.read(filepath), opts);
-
-    file.options = options;
-    file.locals = locals;
-    file.path = filepath;
-
     var name = this.renameKey(filepath, opts);
-    debug('reduceFiles [file]: %j', file);
+    var str = utils.read.call(this, filepath, opts);
+    var o = utils.parse.call(this, str, opts);
 
-    this.loadSingle(name, file, locals, opts);
+    o.options = opts;
+    o.locals = locs;
+    o.path = filepath;
+
+    debug('reduceFiles [file]: %j', o);
+
+    acc[name] = o;
     return acc;
   }.bind(this), this.cache);
 };
@@ -196,48 +239,6 @@ Loader.prototype.reduceObjects = function (key, arr) {
   return _.reduce(arr, function (acc, value) {
     return _.extend(acc, utils.findProperty(value, key));
   }.bind(this), {});
-};
-
-
-Loader.prototype.extractLocals = function (key, value, locals, options) {
-  var args = [].slice.call(arguments);
-
-  if (utils.typeOf(_.last(args)) === 'boolean' && args.length === 4) {
-    options = locals;
-    locals = utils.isObject(value) ? value : {};
-    value = utils.isObject(key) ? key : {};
-    key = {};
-  }
-
-  if (locals) {
-    return _.omit(locals, ['options', 'data']);
-  }
-
-  return this.reduceObjects('locals', [key, value]);
-};
-
-
-Loader.prototype.extractData = function (key, value, locals) {
-  var data = {};
-
-  if (locals) {
-    data = _.extend({}, data, _.pick(locals, ['data']));
-  }
-
-  if (value && utils.isObject(value)) {
-    data = _.extend({}, data, _.pick(value, ['data']));
-  }
-
-  if (key && utils.isObject(key)) {
-    data = _.extend({}, data, _.pick(key, ['data']));
-  }
-
-  return data;
-};
-
-
-Loader.prototype.extractOptions = function (key, value, locals, options) {
-  return options ? options : this.reduceObjects('options', [key, value, locals]);
 };
 
 

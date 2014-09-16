@@ -107,7 +107,7 @@ describe('.detectPath()', function () {
     });
   });
 
-  describe('.normalize():', function () {
+  describe.skip('.normalize():', function () {
     it('should use the default `.normalize()` method.', function () {
       loader.load('test/fixtures/*.txt', true);
       loader.get('a.txt').data.should.have.property('title', 'AAA');
@@ -153,6 +153,7 @@ describe('.detectPath()', function () {
       loader.get('a').should.have.property('path', 'test/fixtures/a.txt');
     });
   });
+
 
   describe('when the key is a string:', function () {
     it('should load when the content is a string.', function () {
@@ -203,9 +204,11 @@ describe('loader', function () {
       loader.get('a.txt').should.have.property('path');
     });
 
-    it('should normalize content passed as a second param', function () {
+    it.only('should normalize content passed as a second param', function () {
       loader.load('foo/bar/abc.md', 'This is content.', {name: 'Jon Schlinkert'});
       loader.cache.should.be.an.object;
+      console.log(loader.cache)
+
       loader.get('abc.md').should.have.property('locals');
       loader.get('abc.md').content.should.equal('This is content.');
       loader.get('abc.md').locals.name.should.equal('Jon Schlinkert');
@@ -257,7 +260,6 @@ describe('loader', function () {
 
     it('should normalize locals passed as a second param', function () {
       loader.load({'foo/bar.md': {content: 'this is content.'}}, {foo: 'bar'});
-
       loader.cache.should.be.an.object;
       loader.get('bar.md').should.have.property('locals');
       loader.get('bar.md').locals.should.eql({foo: 'bar'});
