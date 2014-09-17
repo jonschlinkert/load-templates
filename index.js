@@ -49,7 +49,6 @@ Loader.prototype.load = function (key, value, locals, options) {
   var args = [].slice.call(arguments);
   var o = {};
 
-
   if ((args.length === 1 && utils.isString(key)) || Array.isArray(key)) {
     // there should never be four args when the first value is a file path
     var files = this.reduceFiles(key, value, locals);
@@ -74,26 +73,23 @@ Loader.prototype.load = function (key, value, locals, options) {
   //   - third arg is options.
   //   - NO fourth arg;
 
-  if (utils.isObject(o.content)) {
-    o.locals = value;
-    o.options = _.extend({}, locals, value && value.options);
-  } else {
-    o.locals = this.findLocals(args, ['data']);
-    o.options = this.findOptions(args);
-  }
-
   var opts = _.extend({}, this.options, o.options);
   var name = this.renameKey(newKey, opts);
 
-  if (!utils.isObject(o.content)) {
-    this.set(name, o);
-    return this.cache;
-  } else {
+  if (utils.isObject(o.content)) {
+    o.locals = value;
+    o.options = _.extend({}, locals, value && value.options);
+
     return _.transform(o.content, function (acc, value, key) {
       value.locals = _.extend({}, value.locals, o.locals);
       value.options = _.extend({}, value.options, o.options);
       acc[name] = value;
     }.bind(this), this.cache);
+  } else {
+    o.locals = this.findLocals(args, ['data']);
+    o.options = this.findOptions(args);
+    this.set(name, o);
+    return this.cache;
   }
 };
 
@@ -256,15 +252,15 @@ Loader.prototype.reduceFiles = function (pattern, locals, options) {
   var opts = options || this.findOptions(args);
   var locs = this.findLocals(args, ['data']);
 
-  // Extend `this.options` outside the loop
-  opts = _.extend({}, this.options, opts);
-
   var files = utils.glob(patterns, options);
   debug('reduceFiles [files]: %j', files);
 
   if (files.length === 0) {
     return null;
   }
+
+  // Extend `this.options` outside the loop
+  opts = _.extend({}, this.options, opts);
 
   return _.reduce(files, function (acc, filepath) {
     var name = this.renameKey.call(this, filepath, opts);

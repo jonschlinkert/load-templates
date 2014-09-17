@@ -64,6 +64,19 @@ describe('single templates.', function () {
       loader.get('a.md').locals.should.not.have.property('doStuff');
     });
 
+    it('should move arbitrary props on the second arg to `locals`:', function () {
+      loader.load('a', {content: 'this is content', layout: 'b'});
+      loader.get('a').should.have.property('locals', {layout: 'b'});
+    });
+
+    it('should move arbitrary props on the third arg to `options`:', function () {
+      loader.load('test/fixtures/*.md', {a: 'b'}, {
+        engine: 'hbs'
+      });
+      loader.get('a.md').should.have.property('locals', {a: 'b'});
+      loader.get('a.md').should.have.property('options', {engine: 'hbs'});
+    });
+
   });
 
   // it('should load individual templates:', function () {
