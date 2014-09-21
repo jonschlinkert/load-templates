@@ -2,7 +2,7 @@
 
 var util = require('util');
 var _ = require('lodash');
-var loader = require('template-loader-2');
+var loader = require('./');
 
 
 function Engine(options) {

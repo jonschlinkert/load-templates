@@ -1,283 +1,337 @@
 'use strict';
 
-var path = require('path');
-var debug = require('debug')('load-templates');
+var hasAny = require('has-any');
+var mapFiles = require('map-files');
+var reduce = require('reduce-object');
+var matter = require('gray-matter');
+var hasAnyDeep = require('has-any-deep');
+var uniqueId = require('uniqueid');
+var isEmpty = require('is-empty');
+var omitEmpty = require('omit-empty');
+var reduce = require('reduce-object');
 var _ = require('lodash');
-var utils = require('./lib/utils');
 
 
-/**
- * Create a new instance of `Loader`, optionally
- * passing default `options`.
- *
- * **Example:**
- *
- * ```js
- * var Loader = require('load-templates');
- * var templates = new Loader();
- * ```
- *
- * @param {Object} `options` Default options for front-matter and template naming.
- * @api public
- */
+var rootKeys = exports.rootKeys = ['path', 'content', 'locals', 'data', 'orig', 'options'];
 
-function Loader(options) {
-  this.rootKeys = ['options', 'path', 'content', 'locals'];
-  this.options = options || {};
-  this.cache = {};
+function Templates(cache) {
+  this.cache = cache || {};
+  this.array = [];
 }
 
-
-Loader.prototype.set = function (key, value) {
-  debug('set: %j', arguments);
-
-  if (utils.isString(value)) {
-    value = {content: value};
-  }
-
+Templates.prototype.set = function(key, value) {
   this.cache[key] = value;
   return this;
 };
 
+Templates.prototype.push = function(value) {
+  this.array.push(value)
+};
 
-Loader.prototype.get = function (key) {
+Templates.prototype.get = function(key) {
   return this.cache[key];
 };
 
-
-Loader.prototype.load = function (key, value, locals, options) {
-  var args = [].slice.call(arguments);
-  var o = {};
-
-  if ((args.length === 1 && utils.isString(key)) || Array.isArray(key)) {
-    // there should never be four args when the first value is a file path
-    var files = this.reduceFiles(key, value, locals);
-    if (files) {
-      return this.cache;
-    }
-    o.path = key;
-  }
-
-  var newKey = this.findKey(key, value);
-
-  o.path = this.findPath(key, value);
-  o.content = this.findContent(key, value);
-
-  // If content is an object, we can assume that it's the result of
-  // file paths being parsed into template objects. This means that
-  // the first argument must have been glob pattern or filepath, in
-  // which case there should only be three args. e.g.:
-  //
-  //   - the first arg is a file path or glob pattern
-  //   - second arg is locals, possibly an options prop
-  //   - third arg is options.
-  //   - NO fourth arg;
-
-  var opts = _.extend({}, this.options, o.options);
-  var name = this.renameKey(newKey, opts);
-
-  if (utils.isObject(o.content)) {
-    o.locals = value;
-    o.options = _.extend({}, locals, value && value.options);
-
-    return _.transform(o.content, function (acc, value, key) {
-      value.locals = _.extend({}, value.locals, o.locals);
-      value.options = _.extend({}, value.options, o.options);
-      acc[name] = value;
-    }.bind(this), this.cache);
-  } else {
-    o.locals = this.findLocals(args, ['data']);
-    o.options = this.findOptions(args);
-    this.set(name, o);
-    return this.cache;
-  }
-};
+var template = exports.template = new Templates();
 
 
-Loader.prototype.aggregate = function () {
-  return utils.aggregateValues.apply(this, arguments);
-};
-
-Loader.prototype.detectString = function (lookup, key, value) {
-  var args = _.initial([].slice.call(arguments, 1));
-  var o;
-
-  if (utils.typeOf(value) === 'undefined') {
-    args = args.filter(Boolean);
-  }
-
-  if (utils.isString(key) && (args.length === 1 || utils.isObject(value))) {
-    if (value && value.hasOwnProperty('path')) {
-      o = value.path;
-    } else {
-      o = key;
-    }
-
-  } else if (utils.isObject(value) && value.hasOwnProperty(lookup)) {
-    o = value[lookup];
-  } else if (utils.isObject(key) && key.hasOwnProperty(lookup)) {
-    o = key[lookup];
-  } else if (utils.isObject(key) && _.keys(key).length === 1) {
-
-    if (_.any(key, lookup)) {
-      o = _.detect(key, lookup)[lookup];
-    } else if (!!this.findKey(key)) {
-      o = this.findKey(key);
-    }
-
-  } else {
-    throw new Error('Could not detect `' + lookup + '`.');
-  }
-
-  return o;
-};
-
-
-Loader.prototype.findLocals = function (args, omitKeys) {
-  var omissions = _.union(this.rootKeys, omitKeys);
-  var locals = this.aggregate('locals', 2, args);
-
-  // As a last resort, if `aggregate` found nothing...
-  if (args && Object.keys(locals).length === 0) {
-    locals = _.reduce(args[0], function(acc, value, key) {
-      if (this.rootKeys.indexOf(key) === -1) {
-        acc = utils.siftData(value, 'locals', this.rootKeys).locals;
-      }
-      return acc;
-    }.bind(this), {});
-  }
-
-  return _.omit(locals, omissions);
-};
-
-Loader.prototype.findData = function (args, omitKeys) {
-  var omissions = _.union(this.rootKeys, omitKeys);
-  var data = this.aggregate('data', 2, args);
-
-  // As a last resort, if `aggregate` found nothing...
-  if (args && Object.keys(data).length === 0) {
-    data = _.reduce(args[0], function(acc, value, key) {
-      if (this.rootKeys.indexOf(key) === -1) {
-        acc = utils.siftData(value, 'data', this.rootKeys).data;
-      }
-      return acc;
-    }.bind(this), {});
-  }
-
-  return _.omit(data, omissions);
-};
-
-
-Loader.prototype.findOptions = function (args, omitKeys) {
-  var omissions = _.union(this.rootKeys, omitKeys);
-  return this.aggregate('options', 3, args, omissions);
-};
-
-Loader.prototype.findPath = function (key, value) {
-  if (utils.isString(key) && utils.isString(value)) {
-    return key;
-  } else {
-    return this.detectString('path', key, value);
-  }
-};
-
-Loader.prototype.findContent = function (key, value, locals, options) {
-  if (utils.isString(key) && (arguments.length === 1 || utils.isObject(value))) {
-
-    if (value && value.hasOwnProperty('content')) {
-      return value.content;
-    } else if (value && value.hasOwnProperty('path')) {
-      return this.reduceFiles(value.path, value, locals, options);
-    } else {
-      return this.reduceFiles(key, value, locals, options);
-    }
-
-  } else if (utils.isString(key) && utils.isString(value)) {
-    return value;
-  } else {
-    return this.detectString('content', key, value);
-  }
-};
-
-Loader.prototype.findKey = function (key, value) {
-  var args = [].slice.call(arguments).filter(Boolean);
-
-  if (utils.isObject(key)) {
-    // check for `path` first
-    if (key.hasOwnProperty('path')) {
-      return key.path;
-    } else if (_.keys(key).length === 1) {
-      return _.keys(key)[0];
-    }
-  } else if (utils.isString(key) && utils.isString(value)) {
-    return key;
-  } else if (utils.isString(key) && utils.isObject(value)) {
-    if (value.hasOwnProperty('path')) {
-      return value.path;
-    } else {
-      return key;
-    }
-  } else if (utils.isString(key) && args.length === 1) {
-    return key;
-  }
-};
-
-
-Loader.prototype.renameKey = function (filepath, options) {
-  var opts = _.extend({}, this.options, options);
-
-  if (opts.renameKey) {
-    debug('opts.renameKey: %s', filepath);
-    return opts.renameKey.call(this, filepath, opts);
-  }
-
-  debug('opts.renameKey: %s', filepath);
-  return path.basename(filepath, opts);
+var typeOf = function typeOf(val) {
+  return {}.toString.call(val).toLowerCase()
+    .replace(/\[object ([\S]+)\]/, '$1');
 };
 
 
 /**
- * Expand glob patterns, read files and return an object of
- * file objects.
+ * If we detected a `path` property directly on the object
+ * that was passed, this means that the object is not
+ * formatted with a key (as expected).
  *
- * @param  {String} `filepath` The path of the file to read.
- * @param  {Object} `Options` Options or `locals`.
- * @api public
+ * ```js
+ * // before
+ * normalize({path: 'a/b/c.md', content: 'this is foo'});
+ *
+ * // after
+ * normalize('a/b/c.md': {path: 'a/b/c.md', content: 'this is foo'});
+ * ```
+ *
+ * @param  {String} `path`
+ * @param  {Object} `value`
+ * @return {Object}
  */
 
-Loader.prototype.reduceFiles = function (pattern, locals, options) {
-  var args = [].slice.call(arguments);
-
-  var patterns = !Array.isArray(pattern) ? [pattern] : pattern;
-  var opts = options || this.findOptions(args);
-  var locs = this.findLocals(args, ['data']);
-
-  var files = utils.glob(patterns, options);
-  debug('reduceFiles [files]: %j', files);
-
-  if (files.length === 0) {
-    return null;
-  }
-
-  // Extend `this.options` outside the loop
-  opts = _.extend({}, this.options, opts);
-
-  return _.reduce(files, function (acc, filepath) {
-    var name = this.renameKey.call(this, filepath, opts);
-    var str = utils.read.call(this, filepath, opts);
-    var o = utils.parse.call(this, str, opts);
-
-    o.options = opts;
-    o.locals = locs;
-    o.path = filepath;
-
-    debug('reduceFiles [file]: %j', o);
-
-    acc[name] = o;
-    this.set(name, o);
-
-    return acc;
-  }.bind(this), {});
+var createKeyFromPath = function(filepath, value) {
+  var o = {};
+  o[filepath] = value;
+  return o;
 };
 
-module.exports = Loader;
+// normalize({'a/b/d.md': {content: 'this is content'}})
+var createPathFromStringKey = function(a) {
+  for (var key in a) {
+    if (a.hasOwnProperty(key)) {
+      a[key].path = a[key].path || key;
+    }
+  }
+  return a;
+};
+
+// normalize('a/b/c.md', {content: 'this is content'});
+var createPathFromObjectKey = function(key, value) {
+  var o = {};
+  value.path = value.path || key;
+  o[key] = value;
+  return o;
+};
+
+var generateId = function (options) {
+  var opts = _.extend({}, options);
+
+  return opts.id ? opts.id : uniqueId({
+    prefix: opts.prefix || '__id__',
+    append: opts.append || ''
+  });
+};
+
+var generateKey = function(patterns, locals, options) {
+  var key = generateId(options);
+
+  if (options && options.uniqueid && typeof options.uniqueid === 'function') {
+    key = options.uniqueid(patterns, options);
+  }
+
+  var o = {};
+  var value = {value: patterns, locals: locals, options: options};
+  value = omitEmpty(value);
+  o[key] = value;
+
+  template.set(key, value);
+  template.push(value);
+  return o;
+};
+
+
+var parseFn = function(filepath, options) {
+  var opts = _.extend({autodetect: true}, options);
+  if (opts.parseFn) {
+    return opts.parseFn(filepath, options);
+  }
+  return matter.read(filepath, opts);
+};
+
+var readFn = function(filepath, options) {
+  var opts = _.extend({}, options);
+  if (opts.readFn) {
+    return opts.readFn(filepath, options);
+  }
+  return readFn(filepath, opts);
+};
+
+var renameKey = function(filepath, options) {
+  var opts = _.extend({}, options);
+  if (opts.renameKey) {
+    return opts.renameKey(filepath, options);
+  }
+  return filepath;
+};
+
+
+var mapFilesFn = function(patterns, options) {
+  return mapFiles(patterns, _.extend({
+    rename: renameKey,
+    parse: parseFn
+  }, options));
+};
+
+
+var _omit = function (o, keys) {
+  return (o == null) ? {} : _.omit(o, keys);
+};
+
+var _pick = function (o, keys) {
+  return (o == null) ? {} : _.pick(o, keys);
+};
+
+var pickRoot = function(o) {
+  return _pick(o, rootKeys);
+};
+
+var pickLocals = function(o) {
+  return _omit(o, rootKeys);
+};
+
+
+var extendLocals = function(value) {
+  if (value == null) {
+    return {};
+  }
+
+  if (Object.keys(value).length === 0) {
+    return value;
+  }
+
+  var o = pickRoot(value);
+  var loc = pickLocals(value);
+
+  _.merge(loc, o.locals);
+  o.locals = loc;
+  return o;
+};
+
+var omitOptions = function(o) {
+  return _omit(o, ['options']);
+};
+
+var extendOptions = function(o) {
+  if (o == null) {
+    return {};
+  }
+  _.merge(o, o.options);
+  return omitOptions(o);
+};
+
+
+/**
+ * When the first arg is a string:
+ *
+ * ```js
+ * normalize('a/b/c.md', ...);
+ * ```
+ *
+ * @param  {[type]} key
+ * @param  {[type]} value
+ * @return {[type]}
+ */
+
+var normalizeFiles = function (patterns, locals, options) {
+  var files = mapFilesFn(patterns, options);
+
+  if (Object.keys(files).length === 0) {
+    return generateKey(patterns, locals, options);
+  }
+
+  return reduce(files, function (acc, value, key) {
+    if (!isEmpty(locals)) {
+      value.locals = _.extend({}, value.locals, omitOptions(locals));
+    }
+    if (!isEmpty(options)) {
+      value.options = _.extend({}, value.options, options);
+    }
+    acc[key] = value;
+    return acc;
+  }, {});
+};
+
+
+var normalizeString = function (key, value) {
+  var args = [].slice.call(arguments);
+  var obj = _.merge({}, args[2], args[3]);
+  var locals = extendLocals(obj).locals;
+  var o = {};
+
+  // normalize('a/b/c.md', 'this is content');
+  if (typeof value === 'string') {
+    o[key] = _.merge({path: key, content: value}, extendLocals(obj));
+    return o;
+
+  } else if (_.isObject(value) && !Array.isArray(value) && hasAny(value, ['path', 'content'])) {
+    value = extendLocals(value);
+
+    if (value && Object.keys(obj).length > 0) {
+      if (obj.hasOwnProperty('options')) {
+        value.options = extendOptions(obj);
+      } else {
+        value.options = extendOptions(locals);
+      }
+    }
+
+    return createPathFromObjectKey(key, value);
+  } else {
+    return normalizeFiles(key, args[1], args[2]);
+  }
+};
+
+
+var normalizeShallowObject = function (value, locals, options) {
+  value = extendLocals(value);
+  value.locals = _.defaults({}, value.locals, locals);
+  value.options = _.defaults({}, value.options, options);
+  return value;
+};
+
+var normalizeDeepObject = function (obj, locals, options) {
+  return _.transform(obj, function (acc, value, key) {
+    acc[key] = normalizeShallowObject(value, locals, options);
+  });
+};
+
+
+/**
+ * The first arg is an object:
+ *
+ * ```js
+ * normalize({'a/b/c.md', ...});
+ *
+ * // or
+ * normalize({path: 'a/b/c.md', ...});
+ * ```
+ *
+ * @param  {[type]} a
+ * @param  {[type]} b
+ * @return {[type]}
+ */
+
+var normalizeObject = function (obj) {
+  var args = [].slice.call(arguments, 1);
+  var keys = Object.keys(obj);
+
+  var locals1 = pickLocals(args[0]);
+  var locals2 = pickLocals(args[1]);
+  var val;
+
+  if (hasAny(obj, ['path'])) {
+    var opts = args.length === 2 ? locals2 : null;
+    val = normalizeShallowObject(obj, locals1, opts);
+    return createKeyFromPath(val.path, val);
+
+  } else if (hasAnyDeep(obj, rootKeys) || keys.length === 1) {
+    val = createPathFromStringKey(obj);
+    return normalizeDeepObject(val, locals1);
+  }
+};
+
+var normalizeArray = function (patterns, locals, options) {
+  var opts = _.merge({}, locals && locals.options, options);
+  return normalizeFiles(patterns, locals, opts);
+};
+
+
+exports.normalizeFormat = function () {
+  var args = [].slice.call(arguments);
+
+  switch (typeOf(args[0])) {
+  case 'string':
+    return normalizeString.apply(this, args);
+  case 'object':
+    return normalizeObject.apply(this, args);
+  case 'array':
+    return normalizeArray.apply(this, args);
+  default:
+    return args;
+  }
+};
+
+
+exports.normalize = function(o) {
+  o = exports.normalizeFormat.apply(this, arguments);
+  return _.transform(o, function (acc, value, key) {
+    if (Object.keys(value).length === 0) {
+      return acc;
+    }
+
+    value = omitEmpty(value);
+    var opts = value.options || {};
+
+    acc[renameKey(key, opts)] = value;
+  }, {});
+};
+
