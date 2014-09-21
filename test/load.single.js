@@ -77,75 +77,59 @@ describe('single templates.', function () {
       loader.get('a.md').should.have.property('options', {engine: 'hbs'});
     });
 
+
+
+
+
+    it('should load individual templates:', function () {
+      loader.load('foo1.md', 'This is content', {name: 'Jon Schlinkert'});
+      loader.get('foo1.md').should.have.property('content');
+    });
+
+    it('should load individual templates:', function () {
+      loader.load({'bar1.md': {path: 'a/b/c.md', name: 'Jon Schlinkert'}});
+      loader.get('bar1.md').should.have.property('content');
+    });
+
+    it('should load individual templates:', function () {
+      loader.load({'baz.md': {path: 'a/b/c.md', name: 'Jon Schlinkert'}}, {go: true});
+      loader.get('baz.md').should.have.property('content');
+    });
+
+    it('should load individual templates:', function () {
+      loader.load(['test/fixtures/a.txt'], {name: 'Brian Woodward'});
+      loader.get('a.txt').should.have.property('content');
+    });
+
+    it('should load individual templates:', function () {
+      loader.load('test/fixtures/a.md', {foo: 'bar'});
+      loader.get('a.md').should.have.property('content');
+    });
+
+    it('should load individual templates:', function () {
+      loader.load('abc.md', 'This is content.', {name: 'Jon Schlinkert'});
+      loader.get('abc.md').should.have.property('content');
+    });
+
+    it('should load individual templates:', function () {
+      loader.load('test/fixtures/b.md', 'This is content.', {name: 'Jon Schlinkert'});
+      loader.get('b.md').should.have.property('content');
+    });
+
+    it('should load individual templates:', function () {
+      loader.load({'foo/bar.md': {content: 'this is content.', data: {a: 'a'}}});
+      loader.get('foo/bar.md').should.have.property('content');
+    });
+
+    it('should load individual templates:', function () {
+      loader.load({path: 'one/two.md', content: 'this is content.', data: {b: 'b'}});
+      loader.get('two.md').should.have.property('content', 'this is content.');
+      loader.get('two.md').should.have.property('data', {b: 'b'});
+    });
+
+    it.only('should load individual templates:', function () {
+      loader.load({'foo/baz.md': {}}, {blah: 'blah'}); // bad format
+      loader.get('baz.md').should.have.property('content');
+    });
   });
-
-  // it('should load individual templates:', function () {
-  //   loader.load('test/fixtures/three/*.md', {name: 'Brian Woodward'});
-  //   loader.get('baz.md').should.have.property('content');
-  // });
-
-  // it('should load individual templates:', function () {
-  //   loader.load('foo1.md', 'This is content', {name: 'Jon Schlinkert'});
-  //   loader.get('baz.md').should.have.property('content');
-  // });
-
-  // it('should load individual templates:', function () {
-  //   loader.load({'bar1.md': {path: 'a/b/c.md', name: 'Jon Schlinkert'}});
-  //   loader.get('baz.md').should.have.property('content');
-  // });
-
-  // it('should load individual templates:', function () {
-  //   loader.load({'baz.md': {path: 'a/b/c.md', name: 'Jon Schlinkert'}}, {go: true});
-  //   loader.get('baz.md').should.have.property('content');
-  // });
-
-  // it('should load individual templates:', function () {
-  //   loader.load(['test/fixtures/a.txt'], {name: 'Brian Woodward'});
-  //   loader.get('baz.md').should.have.property('content');
-  // });
-
-  // it('should load individual templates:', function () {
-  //   loader.load('test/fixtures/*.md', 'flflflfl', {name: 'Brian Woodward'});
-  //   loader.get('baz.md').should.have.property('content');
-  // });
-
-  // it('should load individual templates:', function () {
-  //   loader.load('layouts/*.txt', {name: 'Brian Woodward'});
-  //   loader.get('baz.md').should.have.property('content');
-  // });
-
-  // it('should load individual templates:', function () {
-  //   loader.load('layouts/*.txt', 'flflflfl', {name: 'Brian Woodward'});
-  //   loader.get('baz.md').should.have.property('content');
-  // });
-
-  // it('should load individual templates:', function () {
-  //   loader.load('layouts/a.md', {foo: 'bar'});
-  //   loader.get('baz.md').should.have.property('content');
-  // });
-
-  // it('should load individual templates:', function () {
-  //   loader.load('abc.md', 'This is content.', {name: 'Jon Schlinkert'});
-  //   loader.get('baz.md').should.have.property('content');
-  // });
-
-  // it('should load individual templates:', function () {
-  //   loader.load('pages/a.md', 'This is content.', {name: 'Jon Schlinkert'});
-  //   loader.get('baz.md').should.have.property('content');
-  // });
-
-  // it('should load individual templates:', function () {
-  //   loader.load({'foo/bar.md': {content: 'this is content.', data: {a: 'a'}}});
-  //   loader.get('baz.md').should.have.property('content');
-  // });
-
-  // it('should load individual templates:', function () {
-  //   loader.load({path: 'one/two.md', content: 'this is content.', data: {b: 'b'}});
-  //   loader.get('baz.md').should.have.property('content');
-  // });
-
-  // it('should load individual templates:', function () {
-  //   loader.load({'foo/baz.md': {}}, {blah: 'blah'}); // bad format
-  //   loader.get('baz.md').should.have.property('content');
-  // });
 });
