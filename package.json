@@ -1,23 +1,23 @@
 {
-  "name": "template-loader-2",
+  "name": "load-templates",
   "description": "Load templates.",
   "version": "0.1.0",
-  "homepage": "https://github.com/jonschlinkert/template-loader-2",
+  "homepage": "https://github.com/jonschlinkert/load-templates",
   "author": {
     "name": "Jon Schlinkert",
     "url": "https://github.com/jonschlinkert"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/jonschlinkert/template-loader-2.git"
+    "url": "git://github.com/jonschlinkert/load-templates.git"
   },
   "bugs": {
-    "url": "https://github.com/jonschlinkert/template-loader-2/issues"
+    "url": "https://github.com/jonschlinkert/load-templates/issues"
   },
   "licenses": [
     {
       "type": "MIT",
-      "url": "https://github.com/jonschlinkert/template-loader-2/blob/master/LICENSE-MIT"
+      "url": "https://github.com/jonschlinkert/load-templates/blob/master/LICENSE-MIT"
     }
   ],
   "main": "index.js",
@@ -41,20 +41,17 @@
     "templates"
   ],
   "dependencies": {
-    "debug": "^2.0.0",
     "deep-pick": "^0.1.0",
-    "globby": "^0.1.1",
     "gray-matter": "^0.5.0",
     "has-any": "^0.1.0",
     "has-any-deep": "^0.2.0",
     "is-empty": "0.0.1",
     "is-plain-object": "^0.1.0",
-    "lodash": "^2.4.1",
     "map-files": "^0.1.2",
     "mixin-deep": "^0.1.0",
     "object-pick": "^0.1.0",
-    "object-reduce": "0.0.2",
     "omit-empty": "^0.2.0",
+    "omit-keys": "^0.1.0",
     "reduce-object": "^0.1.2",
     "uniqueid": "^0.1.0"
   }

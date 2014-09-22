@@ -1,27 +1,216 @@
+/*!
+ * load-templates <https://github.com/jonschlinkert/load-templates>
+ *
+ * Copyright (c) 2014 Jon Schlinkert, contributors.
+ * Licensed under the MIT License
+ */
+
 'use strict';
 
+var deepPick = require('deep-pick');
+var extend = require('mixin-deep');
 var hasAny = require('has-any');
-var mapFiles = require('map-files');
-var reduce = require('reduce-object');
-var matter = require('gray-matter');
 var hasAnyDeep = require('has-any-deep');
-var uniqueId = require('uniqueid');
 var isEmpty = require('is-empty');
 var isObject = require('is-plain-object');
+var mapFiles = require('map-files');
+var matter = require('gray-matter');
 var omitEmpty = require('omit-empty');
+var omit = require('omit-keys');
 var reduce = require('reduce-object');
-var deepPick = require('deep-pick');
-var deepMixin = require('mixin-deep');
-var _ = require('lodash');
+var pick = require('object-pick');
+var uniqueId = require('uniqueid');
 
 
-var rootKeys = exports.rootKeys = ['path', 'content', 'locals', 'data', 'orig', 'options'];
+/**
+ * Root `keys` that might exist on a template object.
+ */
+
+var rootKeys = [
+  'path',
+  'content',
+  'locals',
+  'data',
+  'orig',
+  'options'
+];
 
 
-var typeOf = function typeOf(val) {
+/**
+ * Utility for returning the native `typeof` a value.
+ *
+ * @param  {*} `val`
+ * @return {*}
+ */
+
+function typeOf(val) {
   return {}.toString.call(val).toLowerCase()
     .replace(/\[object ([\S]+)\]/, '$1');
-};
+}
+
+
+/**
+ * Omit `keys` from `object`
+ *
+ * @param  {Object} `object`
+ * @return {Object}
+ */
+
+function baseOmit(o, keys) {
+  return (o == null) ? {} : omit(o, keys);
+}
+
+
+/**
+ * Pick `keys` from `object`
+ *
+ * @param  {Object} `object`
+ * @return {Object}
+ */
+
+function basePick(o, keys) {
+  return (o == null) ? {} : pick(o, keys);
+}
+
+
+/**
+ * Pick `rootKeys` from `object`.
+ *
+ * @param  {Object} `object`
+ * @return {Object}
+ */
+
+function pickRoot(o) {
+  return basePick(o, rootKeys);
+}
+
+
+/**
+ * Pick `locals` from `object`
+ *
+ * @param  {Object} `object`
+ * @return {Object}
+ */
+
+function pickLocals(o) {
+  return baseOmit(o, rootKeys);
+}
+
+
+/**
+ * Omit the `options` property from the given
+ * object.
+ *
+ * @param  {Object} `object`
+ * @return {Object}
+ */
+
+function omitOptions(o) {
+  return baseOmit(o, ['options']);
+}
+
+
+/**
+ * Extend the `locals` property on the given object with
+ * any nested `locals` properties, and any non-`rootKeys`
+ * properties.
+ *
+ * @param  {Object} `value`
+ * @return {Object} Return a new object with locals sifted.
+ */
+
+function siftLocals(value) {
+  if (value == null) {
+    return {};
+  }
+
+  if (Object.keys(value).length === 0) {
+    return value;
+  }
+
+  var o = pickRoot(value);
+  var loc = pickLocals(value);
+
+  extend(loc, o.locals);
+  o.locals = loc;
+  return o;
+}
+
+
+/**
+ * Recursively flatten the specified object to the
+ * root of the given `object`.
+ *
+ * @param  {Object} `object`
+ * @param  {String} `prop`
+ * @return {Object}
+ */
+
+function flattenProp(o, prop) {
+  function flat(obj, key) {
+    var opts = deepPick(obj, key)[key];
+    extend(obj, opts);
+    return baseOmit(obj, key);
+  }
+
+  if (isObject(o)) {
+    if (o.hasOwnProperty(prop)) {
+      return flat(o, prop);
+    } else {
+      return reduce(o, function (acc, value, key) {
+        if (isObject(value)) {
+          acc[key] = flat(value, prop);
+        } else {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+    }
+  }
+}
+
+
+/**
+ * Generate a unique id to be used for caching unidentified
+ * tempalates. (not used currently)
+ *
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+function generateId(options) {
+  var opts = options || {};
+
+  return opts.id ? opts.id : uniqueId({
+    prefix: opts.prefix || '__id__',
+    append: opts.append || ''
+  });
+}
+
+
+/**
+ * Generate the key to be used for caching an unidentified template.
+ * (Not used currently).
+ *
+ * @param  {*} `patterns`
+ * @param  {Object} `locals`
+ * @param  {Object} `opts`
+ * @return {Object}
+ */
+
+function generateKey(patterns, locals, opts) {
+  var key = generateId(opts);
+
+  if (opts && opts.uniqueid && typeof opts.uniqueid === 'function') {
+    key = opts.uniqueid(patterns, opts);
+  }
+
+  var o = {};
+  var value = {value: patterns, locals: locals, options: opts};
+  o[key] = omitEmpty(value);
+
+  return o;
+}
 
 
 /**
@@ -42,209 +231,180 @@ var typeOf = function typeOf(val) {
  * @return {Object}
  */
 
-var createKeyFromPath = function(filepath, value) {
+function createKeyFromPath(filepath, value) {
   var o = {};
   o[filepath] = value;
   return o;
-};
+}
 
-// normalize({'a/b/d.md': {content: 'this is content'}})
-var createPathFromStringKey = function(a) {
-  for (var key in a) {
-    if (a.hasOwnProperty(key)) {
-      a[key].path = a[key].path || key;
+
+/**
+ * Create the `path` property from the string
+ * passed in the first arg. This is only used
+ * when the second arg is a string.
+ *
+ * ```js
+ * normalize('abc', {content: 'this is content'});
+ * //=> normalize('abc', {path: 'abc', content: 'this is content'});
+ * ```
+ *
+ * @param  {Object} a
+ * @return {Object}
+ */
+
+function createPathFromStringKey(o) {
+  for (var key in o) {
+    if (o.hasOwnProperty(key)) {
+      o[key].path = o[key].path || key;
     }
   }
-  return a;
-};
+  return o;
+}
 
-// normalize('a/b/c.md', {content: 'this is content'});
-var createPathFromObjectKey = function(key, value) {
+
+/**
+ * Create the `path` property from a singular object key.
+ *
+ * ```js
+ * normalize({'a/b/d.md': {content: 'this is content'}})
+ * ```
+ *
+ * @param  {String} `key`
+ * @param  {Object} `value`
+ * @return {String}
+ */
+
+function createPathFromObjectKey(key, value) {
   var o = {};
   value.path = value.path || key;
   o[key] = value;
   return o;
-};
-
-var generateId = function (options) {
-  var opts = _.extend({}, options);
-
-  return opts.id ? opts.id : uniqueId({
-    prefix: opts.prefix || '__id__',
-    append: opts.append || ''
-  });
-};
-
-var generateKey = function(patterns, locals, options) {
-  var key = generateId(options);
-
-  if (options && options.uniqueid && typeof options.uniqueid === 'function') {
-    key = options.uniqueid(patterns, options);
-  }
-
-  var o = {};
-  var value = {value: patterns, locals: locals, options: options};
-  o[key] = omitEmpty(value);
-
-  return o;
-};
+}
 
 
-var parseFn = function(filepath, options) {
-  var opts = _.extend({autodetect: true}, options);
+/**
+ * Default function to be used for reading and parsing
+ * any files resolved.
+ *
+ * Pass a custom `parseFn` function on the options to change
+ * how files are parsed.
+ *
+ * @param  {String} `filepath`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+function parseFn(filepath, options) {
+  var opts = extend({autodetect: true}, options);
   if (opts.parseFn) {
     return opts.parseFn(filepath, options);
   }
   return matter.read(filepath, opts);
-};
-
-var readFn = function(filepath, options) {
-  var opts = _.extend({}, options);
-  if (opts.readFn) {
-    return opts.readFn(filepath, options);
-  }
-  return readFn(filepath, opts);
-};
-
-var renameKey = function(filepath, options) {
-  var opts = _.extend({}, options);
-  if (opts.renameKey) {
-    return opts.renameKey(filepath, options);
-  }
-  return filepath;
-};
-
-
-var mapFilesFn = function(patterns, options) {
-  return mapFiles(patterns, _.extend({
-    rename: renameKey,
-    parse: parseFn
-  }, options));
-};
-
-
-var _omit = function (o, keys) {
-  return (o == null) ? {} : _.omit(o, keys);
-};
-
-var _pick = function (o, keys) {
-  return (o == null) ? {} : _.pick(o, keys);
-};
-
-var pickRoot = function(o) {
-  return _pick(o, rootKeys);
-};
-
-var pickLocals = function(o) {
-  return _omit(o, rootKeys);
-};
-
-
-var extendLocals = function(value) {
-  if (value == null) {
-    return {};
-  }
-
-  if (Object.keys(value).length === 0) {
-    return value;
-  }
-
-  var o = pickRoot(value);
-  var loc = pickLocals(value);
-
-  _.merge(loc, o.locals);
-  o.locals = loc;
-  return o;
-};
-
-var omitOptions = function(o) {
-  return _omit(o, ['options']);
-};
-
-var flattenProp = function(o, prop) {
-  function flat(obj, key) {
-    var opts = deepPick(obj, key)[key];
-    deepMixin(obj, opts);
-    return _omit(obj, key);
-  }
-
-  if (isObject(o)) {
-    if (o.hasOwnProperty(prop)) {
-      return flat(o, prop);
-    } else {
-      return reduce(o, function (acc, value, key) {
-        if (isObject(value)) {
-          acc[key] = flat(value, prop);
-        } else {
-          acc[key] = value;
-        }
-        return acc;
-      }, {});
-    }
-  }
-};
-
-
-var mergeEach = function (o, arr) {
-  if (!arr) {
-    return o;
-  }
-
-  arr = Array.isArray(arr) ? arr : [arr];
-
-  return arr.reduce(function (acc, obj) {
-    if (obj && typeOf(obj) === 'object') {
-      return _.merge(acc, obj);
-    } else {
-      return acc;
-    }
-  }, o);
-};
+}
 
 
 /**
- * When the first arg is a string:
+ * Rename the key of a template object.
+ *
+ * Pass a custom `renameKey` function on the options to change
+ * how keys are renamed.
+ *
+ * @param  {String} `key`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+function renameKey(key, options) {
+  var opts = options || {};
+  if (opts.renameKey) {
+    return opts.renameKey(key, options);
+  }
+  return key;
+}
+
+
+/**
+ * Map files that are resolved from glob patterns
+ * or file paths.
+ *
+ *
+ * @param  {String|Array} `patterns`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+function mapFilesFn(patterns, options) {
+  return mapFiles(patterns, extend({
+    rename: renameKey,
+    parse: parseFn
+  }, options));
+}
+
+
+/**
+ * First arg is a file path or glob pattern.
  *
  * ```js
  * normalize('a/b/c.md', ...);
+ * normalize('a/b/*.md', ...);
  * ```
  *
- * @param  {[type]} key
- * @param  {[type]} value
- * @return {[type]}
+ * @param  {String} `key`
+ * @param  {Object} `value`
+ * @return {Object}
  */
 
-var normalizeFiles = function (patterns, locals, options) {
+function normalizeFiles(patterns, locals, options) {
   var files = mapFilesFn(patterns, options);
-  options = _.merge({}, options);
-  locals = _.merge({}, locals);
+  options = extend({}, options);
+  locals = extend({}, locals);
 
   if (Object.keys(files).length === 0) {
     return generateKey(patterns, locals, options);
   }
 
   return reduce(files, function (acc, value, key) {
-    value.options = _.merge({}, value.options, locals.options, options);
-    value.locals = _.merge({}, value.locals, omitOptions(locals));
+    value.options = extend({}, value.options, locals.options, options);
+    value.locals = extend({}, value.locals, omitOptions(locals));
 
     acc[key] = value;
     return acc;
   }, {});
-};
+}
 
-var firstTypeOf = function(type, args) {
-  var len = args.length;
+
+/**
+ * Return the index of the first value in the `array`
+ * with the given native `type`.
+ *
+ * @param  {*} `type`
+ * @param  {Number} `arr`
+ * @return {Number} Index of the first value with a matching `type`.
+ */
+
+function firstTypeOf(type, arr) {
+  var len = arr.length;
   var val = null;
 
   for (var i = 0; i < len; i++) {
-    if (typeOf(args[i]) === type) {
+    if (typeOf(arr[i]) === type) {
       return i;
     }
-  };
+  }
   return val;
-};
+}
 
-var siftProps = function siftProps(value, locals, options) {
+
+/**
+ * Figure out what is _intended_ to be `options` versus `locals`.
+ *
+ * @param  {Object} `value`
+ * @param  {Object} `locals`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+function siftProps(value, locals, options) {
   var args = [].slice.call(arguments);
   var first = firstTypeOf('object', args);
   var diff = args.length - first;
@@ -273,18 +433,55 @@ var siftProps = function siftProps(value, locals, options) {
   }
 
   if (locs != null) {
-    deepMixin(opts, locs.options);
-    o.locals = _.omit(locs.locals || locs, ['options']);
+    extend(opts, locs.options);
+    o.locals = omit(locs.locals || locs, ['options']);
   }
 
   if (opts != null) {
     o.options = opts.options || opts;
   }
   return o;
-};
+}
 
 
-var normalizeString = function (key, value, locals, options) {
+/**
+ * First value is a string, second value is a string or
+ * an object.
+ *
+ *   - first arg can be a file-path
+ *   - first arg can be a non-file-path string
+ *   - first arg can be a glob pattern
+ *   - second arg can a string
+ *   - when the second arg is a string, the first arg cannot be a file path
+ *   - the second can be an object
+ *   - when the second arg is an object, it may _be_ locals
+ *   - when the second arg is an object, it may _have_ an `options` property
+ *   - the second can be an object
+ *   - in this pattern, when a third arg exists, it _must be_ the options object.
+ *   - when a third arg exists, the second arg may still have an options property
+ *   - when a third arg exists, `options` and `locals.options` are merged.
+ *
+ * **Examples:**
+ *
+ * ```js
+ * template.normalize('a/b/c.md');
+ * template.normalize('a/b/c.md', 'this is content');
+ * template.normalize('a/b/c.md', {content: 'this is content'});
+ * template.normalize('a/b/c.md', {path: 'a/b/c.md'});
+ * template.normalize('a/b/c.md', {path: 'a/b/c.md', content: 'this is content'});
+ * template.normalize('a/b/c.md', {path: 'a/b/c.md'}, {a: 'b'});
+ * template.normalize('a/b/c.md', {path: 'a/b/c.md'}, {a: 'b'}, {c: 'd'});
+ * template.normalize('a/b/c.md', {path: 'a/b/c.md'}, {a: 'b', options: {c: 'd'}});
+ * template.normalize('a/b/c.md', {path: 'a/b/c.md', locals: {a: 'b'}, options: {c: 'd'}});
+ * ```
+ *
+ * @param  {Object} `value` Always an object.
+ * @param  {Object} `locals` Always an object.
+ * @param  {Object} `options` Always an object.
+ * @return {Object} Returns a normalized object.
+ */
+
+function normalizeString(key, value, locals, options) {
   var args = [].slice.call(arguments, 1);
   var props = siftProps.apply(siftProps, args);
   var opts = options || props.options;
@@ -302,31 +499,49 @@ var normalizeString = function (key, value, locals, options) {
       && !Array.isArray(value)
       && hasAny(value, ['path', 'content'])) {
 
-    value = extendLocals(value);
+    value = siftLocals(value);
     value.options = opts;
 
     return createPathFromObjectKey(key, value);
   } else {
     return normalizeFiles(key, value, locals, options);
   }
-};
-
-
-var normalizeShallowObject = function (value, locals, options) {
-  value = extendLocals(value);
-  value.locals = _.defaults({}, value.locals, locals);
-  value.options = _.defaults({}, value.options, options);
-  return value;
-};
+}
 
 
 /**
- * This pattern indicates that either the following
+ * Normalize objects that have `rootKeys` directly on
+ * the root of the object.
+ *
+ * **Example**
+ *
+ * ```js
+ * {path: 'a/b/c.md', content: 'this is content.'}
+ * ```
+ *
+ * @param  {Object} `value` Always an object.
+ * @param  {Object} `locals` Always an object.
+ * @param  {Object} `options` Always an object.
+ * @return {Object} Returns a normalized object.
+ */
+
+function normalizeShallowObject(value, locals, options) {
+  var o = siftLocals(value);
+
+  // Give template locals preference over method locals.
+  o.locals = extend({}, locals, o.locals);
+  o.options = extend({}, options, o.options);
+  return o;
+}
+
+
+/**
+ * Normalize nested templates that have the following pattern:
  *
  * ```js
  * => {'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.'}}
  * ```
- * or multiple templates
+ * or:
  *
  * ```js
  * { 'a/b/a.md': {path: 'a/b/a.md', content: 'this is content.'},
@@ -335,15 +550,17 @@ var normalizeShallowObject = function (value, locals, options) {
  *```
  */
 
-var normalizeDeepObject = function (obj, locals, options) {
-  return _.transform(obj, function (acc, value, key) {
+function normalizeDeepObject(obj, locals, options) {
+  return reduce(obj, function (acc, value, key) {
     acc[key] = normalizeShallowObject(value, locals, options);
-  });
-};
+    return acc;
+  }, {});
+}
 
 
 /**
- * The first arg is an object:
+ * When the first arg is an object, all arguments
+ * should be objects.
  *
  * ```js
  * normalize({'a/b/c.md', ...});
@@ -352,43 +569,59 @@ var normalizeDeepObject = function (obj, locals, options) {
  * normalize({path: 'a/b/c.md', ...});
  * ```
  *
- * @param  {[type]} a
- * @param  {[type]} b
- * @return {[type]}
+ * @param  {Object} `object` Template object
+ * @param  {Object} `locals` Possibly locals, with `options` property
+ * @return {Object} `options` Possibly options
  */
 
-var normalizeObject = function (obj) {
-  var args = [].slice.call(arguments, 1);
-  var keys = Object.keys(obj);
+function normalizeObject(o) {
+  var args = [].slice.call(arguments);
+  var keys = Object.keys(o);
 
-  var locals1 = pickLocals(args[0]);
-  var locals2 = pickLocals(args[1]);
+  var locals1 = pickLocals(args[1]);
+  var locals2 = pickLocals(args[2]);
   var val;
 
-  var opts = args.length === 2 ? locals2 : null;
+  var opts = args.length === 3 ? locals2 : {};
 
-  //=> {path: 'a/b/c.md', content: 'this is content.'}
-  if (hasAny(obj, ['path', 'content'])) {
-    val = normalizeShallowObject(obj, locals1, opts);
+  if (hasAny(o, ['path', 'content'])) {
+    val = normalizeShallowObject(o, locals1, opts);
     return createKeyFromPath(val.path, val);
-
-  } else if (hasAnyDeep(obj, ['path', 'content'])) {
-    val = createPathFromStringKey(obj);
-    return normalizeDeepObject(val, locals1, opts);
-
-  } else {
-    throw new Error('Invalid template object. Must have a `path` or `content` property.');
   }
-};
+
+  if (hasAnyDeep(o, ['path', 'content'])) {
+    val = normalizeDeepObject(o, locals1, opts);
+    return createPathFromStringKey(val);
+  }
+
+  throw new Error('Invalid template object. Must have a `path` or `content` property.');
+}
 
 
-var normalizeArray = function (patterns, locals, options) {
-  var opts = _.merge({}, locals && locals.options, options);
+/**
+ * When the first arg is an array, assume it's glob
+ * patterns or file paths.
+ *
+ * ```js
+ * normalize(['a/b/c.md', 'a/b/*.md']);
+ * ```
+ *
+ * @param  {Object} `patterns` Template object
+ * @param  {Object} `locals` Possibly locals, with `options` property
+ * @return {Object} `options` Possibly options
+ */
+
+function normalizeArray(patterns, locals, options) {
+  var opts = extend({}, locals && locals.options, options);
   return normalizeFiles(patterns, locals, opts);
-};
+}
 
 
-exports.normalizeFormat = function () {
+/**
+ * Normalize base template formats.
+ */
+
+function normalizeFormat() {
   var args = [].slice.call(arguments);
 
   switch (typeOf(args[0])) {
@@ -401,12 +634,22 @@ exports.normalizeFormat = function () {
   default:
     return args;
   }
-};
+}
 
 
-exports.normalize = function(o) {
-  o = exports.normalizeFormat.apply(this, arguments);
-  return _.transform(o, function (acc, value, key) {
+/**
+ * Final normalization step to remove empty values and rename
+ * the object key. By now the template should be _mostly_
+ * normalized.
+ *
+ * @param  {Object} `object` Template object
+ * @return {Object}
+ */
+
+module.exports = function(o) {
+  o = normalizeFormat.apply(this, arguments);
+
+  return reduce(o, function (acc, value, key) {
     if (Object.keys(value).length === 0) {
       return acc;
     }
@@ -415,6 +658,6 @@ exports.normalize = function(o) {
     var opts = value.options || {};
 
     acc[renameKey(key, opts)] = value;
+    return acc;
   }, {});
 };
-

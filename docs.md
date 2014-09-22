@@ -1,15 +1,93 @@
-## Methods
+## Valid formats
 
-* `.sort`: Using [sort-object]
+**string key / string value**
+
+```js
+normalize('blog', 'This is my blog.');
+
+// with locals
+normalize('blog', 'This is my blog.', { title: 'Blog' });
+
+// with options
+normalize('blog', 'This is my blog.', { title: 'Blog' }, {
+  renameKey: function(filepath) {
+    return path.basename(filepath);
+  }
+});
+```
+
+**string key / object value**
+
+```js
+normalize('blog', { content: 'This is my blog.' });
+
+// with locals (any of the following is valid)
+normalize('blog', { content: 'This is my blog.' }, { title: 'Blog' });
+normalize('blog', { content: 'This is my blog.', title: 'Blog' });
+normalize('blog', { content: 'This is my blog.', locals: { title: 'Blog' }});
+
+// with options (any of the following is valid)
+normalize('blog', { content: 'This is my blog.' }, { title: 'Blog' }, {
+  renameKey: function(filepath) {
+    return path.basename(filepath);
+  }
+});
+normalize('blog', { content: 'This is my blog.' }, { title: 'Blog' }, { foo: true });
+normalize('blog', { content: 'This is my blog.' }, { title: 'Blog', options: { foo: true }});
+
+normalize('blog', { content: 'This is my blog.', locals: { title: 'Blog' }}, { foo: true });
+normalize('blog', { content: 'This is my blog.', locals: { title: 'Blog' }, options: { foo: true }});
+
+normalize('blog', { content: 'This is my blog.', title: 'Blog' }, { foo: true });
+normalize('blog', { content: 'This is my blog.', title: 'Blog', options: { foo: true }});
+```
+
+**File paths**
+
+```js
+normalize('a/b.md');
+
+// with locals
+normalize('a/b.md', { title: 'Blog' });
+
+// with options
+normalize('a/b.md', { title: 'Blog' }, {
+  renameKey: function(filepath) {
+    return path.basename(filepath);
+  }
+});
+
+// pass options on the locals object
+normalize('a/b.md', {title: 'Blog', options: {foo: true}});
+```
+
+**Glob patterns**
+
+```js
+normalize('a/*.md');
+normalize(['a/*.md', 'b/*.md']);
+
+// with locals
+normalize(['a/*.md', 'b/*.md'], {title: 'Blog'});
+
+// with options
+normalize(['a/*.md', 'b/*.md'], {title: 'Blog'}, {
+  renameKey: function(filepath) {
+    return path.basename(filepath);
+  }
+});
+```
+
+## API
+
 * `.normalize`
 * `.rename`
 * `.parse`
 
 
 
-### Singular
+### Examples
 
-**Accepted formats:**
 
 ```js
 // object
@@ -41,7 +119,6 @@ normalize.file('a/b/c.md', 'this is content', {a: 'b'}, {foo: 'bar'});
 normalize.file('a', {content: 'this is content', layout: 'b'})
 ```
 
-### Plural
 
 ```js
 // string (second param will be ignored if it's a string)
