@@ -14,26 +14,6 @@ var _ = require('lodash');
 
 var rootKeys = exports.rootKeys = ['path', 'content', 'locals', 'data', 'orig', 'options'];
 
-function Templates(cache) {
-  this.cache = cache || {};
-  this.array = [];
-}
-
-Templates.prototype.set = function(key, value) {
-  this.cache[key] = value;
-  return this;
-};
-
-Templates.prototype.push = function(value) {
-  this.array.push(value)
-};
-
-Templates.prototype.get = function(key) {
-  return this.cache[key];
-};
-
-var template = exports.template = new Templates();
-
 
 var typeOf = function typeOf(val) {
   return {}.toString.call(val).toLowerCase()
@@ -101,11 +81,8 @@ var generateKey = function(patterns, locals, options) {
 
   var o = {};
   var value = {value: patterns, locals: locals, options: options};
-  value = omitEmpty(value);
-  o[key] = value;
+  o[key] = omitEmpty(value);
 
-  template.set(key, value);
-  template.push(value);
   return o;
 };
 
@@ -231,6 +208,9 @@ var normalizeString = function (key, value) {
   // normalize('a/b/c.md', 'this is content');
   if (typeof value === 'string') {
     o[key] = _.merge({path: key, content: value}, extendLocals(obj));
+    if (args[3] != null) {
+      o[key].options = _.extend({}, args[3], obj.options);
+    }
     return o;
 
   } else if (_.isObject(value) && !Array.isArray(value) && hasAny(value, ['path', 'content'])) {
@@ -259,6 +239,8 @@ var normalizeShallowObject = function (value, locals, options) {
 };
 
 var normalizeDeepObject = function (obj, locals, options) {
+    // console.log(obj)
+
   return _.transform(obj, function (acc, value, key) {
     acc[key] = normalizeShallowObject(value, locals, options);
   });
@@ -293,11 +275,15 @@ var normalizeObject = function (obj) {
     val = normalizeShallowObject(obj, locals1, opts);
     return createKeyFromPath(val.path, val);
 
-  } else if (hasAnyDeep(obj, rootKeys) || keys.length === 1) {
+  } else if (hasAnyDeep(obj, ['path', 'content']) && keys.length === 1) {
     val = createPathFromStringKey(obj);
     return normalizeDeepObject(val, locals1);
+
+  } else {
+    throw new Error('Invalid template object. Must have a `path` or `content` property.');
   }
 };
+
 
 var normalizeArray = function (patterns, locals, options) {
   var opts = _.merge({}, locals && locals.options, options);

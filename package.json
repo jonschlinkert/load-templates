@@ -44,7 +44,7 @@
     "globby": "^0.1.1",
     "gray-matter": "^0.5.0",
     "has-any": "^0.1.0",
-    "has-any-deep": "^0.1.0",
+    "has-any-deep": "^0.2.0",
     "is-empty": "0.0.1",
     "lodash": "^2.4.1",
     "map-files": "^0.1.2",
