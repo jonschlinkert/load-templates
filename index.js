@@ -7,8 +7,11 @@ var matter = require('gray-matter');
 var hasAnyDeep = require('has-any-deep');
 var uniqueId = require('uniqueid');
 var isEmpty = require('is-empty');
+var isObject = require('is-plain-object');
 var omitEmpty = require('omit-empty');
 var reduce = require('reduce-object');
+var deepPick = require('deep-pick');
+var deepMixin = require('mixin-deep');
 var _ = require('lodash');
 
 
@@ -158,12 +161,44 @@ var omitOptions = function(o) {
   return _omit(o, ['options']);
 };
 
-var extendOptions = function(o) {
-  if (o == null) {
-    return {};
+var flattenProp = function(o, prop) {
+  function flat(obj, key) {
+    var opts = deepPick(obj, key)[key];
+    deepMixin(obj, opts);
+    return _omit(obj, key);
   }
-  _.merge(o, o.options);
-  return omitOptions(o);
+
+  if (isObject(o)) {
+    if (o.hasOwnProperty(prop)) {
+      return flat(o, prop);
+    } else {
+      return reduce(o, function (acc, value, key) {
+        if (isObject(value)) {
+          acc[key] = flat(value, prop);
+        } else {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+    }
+  }
+};
+
+
+var mergeEach = function (o, arr) {
+  if (!arr) {
+    return o;
+  }
+
+  arr = Array.isArray(arr) ? arr : [arr];
+
+  return arr.reduce(function (acc, obj) {
+    if (obj && typeOf(obj) === 'object') {
+      return _.merge(acc, obj);
+    } else {
+      return acc;
+    }
+  }, o);
 };
 
 
@@ -181,52 +216,98 @@ var extendOptions = function(o) {
 
 var normalizeFiles = function (patterns, locals, options) {
   var files = mapFilesFn(patterns, options);
+  options = _.merge({}, options);
+  locals = _.merge({}, locals);
 
   if (Object.keys(files).length === 0) {
     return generateKey(patterns, locals, options);
   }
 
   return reduce(files, function (acc, value, key) {
-    if (!isEmpty(locals)) {
-      value.locals = _.extend({}, value.locals, omitOptions(locals));
-    }
-    if (!isEmpty(options)) {
-      value.options = _.extend({}, value.options, options);
-    }
+    value.options = _.merge({}, value.options, locals.options, options);
+    value.locals = _.merge({}, value.locals, omitOptions(locals));
+
     acc[key] = value;
     return acc;
   }, {});
 };
 
+var firstTypeOf = function(type, args) {
+  var len = args.length;
+  var val = null;
 
-var normalizeString = function (key, value) {
+  for (var i = 0; i < len; i++) {
+    if (typeOf(args[i]) === type) {
+      return i;
+    }
+  };
+  return val;
+};
+
+var siftProps = function siftProps(value, locals, options) {
   var args = [].slice.call(arguments);
-  var obj = _.merge({}, args[2], args[3]);
-  var locals = extendLocals(obj).locals;
+  var first = firstTypeOf('object', args);
+  var diff = args.length - first;
+
+  var locs = {};
+  var opts = {};
   var o = {};
 
-  // normalize('a/b/c.md', 'this is content');
-  if (typeof value === 'string') {
-    o[key] = _.merge({path: key, content: value}, extendLocals(obj));
-    if (args[3] != null) {
-      o[key].options = _.extend({}, args[3], obj.options);
+  locs = args[first] || {};
+  opts = args[first + 1] || {};
+
+  if (diff <= 1 && !!args[first]) {
+    opts = args[first].options;
+  }
+
+  var val;
+  if (hasAny(locs, ['path', 'content'])) {
+    val = deepPick(locs, 'locals')['locals'];
+    if (!isEmpty(val)) {
+      locs = val;
     }
+  }
+
+  if (hasAny(opts, ['path', 'content'])) {
+    opts = deepPick(opts, 'options')['options'];
+  }
+
+  if (locs != null) {
+    deepMixin(opts, locs.options);
+    o.locals = _.omit(locs.locals || locs, ['options']);
+  }
+
+  if (opts != null) {
+    o.options = opts.options || opts;
+  }
+  return o;
+};
+
+
+var normalizeString = function (key, value, locals, options) {
+  var args = [].slice.call(arguments, 1);
+  var props = siftProps.apply(siftProps, args);
+  var opts = options || props.options;
+  var locs = props.locals;
+  var o = {};
+
+  // Second value === 'string'
+  if (typeof value === 'string') {
+    opts = flattenProp(opts, 'options');
+    o[key] = {path: key, content: value, locals: locs, options: opts};
     return o;
 
-  } else if (_.isObject(value) && !Array.isArray(value) && hasAny(value, ['path', 'content'])) {
-    value = extendLocals(value);
+  // Second value === 'object'
+  } else if (isObject(value)
+      && !Array.isArray(value)
+      && hasAny(value, ['path', 'content'])) {
 
-    if (value && Object.keys(obj).length > 0) {
-      if (obj.hasOwnProperty('options')) {
-        value.options = extendOptions(obj);
-      } else {
-        value.options = extendOptions(locals);
-      }
-    }
+    value = extendLocals(value);
+    value.options = opts;
 
     return createPathFromObjectKey(key, value);
   } else {
-    return normalizeFiles(key, args[1], args[2]);
+    return normalizeFiles(key, value, locals, options);
   }
 };
 
@@ -238,9 +319,23 @@ var normalizeShallowObject = function (value, locals, options) {
   return value;
 };
 
-var normalizeDeepObject = function (obj, locals, options) {
-    // console.log(obj)
 
+/**
+ * This pattern indicates that either the following
+ *
+ * ```js
+ * => {'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.'}}
+ * ```
+ * or multiple templates
+ *
+ * ```js
+ * { 'a/b/a.md': {path: 'a/b/a.md', content: 'this is content.'},
+ *   'a/b/b.md': {path: 'a/b/b.md', content: 'this is content.'},
+ *   'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.'} }
+ *```
+ */
+
+var normalizeDeepObject = function (obj, locals, options) {
   return _.transform(obj, function (acc, value, key) {
     acc[key] = normalizeShallowObject(value, locals, options);
   });
@@ -270,14 +365,16 @@ var normalizeObject = function (obj) {
   var locals2 = pickLocals(args[1]);
   var val;
 
-  if (hasAny(obj, ['path'])) {
-    var opts = args.length === 2 ? locals2 : null;
+  var opts = args.length === 2 ? locals2 : null;
+
+  //=> {path: 'a/b/c.md', content: 'this is content.'}
+  if (hasAny(obj, ['path', 'content'])) {
     val = normalizeShallowObject(obj, locals1, opts);
     return createKeyFromPath(val.path, val);
 
-  } else if (hasAnyDeep(obj, ['path', 'content']) && keys.length === 1) {
+  } else if (hasAnyDeep(obj, ['path', 'content'])) {
     val = createPathFromStringKey(obj);
-    return normalizeDeepObject(val, locals1);
+    return normalizeDeepObject(val, locals1, opts);
 
   } else {
     throw new Error('Invalid template object. Must have a `path` or `content` property.');
