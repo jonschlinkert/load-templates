@@ -29,7 +29,6 @@
   },
   "devDependencies": {
     "chalk": "^0.5.1",
-    "debug": "^2.0.0",
     "mocha": "*",
     "should": "^4.0.4",
     "verb": ">= 0.2.6",
