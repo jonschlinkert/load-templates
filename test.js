@@ -9,7 +9,7 @@
 
 var chalk = require('chalk');
 var should = require('should');
-var normalize = require('./');
+var normalize = require('./')();
 
 
 describe(chalk.magenta('[ string | object ]') + ' pattern:', function () {
@@ -526,13 +526,13 @@ describe('normalize templates', function () {
       var files = normalize({ 'a/b/c.md': { content: 'this is content.', a: 'b'}});
       files.should.eql(expected);
     });
-
     it('should detect the key from an object with `path` and `content` properties', function () {
       var files = normalize('a/b/c.md', {content: 'this is content.', locals: {a: 'b'}});
       files.should.eql(expected);
     });
 
     it('should detect the key from an object with `path` and `content` properties', function () {
+ console.log(chalk.bold('marker'))
       var files = normalize('a/b/c.md', {content: 'this is content.', a: 'b'});
       files.should.eql(expected);
     });

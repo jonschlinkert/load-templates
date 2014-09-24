@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "chalk": "^0.5.1",
+    "debug": "^2.0.0",
     "mocha": "*",
     "should": "^4.0.4",
     "verb": ">= 0.2.6",
@@ -41,6 +42,7 @@
     "templates"
   ],
   "dependencies": {
+    "array-slice": "^0.2.0",
     "deep-pick": "^0.1.0",
     "gray-matter": "^0.5.0",
     "has-any": "^0.1.0",

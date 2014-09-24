@@ -6,7 +6,7 @@ var extend = require('mixin-deep');
 var normalize = require('./');
 
 
-function firstTypeOf(type, arr) {
+function firstIndexOfType(type, arr) {
   var len = arr.length;
   var val = null;
 
@@ -32,23 +32,22 @@ Engine.prototype.defaultTemplates = function (options) {
 };
 
 
+Engine.prototype.normalize = function () {
+  var opts = extend({}, this.options);
+  return normalize(opts).apply(null, arguments);
+};
+
+
 Engine.prototype.create = function (type, plural, options) {
   this.cache[plural] = this.cache[plural] || {};
 
 
   Engine.prototype[type] = function (key, value, locals, options) {
-    var first = firstTypeOf('object', arguments);
-    var len = arguments.length >>> 0;
-    console.log('first', first);
-    console.log('len', len);
-
     this[plural](key, value, locals, options);
   };
 
   Engine.prototype[plural] = function (key, value, locals, options) {
-    locals = extend({}, locals, {options: this.options});
-
-    var files = normalize(key, value, locals, options);
+    var files = this.normalize(key, value, locals, options);
     extend(this.cache[plural], files);
     return this;
   };

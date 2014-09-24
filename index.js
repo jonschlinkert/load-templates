@@ -7,6 +7,8 @@
 
 'use strict';
 
+var chalk = require('chalk');
+var debug = require('debug')('loader');
 var deepPick = require('deep-pick');
 var extend = require('mixin-deep');
 var hasAny = require('has-any');
@@ -15,11 +17,23 @@ var isEmpty = require('is-empty');
 var isObject = require('is-plain-object');
 var mapFiles = require('map-files');
 var matter = require('gray-matter');
-var omitEmpty = require('omit-empty');
 var omit = require('omit-keys');
-var reduce = require('reduce-object');
+var omitEmpty = require('omit-empty');
 var pick = require('object-pick');
+var reduce = require('reduce-object');
+var slice = require('array-slice');
 var uniqueId = require('uniqueid');
+
+
+var logger = function (msg, opts) {
+  var args = [].slice.call(arguments);
+  args[0] = chalk.magenta(args[0]);
+
+  if (opts && opts.debug) {
+    return console.log.apply(null, args);
+  }
+  return;
+};
 
 
 /**
@@ -32,7 +46,8 @@ var rootKeys = [
   'locals',
   'data',
   'orig',
-  'options'
+  'options',
+  'value'
 ];
 
 
@@ -46,6 +61,56 @@ var rootKeys = [
 function typeOf(val) {
   return {}.toString.call(val).toLowerCase()
     .replace(/\[object ([\S]+)\]/, '$1');
+}
+
+function isString(val) {
+  return typeOf(val) === 'string';
+}
+
+
+/**
+ * Return the index of the first value in the `array`
+ * with the given native `type`.
+ *
+ * @param  {*} `type`
+ * @param  {Number} `arr`
+ * @return {Number} Index of the first value with a matching `type`.
+ */
+
+function firstIndexOfType(type, arr) {
+  var len = arr.length >>> 0;
+  var val = null;
+
+  for (var i = 0; i < len; i++) {
+    if (typeOf(arr[i]) === type) {
+      val = i;
+      break;
+    }
+  }
+  return val;
+}
+
+
+/**
+ * Return the first value in the `array` with the
+ * given native `type`.
+ *
+ * @param  {*} `type`
+ * @param  {Number} `arr`
+ * @return {Number} Index of the first value with a matching `type`.
+ */
+
+function firstOfType(type, arr) {
+  var len = arr.length >>> 0;
+  var val = null;
+
+  for (var i = 0; i < len; i++) {
+    if (typeOf(arr[i]) === type) {
+      val = arr[i];
+      break;
+    }
+  }
+  return val;
 }
 
 
@@ -120,6 +185,8 @@ function omitOptions(o) {
  */
 
 function siftLocals(value) {
+  debug('siftLocals: %j', arguments);
+
   if (value == null) {
     return {};
   }
@@ -128,11 +195,61 @@ function siftLocals(value) {
     return value;
   }
 
-  var o = pickRoot(value);
   var loc = pickLocals(value);
+  var o = pickRoot(value);
 
   extend(loc, o.locals);
   o.locals = loc;
+  return o;
+}
+
+
+/**
+ * Figure out what is _intended_ to be `options` versus `locals`.
+ *
+ * @param  {Object} `value`
+ * @param  {Object} `locals`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+function siftProps(value, locals, options) {
+  var args = [].slice.call(arguments);
+  var first = firstIndexOfType('object', args);
+  var diff = (args.length - first) >>> 0;
+
+  var locs = {};
+  var opts = {};
+  var o = {};
+
+  locs = args[first] || {};
+  opts = args[first + 1] || {};
+
+  if (diff <= 1 && !!args[first]) {
+    opts = args[first].options;
+  }
+
+  var val;
+  if (hasAny(locs, ['path', 'content'])) {
+    val = deepPick(locs, 'locals')['locals'];
+    if (!isEmpty(val)) {
+      locs = val;
+    }
+  }
+
+  if (hasAny(opts, ['path', 'content'])) {
+    opts = deepPick(opts, 'options')['options'];
+  }
+
+  if (locs != null) {
+    extend(opts, locs.options);
+    o.locals = omit(locs.locals || locs, ['options']);
+  }
+
+  if (opts != null) {
+    o.options = opts.options || opts;
+  }
+
   return o;
 }
 
@@ -146,13 +263,13 @@ function siftLocals(value) {
  * @return {Object}
  */
 
-function flattenProp(o, prop) {
-  function flat(obj, key) {
-    var opts = deepPick(obj, key)[key];
-    extend(obj, opts);
-    return baseOmit(obj, key);
-  }
+function flat(obj, key) {
+  var opts = deepPick(obj, key)[key];
+  extend(obj, opts);
+  return baseOmit(obj, key);
+}
 
+function flattenProp(o, prop) {
   if (isObject(o)) {
     if (o.hasOwnProperty(prop)) {
       return flat(o, prop);
@@ -166,6 +283,8 @@ function flattenProp(o, prop) {
         return acc;
       }, {});
     }
+  } else {
+    return o;
   }
 }
 
@@ -206,7 +325,7 @@ function generateKey(patterns, locals, opts) {
   }
 
   var o = {};
-  var value = {value: patterns, locals: locals, options: opts};
+  var value = {value: patterns, locals: locals, options: opts.options};
   o[key] = omitEmpty(value);
 
   return o;
@@ -295,10 +414,13 @@ function createPathFromObjectKey(key, value) {
  */
 
 function parseFn(filepath, options) {
-  var opts = extend({autodetect: true}, options);
+  var defaults = {autodetect: true, enc: 'utf8'};
+  var opts = extend(defaults, options);
+
   if (opts.parseFn) {
     return opts.parseFn(filepath, options);
   }
+
   return matter.read(filepath, opts);
 }
 
@@ -324,8 +446,7 @@ function renameKey(key, options) {
 
 
 /**
- * Map files that are resolved from glob patterns
- * or file paths.
+ * Map files resolved from glob patterns or file paths.
  *
  *
  * @param  {String|Array} `patterns`
@@ -356,6 +477,7 @@ function mapFilesFn(patterns, options) {
 
 function normalizeFiles(patterns, locals, options) {
   var files = mapFilesFn(patterns, options);
+
   options = extend({}, options);
   locals = extend({}, locals);
 
@@ -370,77 +492,6 @@ function normalizeFiles(patterns, locals, options) {
     acc[key] = value;
     return acc;
   }, {});
-}
-
-
-/**
- * Return the index of the first value in the `array`
- * with the given native `type`.
- *
- * @param  {*} `type`
- * @param  {Number} `arr`
- * @return {Number} Index of the first value with a matching `type`.
- */
-
-function firstTypeOf(type, arr) {
-  var len = arr.length;
-  var val = null;
-
-  for (var i = 0; i < len; i++) {
-    if (typeOf(arr[i]) === type) {
-      return i;
-    }
-  }
-  return val;
-}
-
-
-/**
- * Figure out what is _intended_ to be `options` versus `locals`.
- *
- * @param  {Object} `value`
- * @param  {Object} `locals`
- * @param  {Object} `options`
- * @return {Object}
- */
-
-function siftProps(value, locals, options) {
-  var args = [].slice.call(arguments);
-  var first = firstTypeOf('object', args);
-  var diff = args.length - first;
-
-  var locs = {};
-  var opts = {};
-  var o = {};
-
-  locs = args[first] || {};
-  opts = args[first + 1] || {};
-
-  if (diff <= 1 && !!args[first]) {
-    opts = args[first].options;
-  }
-
-  var val;
-  if (hasAny(locs, ['path', 'content'])) {
-    val = deepPick(locs, 'locals')['locals'];
-    if (!isEmpty(val)) {
-      locs = val;
-    }
-  }
-
-  if (hasAny(opts, ['path', 'content'])) {
-    opts = deepPick(opts, 'options')['options'];
-  }
-
-  if (locs != null) {
-    extend(opts, locs.options);
-    o.locals = omit(locs.locals || locs, ['options']);
-  }
-
-  if (opts != null) {
-    o.options = opts.options || opts;
-  }
-  return o;
 }
 
 
@@ -481,31 +532,76 @@ function siftProps(value, locals, options) {
  * @return {Object} Returns a normalized object.
  */
 
+function argsOfType(type, args) {
+  var first = firstIndexOfType(type, args);
+  if (first == null) {
+    return null;
+  }
+
+  var arr = slice(args, first, args.length);
+
+  return arr.filter(function (item) {
+    return typeOf(item) === type;
+  });
+}
+
 function normalizeString(key, value, locals, options) {
+  var args = [].slice.call(arguments);
+  var len = args.length;
+
+  var objects = argsOfType('object', arguments);
+  var strings = argsOfType('string', arguments);
+
   var args = [].slice.call(arguments, 1);
   var props = siftProps.apply(siftProps, args);
   var opts = options || props.options;
   var locs = props.locals;
   var o = {};
 
+
+  if (strings && strings.length === 1) {
+    // console.log(chalk.cyan('one: %j'), strings);
+
+  }
+
+  if (strings && strings.length === 2) {
+    // console.log(chalk.cyan.bold('two: %j'), strings);
+    opts = flattenProp(opts, 'options');
+    o[key] = {path: key, content: value, locals: locs, options: opts};
+    return o;
+  }
+
+  if (objects == null) {
+    // console.log(chalk.gray('zero objects'));
+
+  }
+
+  if (objects && objects.length === 1) {
+    // console.log(chalk.magenta('one: %j'), objects);
+
+  }
+
+  if (objects && objects.length === 2) {
+    // console.log(chalk.magenta.bold('two: %j'), objects);
+  }
+
+
   // Second value === 'string'
-  if (typeof value === 'string') {
+  if (isString(value)) {
     opts = flattenProp(opts, 'options');
     o[key] = {path: key, content: value, locals: locs, options: opts};
     return o;
 
-  // Second value === 'object'
-  } else if (isObject(value)
-      && !Array.isArray(value)
-      && hasAny(value, ['path', 'content'])) {
+  }
 
+  // Second value === 'object'
+  if (isObject(value) && hasAny(value, ['path', 'content'])) {
     value = siftLocals(value);
     value.options = opts;
-
     return createPathFromObjectKey(key, value);
-  } else {
-    return normalizeFiles(key, value, locals, options);
   }
+
+  return normalizeFiles(key, value, locals, options);
 }
 
 
@@ -576,7 +672,8 @@ function normalizeDeepObject(obj, locals, options) {
 
 function normalizeObject(o) {
   var args = [].slice.call(arguments);
-  var keys = Object.keys(o);
+
+  logger(argsOfType('object', args))
 
   var locals1 = pickLocals(args[1]);
   var locals2 = pickLocals(args[2]);
@@ -594,7 +691,8 @@ function normalizeObject(o) {
     return createPathFromStringKey(val);
   }
 
-  throw new Error('Invalid template object. Must have a `path` or `content` property.');
+  throw new Error('Invalid template object. Must' +
+    'have a `path` or `content` property.');
 }
 
 
@@ -626,11 +724,11 @@ function normalizeFormat() {
 
   switch (typeOf(args[0])) {
   case 'string':
-    return normalizeString.apply(this, args);
+    return normalizeString.apply(null, args);
   case 'object':
-    return normalizeObject.apply(this, args);
+    return normalizeObject.apply(null, args);
   case 'array':
-    return normalizeArray.apply(this, args);
+    return normalizeArray.apply(null, args);
   default:
     return args;
   }
@@ -646,18 +744,20 @@ function normalizeFormat() {
  * @return {Object}
  */
 
-module.exports = function(o) {
-  o = normalizeFormat.apply(this, arguments);
+module.exports = function (options) {
+  return function(o) {
+    o = normalizeFormat.apply(null, arguments);
 
-  return reduce(o, function (acc, value, key) {
-    if (Object.keys(value).length === 0) {
+    return reduce(o, function (acc, value, key) {
+      if (Object.keys(value).length === 0) {
+        return acc;
+      }
+
+      value = omitEmpty(value);
+      var opts = extend({}, options, value.options);
+
+      acc[renameKey(key, opts)] = value;
       return acc;
-    }
-
-    value = omitEmpty(value);
-    var opts = value.options || {};
-
-    acc[renameKey(key, opts)] = value;
-    return acc;
-  }, {});
+    }, {});
+  };
 };
