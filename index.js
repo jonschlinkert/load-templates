@@ -199,9 +199,12 @@ function normalizeFiles(patterns, locals, options) {
   }
 
   return reduce(files, function (acc, value, key) {
-    value.options = extend({}, value.options, locals.options, options);
-    value.locals = extend({}, value.locals, utils.omitOptions(locals));
+    var locs = utils.pickLocals(locals);
+    var opts = utils.pickOptions(locals);
+    extend(opts, options);
 
+    value.options = utils.flattenOptions(opts);
+    value.locals = utils.flattenLocals(locs);
     acc[key] = value;
     return acc;
   }, {});
