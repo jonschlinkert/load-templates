@@ -20,21 +20,6 @@ var utils = require('./lib/utils');
 
 
 /**
- * Pick `locals` from `object`
- *
- * @param  {Object} `object`
- * @return {Object}
- */
-
-function pickLocals(o) {
-  var locals = utils.baseOmit(o, rootKeys);
-  console.log('locals:', locals)
-  console.log('pick:', utils.pickLocals(o))
-  return locals;
-}
-
-
-/**
  * Extend the `locals` property on the given object with
  * any nested `locals` properties, and any non-`rootKeys`
  * properties.
@@ -52,11 +37,10 @@ function siftLocals(value) {
     return value;
   }
 
-  var loc = pickLocals(value);
   var o = utils.pickRoot(value);
 
-  extend(loc, o.locals);
-  o.locals = loc;
+  var loc = utils.pickLocals(value);
+  o.locals = utils.flattenLocals(loc);
   return o;
 }
 
@@ -386,8 +370,8 @@ function normalizeDeepObject(obj, locals, options) {
 
 function normalizeObject(o) {
   var args = [].slice.call(arguments);
-  var locals1 = pickLocals(args[1]);
-  var locals2 = pickLocals(args[2]);
+  var locals1 = utils.pickLocals(args[1]);
+  var locals2 = utils.pickLocals(args[2]);
   var val;
 
   var opts = args.length === 3 ? locals2 : {};
