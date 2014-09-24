@@ -789,62 +789,62 @@ describe('glob patterns', function () {
 });
 
 describe('random', function () {
-  // it('should normalize a template with a non-filepath key.', function () {
-  //   var files = normalize('foo', {content: 'this is content.'});
-  //   files.should.eql({'foo': {path: 'foo', content: 'this is content.'}});
-  // });
+  it('should normalize a template with a non-filepath key.', function () {
+    var files = normalize('foo', {content: 'this is content.'});
+    files.should.eql({'foo': {path: 'foo', content: 'this is content.'}});
+  });
 
-  // it('should normalize a template with a non-filepath key.', function () {
-  //   var files = normalize('foo', {content: 'this is content.', a: 'b'}, {fez: 'foo'});
-  //   files.should.eql({'foo': {path: 'foo', content: 'this is content.', locals: {a: 'b'}, options: {fez: 'foo'}}});
-  // });
+  it('should normalize a template with a non-filepath key.', function () {
+    var files = normalize('foo', {content: 'this is content.', a: 'b'}, {fez: 'foo'});
+    files.should.eql({'foo': {path: 'foo', content: 'this is content.', locals: {a: 'b'}, options: {fez: 'foo'}}});
+  });
 
-  // it('should normalize a template with a non-filepath key.', function () {
-  //   var files = normalize({'foo': {content: 'this is content.', a: 'b'}}, {fez: 'foo'});
-  //   files.should.eql({'foo': {path: 'foo', content: 'this is content.', locals: {a: 'b', fez: 'foo'}}});
-  // });
+  it('should normalize a template with a non-filepath key.', function () {
+    var files = normalize({'foo': {content: 'this is content.', a: 'b'}}, {fez: 'foo'});
+    files.should.eql({'foo': {path: 'foo', content: 'this is content.', locals: {a: 'b', fez: 'foo'}}});
+  });
 
-  // it('random stuff', function () {
-  //   var files = normalize({path: 'a/b/c.md', content: 'this is content.', a: 'b', options: {y: 'z'}}, {c: 'd'}, {e: 'f'});
-  //   files.should.eql({'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b', c: 'd'}, options: {y: 'z', e: 'f'}}});
-  // });
+  it('random stuff', function () {
+    var files = normalize({path: 'a/b/c.md', content: 'this is content.', a: 'b', options: {y: 'z'}}, {c: 'd'}, {e: 'f'});
+    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b', c: 'd'}, options: {y: 'z', e: 'f'}}});
+  });
 
-  // it('random stuff', function () {
-  //   var files = normalize({path: 'a/b/c.md', content: 'this is foo'}, {foo: 'bar'});
-  //   files.should.eql({'a/b/c.md': {path: 'a/b/c.md', content: 'this is foo', locals: {foo: 'bar'}}});
-  // });
+  it('random stuff', function () {
+    var files = normalize({path: 'a/b/c.md', content: 'this is foo'}, {foo: 'bar'});
+    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', content: 'this is foo', locals: {foo: 'bar'}}});
+  });
 
-  it.only('random stuff', function () {
+  it('random stuff', function () {
     var files = normalize('a/b/c.md', {content: 'this is baz', a: 'b', options: {foo: 'bar'}}, {bar: 'baz'});
     files.should.eql({'a/b/c.md': {path: 'a/b/c.md', content: 'this is baz', locals: {a: 'b'}, options: {bar: 'baz', foo: 'bar'}}});
   });
 
-  // it('random stuff', function () {
-  //   var files = normalize('a/b/c.md', {content: 'this is baz', orig: 'this is baz', a: 'b', options: {foo: 'bar'}}, {bar: 'baz'});
-  //   files.should.eql({'a/b/c.md': {path: 'a/b/c.md', content: 'this is baz', orig: 'this is baz', locals: {a: 'b'}, options: {bar: 'baz', foo: 'bar'}}});
-  // });
+  it('random stuff', function () {
+    var files = normalize('a/b/c.md', {content: 'this is baz', orig: 'this is baz', a: 'b', options: {foo: 'bar'}}, {bar: 'baz'});
+    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', content: 'this is baz', orig: 'this is baz', locals: {a: 'b'}, options: {bar: 'baz', foo: 'bar'}}});
+  });
 
-  // it('multiple templates:', function () {
-  //   var files = normalize({
-  //     'a/b/a.md': {content: 'this is content'},
-  //     'a/b/b.md': {content: 'this is content'},
-  //     'a/b/c.md': {content: 'this is content'}
-  //   }, {a: 'b'}, {c: true});
+  it('multiple templates:', function () {
+    var files = normalize({
+      'a/b/a.md': {content: 'this is content'},
+      'a/b/b.md': {content: 'this is content'},
+      'a/b/c.md': {content: 'this is content'}
+    }, {a: 'b'}, {c: true});
 
-  //   files['a/b/a.md'].should.have.property('path', 'a/b/a.md');
-  //   files['a/b/b.md'].should.have.property('path', 'a/b/b.md');
-  //   files['a/b/c.md'].should.have.property('path', 'a/b/c.md');
+    files['a/b/a.md'].should.have.property('path', 'a/b/a.md');
+    files['a/b/b.md'].should.have.property('path', 'a/b/b.md');
+    files['a/b/c.md'].should.have.property('path', 'a/b/c.md');
 
-  //   files['a/b/a.md'].should.have.property('content', 'this is content');
-  //   files['a/b/b.md'].should.have.property('content', 'this is content');
-  //   files['a/b/c.md'].should.have.property('content', 'this is content');
+    files['a/b/a.md'].should.have.property('content', 'this is content');
+    files['a/b/b.md'].should.have.property('content', 'this is content');
+    files['a/b/c.md'].should.have.property('content', 'this is content');
 
-  //   files['a/b/a.md'].should.have.property('locals', { a: 'b' });
-  //   files['a/b/b.md'].should.have.property('locals', { a: 'b' });
-  //   files['a/b/c.md'].should.have.property('locals', { a: 'b' });
+    files['a/b/a.md'].should.have.property('locals', { a: 'b' });
+    files['a/b/b.md'].should.have.property('locals', { a: 'b' });
+    files['a/b/c.md'].should.have.property('locals', { a: 'b' });
 
-  //   files['a/b/a.md'].should.have.property('options', { c: true } );
-  //   files['a/b/b.md'].should.have.property('options', { c: true } );
-  //   files['a/b/c.md'].should.have.property('options', { c: true } );
-  // });
+    files['a/b/a.md'].should.have.property('options', { c: true } );
+    files['a/b/b.md'].should.have.property('options', { c: true } );
+    files['a/b/c.md'].should.have.property('options', { c: true } );
+  });
 });

@@ -7,147 +7,16 @@
 
 'use strict';
 
-var chalk = require('chalk');
-var debug = require('debug')('loader');
-var deepPick = require('deep-pick');
 var extend = require('mixin-deep');
 var hasAny = require('has-any');
 var hasAnyDeep = require('has-any-deep');
-var isEmpty = require('is-empty');
 var isObject = require('is-plain-object');
 var mapFiles = require('map-files');
 var matter = require('gray-matter');
-var omit = require('omit-keys');
 var omitEmpty = require('omit-empty');
-var pick = require('object-pick');
 var reduce = require('reduce-object');
-var slice = require('array-slice');
-var uniqueId = require('uniqueid');
-
-
-var logger = function (msg, opts) {
-  var args = [].slice.call(arguments);
-  args[0] = chalk.magenta(args[0]);
-
-  if (opts && opts.debug) {
-    return console.log.apply(null, args);
-  }
-  return;
-};
-
-
-/**
- * Root `keys` that might exist on a template object.
- */
-
-var rootKeys = [
-  'path',
-  'content',
-  'locals',
-  'data',
-  'orig',
-  'options',
-  'value'
-];
-
-
-/**
- * Utility for returning the native `typeof` a value.
- *
- * @param  {*} `val`
- * @return {*}
- */
-
-function typeOf(val) {
-  return {}.toString.call(val).toLowerCase()
-    .replace(/\[object ([\S]+)\]/, '$1');
-}
-
-function isString(val) {
-  return typeOf(val) === 'string';
-}
-
-
-/**
- * Return the index of the first value in the `array`
- * with the given native `type`.
- *
- * @param  {*} `type`
- * @param  {Number} `arr`
- * @return {Number} Index of the first value with a matching `type`.
- */
-
-function firstIndexOfType(type, arr) {
-  var len = arr.length >>> 0;
-  var val = null;
-
-  for (var i = 0; i < len; i++) {
-    if (typeOf(arr[i]) === type) {
-      val = i;
-      break;
-    }
-  }
-  return val;
-}
-
-
-/**
- * Return the first value in the `array` with the
- * given native `type`.
- *
- * @param  {*} `type`
- * @param  {Number} `arr`
- * @return {Number} Index of the first value with a matching `type`.
- */
-
-function firstOfType(type, arr) {
-  var len = arr.length >>> 0;
-  var val = null;
-
-  for (var i = 0; i < len; i++) {
-    if (typeOf(arr[i]) === type) {
-      val = arr[i];
-      break;
-    }
-  }
-  return val;
-}
-
-
-/**
- * Omit `keys` from `object`
- *
- * @param  {Object} `object`
- * @return {Object}
- */
-
-function baseOmit(o, keys) {
-  return (o == null) ? {} : omit(o, keys);
-}
-
-
-/**
- * Pick `keys` from `object`
- *
- * @param  {Object} `object`
- * @return {Object}
- */
-
-function basePick(o, keys) {
-  return (o == null) ? {} : pick(o, keys);
-}
-
-
-/**
- * Pick `rootKeys` from `object`.
- *
- * @param  {Object} `object`
- * @return {Object}
- */
-
-function pickRoot(o) {
-  return basePick(o, rootKeys);
-}
+var rootKeys = require('./lib/root-keys');
+var utils = require('./lib/utils');
 
 
 /**
@@ -158,20 +27,10 @@ function pickRoot(o) {
  */
 
 function pickLocals(o) {
-  return baseOmit(o, rootKeys);
-}
-
-
-/**
- * Omit the `options` property from the given
- * object.
- *
- * @param  {Object} `object`
- * @return {Object}
- */
-
-function omitOptions(o) {
-  return baseOmit(o, ['options']);
+  var locals = utils.baseOmit(o, rootKeys);
+  console.log('locals:', locals)
+  console.log('pick:', utils.pickLocals(o))
+  return locals;
 }
 
 
@@ -185,8 +44,6 @@ function omitOptions(o) {
  */
 
 function siftLocals(value) {
-  debug('siftLocals: %j', arguments);
-
   if (value == null) {
     return {};
   }
@@ -196,138 +53,10 @@ function siftLocals(value) {
   }
 
   var loc = pickLocals(value);
-  var o = pickRoot(value);
+  var o = utils.pickRoot(value);
 
   extend(loc, o.locals);
   o.locals = loc;
-  return o;
-}
-
-
-/**
- * Figure out what is _intended_ to be `options` versus `locals`.
- *
- * @param  {Object} `value`
- * @param  {Object} `locals`
- * @param  {Object} `options`
- * @return {Object}
- */
-
-function siftProps(value, locals, options) {
-  var args = [].slice.call(arguments);
-  var first = firstIndexOfType('object', args);
-  var diff = (args.length - first) >>> 0;
-
-  var locs = {};
-  var opts = {};
-  var o = {};
-
-  locs = args[first] || {};
-  opts = args[first + 1] || {};
-
-  if (diff <= 1 && !!args[first]) {
-    opts = args[first].options;
-  }
-
-  var val;
-  if (hasAny(locs, ['path', 'content'])) {
-    val = deepPick(locs, 'locals')['locals'];
-    if (!isEmpty(val)) {
-      locs = val;
-    }
-  }
-
-  if (hasAny(opts, ['path', 'content'])) {
-    opts = deepPick(opts, 'options')['options'];
-  }
-
-  if (locs != null) {
-    extend(opts, locs.options);
-    o.locals = omit(locs.locals || locs, ['options']);
-  }
-
-  if (opts != null) {
-    o.options = opts.options || opts;
-  }
-
-  return o;
-}
-
-
-/**
- * Recursively flatten the specified object to the
- * root of the given `object`.
- *
- * @param  {Object} `object`
- * @param  {String} `prop`
- * @return {Object}
- */
-
-function flat(obj, key) {
-  var opts = deepPick(obj, key)[key];
-  extend(obj, opts);
-  return baseOmit(obj, key);
-}
-
-function flattenProp(o, prop) {
-  if (isObject(o)) {
-    if (o.hasOwnProperty(prop)) {
-      return flat(o, prop);
-    } else {
-      return reduce(o, function (acc, value, key) {
-        if (isObject(value)) {
-          acc[key] = flat(value, prop);
-        } else {
-          acc[key] = value;
-        }
-        return acc;
-      }, {});
-    }
-  } else {
-    return o;
-  }
-}
-
-
-/**
- * Generate a unique id to be used for caching unidentified
- * tempalates. (not used currently)
- *
- * @param  {Object} `options`
- * @return {Object}
- */
-
-function generateId(options) {
-  var opts = options || {};
-
-  return opts.id ? opts.id : uniqueId({
-    prefix: opts.prefix || '__id__',
-    append: opts.append || ''
-  });
-}
-
-
-/**
- * Generate the key to be used for caching an unidentified template.
- * (Not used currently).
- *
- * @param  {*} `patterns`
- * @param  {Object} `locals`
- * @param  {Object} `opts`
- * @return {Object}
- */
-
-function generateKey(patterns, locals, opts) {
-  var key = generateId(opts);
-
-  if (opts && opts.uniqueid && typeof opts.uniqueid === 'function') {
-    key = opts.uniqueid(patterns, opts);
-  }
-
-  var o = {};
-  var value = {value: patterns, locals: locals, options: opts.options};
-  o[key] = omitEmpty(value);
-
   return o;
 }
 
@@ -482,12 +211,12 @@ function normalizeFiles(patterns, locals, options) {
   locals = extend({}, locals);
 
   if (Object.keys(files).length === 0) {
-    return generateKey(patterns, locals, options);
+    return utils.generateKey(patterns, locals, options);
   }
 
   return reduce(files, function (acc, value, key) {
     value.options = extend({}, value.options, locals.options, options);
-    value.locals = extend({}, value.locals, omitOptions(locals));
+    value.locals = extend({}, value.locals, utils.omitOptions(locals));
 
     acc[key] = value;
     return acc;
@@ -532,28 +261,15 @@ function normalizeFiles(patterns, locals, options) {
  * @return {Object} Returns a normalized object.
  */
 
-function argsOfType(type, args) {
-  var first = firstIndexOfType(type, args);
-  if (first == null) {
-    return null;
-  }
-
-  var arr = slice(args, first, args.length);
-
-  return arr.filter(function (item) {
-    return typeOf(item) === type;
-  });
-}
-
 function normalizeString(key, value, locals, options) {
   var args = [].slice.call(arguments);
   var len = args.length;
 
-  var objects = argsOfType('object', arguments);
-  var strings = argsOfType('string', arguments);
+  var objects = utils.argsOfType('object', arguments);
+  var strings = utils.argsOfType('string', arguments);
 
   var args = [].slice.call(arguments, 1);
-  var props = siftProps.apply(siftProps, args);
+  var props = utils.siftProps.apply(utils.siftProps, args);
   var opts = options || props.options;
   var locs = props.locals;
   var o = {};
@@ -566,7 +282,7 @@ function normalizeString(key, value, locals, options) {
 
   if (strings && strings.length === 2) {
     // console.log(chalk.cyan.bold('two: %j'), strings);
-    opts = flattenProp(opts, 'options');
+    opts = utils.flattenProp(opts, 'options');
     o[key] = {path: key, content: value, locals: locs, options: opts};
     return o;
   }
@@ -587,8 +303,8 @@ function normalizeString(key, value, locals, options) {
 
 
   // Second value === 'string'
-  if (isString(value)) {
-    opts = flattenProp(opts, 'options');
+  if (utils.isString(value)) {
+    opts = utils.flattenProp(opts, 'options');
     o[key] = {path: key, content: value, locals: locs, options: opts};
     return o;
 
@@ -623,8 +339,6 @@ function normalizeString(key, value, locals, options) {
 
 function normalizeShallowObject(value, locals, options) {
   var o = siftLocals(value);
-
-  // Give template locals preference over method locals.
   o.locals = extend({}, locals, o.locals);
   o.options = extend({}, options, o.options);
   return o;
@@ -672,9 +386,6 @@ function normalizeDeepObject(obj, locals, options) {
 
 function normalizeObject(o) {
   var args = [].slice.call(arguments);
-
-  logger(argsOfType('object', args))
-
   var locals1 = pickLocals(args[1]);
   var locals2 = pickLocals(args[2]);
   var val;
@@ -722,7 +433,7 @@ function normalizeArray(patterns, locals, options) {
 function normalizeFormat() {
   var args = [].slice.call(arguments);
 
-  switch (typeOf(args[0])) {
+  switch (utils.typeOf(args[0])) {
   case 'string':
     return normalizeString.apply(null, args);
   case 'object':
