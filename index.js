@@ -7,6 +7,7 @@
 
 'use strict';
 
+var chalk = require('chalk');
 var extend = require('mixin-deep');
 var hasAny = require('has-any');
 var hasAnyDeep = require('has-any-deep');
@@ -15,34 +16,7 @@ var mapFiles = require('map-files');
 var matter = require('gray-matter');
 var omitEmpty = require('omit-empty');
 var reduce = require('reduce-object');
-var rootKeys = require('./lib/root-keys');
 var utils = require('./lib/utils');
-
-
-/**
- * Extend the `locals` property on the given object with
- * any nested `locals` properties, and any non-`rootKeys`
- * properties.
- *
- * @param  {Object} `value`
- * @return {Object} Return a new object with locals sifted.
- */
-
-function siftLocals(value) {
-  if (value == null) {
-    return {};
-  }
-
-  if (Object.keys(value).length === 0) {
-    return value;
-  }
-
-  var o = utils.pickRoot(value);
-
-  var loc = utils.pickLocals(value);
-  o.locals = utils.flattenLocals(loc);
-  return o;
-}
 
 
 /**
@@ -249,62 +223,60 @@ function normalizeFiles(patterns, locals, options) {
  */
 
 function normalizeString(key, value, locals, options) {
-  var args = [].slice.call(arguments);
-  var len = args.length;
+  var args = [].slice.call(arguments, 1);
 
   var objects = utils.argsOfType('object', arguments);
   var strings = utils.argsOfType('string', arguments);
 
-  var args = [].slice.call(arguments, 1);
   var props = utils.siftProps.apply(utils.siftProps, args);
   var opts = options || props.options;
   var locs = props.locals;
+  var val = {};
+
   var o = {};
+  o[key] = {};
 
 
-  if (strings && strings.length === 1) {
-    // console.log(chalk.cyan('one: %j'), strings);
+  if (strings) {
+    if (strings.length === 1) {
+      o[key].path = key;
+      o[key].content = value;
+      o[key].locals = locs;
+      o[key].options = opts;
+    }
 
-  }
-
-  if (strings && strings.length === 2) {
-    // console.log(chalk.cyan.bold('two: %j'), strings);
-    opts = utils.flattenProp(opts, 'options');
-    o[key] = {path: key, content: value, locals: locs, options: opts};
-    return o;
+    if (strings.length === 2) {
+      o[key] = {path: key, content: value, locals: locs, options: opts};
+    }
   }
 
   if (objects == null) {
     // console.log(chalk.gray('zero objects'));
+  } else {
+    if (objects.length === 1) {
+      // console.log(chalk.magenta('one: %j'), objects);
+    }
 
+    if (objects.length === 2) {
+      // console.log(chalk.magenta.bold('two: %j'), objects);
+    }
+
+    if (isObject(value) && hasAny(value, ['path', 'content'])) {
+      value = utils.siftLocals(value);
+      value.options = opts;
+      return createPathFromObjectKey(key, value);
+    }
   }
 
-  if (objects && objects.length === 1) {
-    // console.log(chalk.magenta('one: %j'), objects);
-
-  }
-
-  if (objects && objects.length === 2) {
-    // console.log(chalk.magenta.bold('two: %j'), objects);
-  }
-
+  opts = utils.flattenOptions(opts);
 
   // Second value === 'string'
   if (utils.isString(value)) {
-    opts = utils.flattenProp(opts, 'options');
-    o[key] = {path: key, content: value, locals: locs, options: opts};
+    o[key].options = opts;
     return o;
-
   }
 
-  // Second value === 'object'
-  if (isObject(value) && hasAny(value, ['path', 'content'])) {
-    value = siftLocals(value);
-    value.options = opts;
-    return createPathFromObjectKey(key, value);
-  }
-
-  return normalizeFiles(key, value, locals, options);
+  return normalizeFiles(key, value, locals, opts);
 }
 
 
@@ -325,9 +297,9 @@ function normalizeString(key, value, locals, options) {
  */
 
 function normalizeShallowObject(value, locals, options) {
-  var o = siftLocals(value);
-  o.locals = extend({}, locals, o.locals);
+  var o = utils.siftLocals(value);
   o.options = extend({}, options, o.options);
+  o.locals = extend({}, locals, o.locals);
   return o;
 }
 
@@ -452,8 +424,9 @@ module.exports = function (options) {
       }
 
       value = omitEmpty(value);
-      var opts = extend({}, options, value.options);
+      var opts = {};
 
+      extend(opts, options, value.options);
       acc[renameKey(key, opts)] = value;
       return acc;
     }, {});
