@@ -6,24 +6,11 @@ var extend = require('mixin-deep');
 var normalize = require('./');
 
 
-function firstIndexOfType(type, arr) {
-  var len = arr.length;
-  var val = null;
-
-  for (var i = 0; i < len; i++) {
-    if (typeof arr[i] === type) {
-      return i;
-    }
-  }
-  return val;
-}
-
 function Engine(options) {
   this.options = options || {};
   this.cache = {};
   this.defaultTemplates(this.options);
 }
-
 
 Engine.prototype.defaultTemplates = function (options) {
   this.create('partial', 'partials', options);
@@ -31,16 +18,13 @@ Engine.prototype.defaultTemplates = function (options) {
   this.create('page', 'pages', options);
 };
 
-
 Engine.prototype.normalize = function () {
   var opts = extend({}, this.options);
   return normalize(opts).apply(null, arguments);
 };
 
-
 Engine.prototype.create = function (type, plural, options) {
   this.cache[plural] = this.cache[plural] || {};
-
 
   Engine.prototype[type] = function (key, value, locals, options) {
     this[plural](key, value, locals, options);

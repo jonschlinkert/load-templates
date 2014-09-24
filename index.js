@@ -7,16 +7,37 @@
 
 'use strict';
 
+var fs = require('fs');
 var chalk = require('chalk');
 var extend = require('mixin-deep');
 var hasAny = require('has-any');
 var hasAnyDeep = require('has-any-deep');
 var isObject = require('is-plain-object');
+var omit = require('omit-keys');
 var mapFiles = require('map-files');
 var matter = require('gray-matter');
 var omitEmpty = require('omit-empty');
 var reduce = require('reduce-object');
 var utils = require('./lib/utils');
+
+
+/**
+ * Set heuristics to speed up normalization decisions.
+ *
+ * @type {Array}
+ */
+
+var heuristics = [
+  '_mappedFile',
+  '_normalizedFile',
+  '_s1',
+  '_s1s2',
+  '_s1s2o1',
+  '_s1s2o1o2',
+  '_o1',
+  '_o1o2',
+  '_o1o2o3'
+];
 
 
 /**
@@ -89,8 +110,7 @@ function createPathFromObjectKey(key, value) {
 
 
 /**
- * Default function to be used for reading and parsing
- * any files resolved.
+ * Default function for reading any files resolved.
  *
  * Pass a custom `parseFn` function on the options to change
  * how files are parsed.
@@ -100,15 +120,60 @@ function createPathFromObjectKey(key, value) {
  * @return {Object}
  */
 
-function parseFn(filepath, options) {
-  var defaults = {autodetect: true, enc: 'utf8'};
-  var opts = extend(defaults, options);
+function readFn(filepath, options) {
+  var opts = extend({ enc: 'utf8' }, options);
 
-  if (opts.parseFn) {
-    return opts.parseFn(filepath, options);
+  if (opts.readFn) {
+    return opts.readFn(filepath, options);
   }
 
-  return matter.read(filepath, opts);
+  return fs.readFileSync(filepath, opts.enc);
+}
+
+
+/**
+ * Default function for parsing any files resolved.
+ *
+ * Pass a custom `parseFn` function on the options to change
+ * how files are parsed.
+ *
+ * @param  {String} `filepath`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+function parseFn(str, options) {
+  var opts = extend({ autodetect: true }, options);
+
+  if (opts.parseFn) {
+    return opts.parseFn(str, options);
+  }
+
+  return matter(str, opts);
+}
+
+
+/**
+ * [parseContent description]
+ *
+ * @param  {[type]} value
+ * @param  {[type]} options
+ * @return {[type]}
+ */
+
+function parseContent(obj, options) {
+  var o = extend({}, obj);
+
+  if (o.data != null) {
+    return o;
+  }
+
+  if (utils.isString(o.content)) {
+    var parsed = parseFn(o.content, options);
+    o = extend({}, o, parsed);
+  }
+
+  return o;
 }
 
 
@@ -142,10 +207,21 @@ function renameKey(key, options) {
  */
 
 function mapFilesFn(patterns, options) {
-  return mapFiles(patterns, extend({
+  var files = mapFiles(patterns, extend({
     rename: renameKey,
-    parse: parseFn
+    parse: readFn
   }, options));
+
+  return reduce(files, function (acc, value, key) {
+    if (utils.isString(value)) {
+      value = parseFn(value);
+      value.path = key;
+    }
+
+    value._mappedFile = true;
+    acc[key] = value;
+    return acc;
+  }, {})
 }
 
 
@@ -168,7 +244,7 @@ function normalizeFiles(patterns, locals, options) {
   options = extend({}, options);
   locals = extend({}, locals);
 
-  if (Object.keys(files).length === 0) {
+  if (files && Object.keys(files).length === 0) {
     return utils.generateKey(patterns, locals, options);
   }
 
@@ -179,6 +255,8 @@ function normalizeFiles(patterns, locals, options) {
 
     value.options = utils.flattenOptions(opts);
     value.locals = utils.flattenLocals(locs);
+
+    value._normalizedFile = true;
     acc[key] = value;
     return acc;
   }, {});
@@ -236,13 +314,15 @@ function normalizeString(key, value, locals, options) {
   var o = {};
   o[key] = {};
 
-
   if (strings) {
     if (strings.length === 1) {
+      var content = (value && value.content) || value;
+
       o[key].path = key;
-      o[key].content = value;
+      o[key].content = content;
       o[key].locals = locs;
       o[key].options = opts;
+      o[key]._s1 = true;
     }
 
     if (strings.length === 2) {
@@ -386,6 +466,25 @@ function normalizeArray(patterns, locals, options) {
 
 
 /**
+ * When the first arg is an array, assume it's glob
+ * patterns or file paths.
+ *
+ * ```js
+ * normalize(['a/b/c.md', 'a/b/*.md']);
+ * ```
+ *
+ * @param  {Object} `patterns` Template object
+ * @param  {Object} `locals` Possibly locals, with `options` property
+ * @return {Object} `options` Possibly options
+ */
+
+function normalizeFn(fn, options) {
+  var file = fn.call(null, options);
+  return file;
+}
+
+
+/**
  * Normalize base template formats.
  */
 
@@ -399,6 +498,8 @@ function normalizeFormat() {
     return normalizeObject.apply(null, args);
   case 'array':
     return normalizeArray.apply(null, args);
+  case 'function':
+    return normalizeFn.apply(null, args);
   default:
     return args;
   }
@@ -423,10 +524,18 @@ module.exports = function (options) {
         return acc;
       }
 
-      value = omitEmpty(value);
       var opts = {};
+      var str = (value && value.content);
 
       extend(opts, options, value.options);
+      value = parseContent(value, options);
+      if (value.data != null && value.content === str) {
+        value = omit(value, 'orig');
+      }
+
+      value = omit(value, heuristics);
+      value = omitEmpty(value);
+
       acc[renameKey(key, opts)] = value;
       return acc;
     }, {});

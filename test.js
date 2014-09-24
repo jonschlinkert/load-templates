@@ -7,7 +7,9 @@
 
 'use strict';
 
+var fs = require('fs');
 var chalk = require('chalk');
+var matter = require('gray-matter');
 var should = require('should');
 var normalize = require('./')();
 var utils = require('./lib/utils');
@@ -107,6 +109,20 @@ describe('utils:', function () {
         var root = utils.omitRoot({a: 'b', locals: {c: 'd'}, content: 'This is content.'});
         root.should.eql({a: 'b'});
       });
+    });
+  });
+});
+
+describe(chalk.magenta('[ function | object ]') + ' pattern:', function () {
+  describe(chalk.bold('valid filepath:'), function () {
+    it.only('should detect when the string is a filepath:', function () {
+      var files = normalize(function(options) {
+        var file = matter.read('fixtures/a.md');
+        var o = {};
+        o[file.path] = file;
+        return o;
+      });
+      files['fixtures/a.md'].should.have.property('path', 'fixtures/a.md');
     });
   });
 });
@@ -783,7 +799,9 @@ describe('glob patterns', function () {
     };
 
     it('should read a glob of files and return an object of templates.', function () {
-      normalize('fixtures/*.txt', {a: 'b'}, {foo: true}).should.eql(expected);
+      var actual = normalize('fixtures/*.txt', {a: 'b'}, {foo: true});
+      console.log(actual);
+      actual.should.eql(expected);
     });
   });
 });
@@ -820,8 +838,8 @@ describe('random', function () {
   });
 
   it('random stuff', function () {
-    var files = normalize('a/b/c.md', {content: 'this is baz', orig: 'this is baz', a: 'b', options: {foo: 'bar'}}, {bar: 'baz'});
-    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', content: 'this is baz', orig: 'this is baz', locals: {a: 'b'}, options: {bar: 'baz', foo: 'bar'}}});
+    var files = normalize('a/b/c.md', {content: 'this is baz', a: 'b', options: {foo: 'bar'}}, {bar: 'baz'});
+    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', content: 'this is baz', locals: {a: 'b'}, options: {bar: 'baz', foo: 'bar'}}});
   });
 
   it('multiple templates:', function () {
