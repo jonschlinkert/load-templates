@@ -8,6 +8,7 @@
 'use strict';
 
 var fs = require('fs');
+var path = require('path');
 var chalk = require('chalk');
 var extend = require('mixin-deep');
 var hasAny = require('has-any');
@@ -30,10 +31,14 @@ var utils = require('./lib/utils');
 var heuristics = [
   '_mappedFile',
   '_normalizedFile',
+  '_parsed',
   '_s1',
   '_s1s2',
   '_s1s2o1',
   '_s1s2o1o2',
+  '_s1o1',
+  '_s1o1o2',
+  '_s1o1o2o3',
   '_o1',
   '_o1o2',
   '_o1o2o3'
@@ -173,6 +178,7 @@ function parseContent(obj, options) {
     o = extend({}, o, parsed);
   }
 
+  o._parsed = true;
   return o;
 }
 
@@ -218,6 +224,7 @@ function mapFilesFn(patterns, options) {
       value.path = key;
     }
 
+    value._parsed = true;
     value._mappedFile = true;
     acc[key] = value;
     return acc;
@@ -240,23 +247,31 @@ function mapFilesFn(patterns, options) {
 
 function normalizeFiles(patterns, locals, options) {
   var files = mapFilesFn(patterns, options);
+  var locs = {};
+  var opts = {};
 
-  options = extend({}, options);
-  locals = extend({}, locals);
+  if (locals && utils.isObject(locals)) {
+    locs = utils.pickLocals(locals);
+    opts = utils.pickOptions(locals);
+  }
+
+  if (options && utils.isObject(options)) {
+    opts = extend({}, opts, options);
+  }
 
   if (files && Object.keys(files).length === 0) {
-    return utils.generateKey(patterns, locals, options);
+    return null;
+    // return utils.generateKey(patterns, locs, opts);
   }
 
   return reduce(files, function (acc, value, key) {
-    var locs = utils.pickLocals(locals);
-    var opts = utils.pickOptions(locals);
     extend(opts, options);
+
+    var content = (value && value.content) || value;
 
     value.options = utils.flattenOptions(opts);
     value.locals = utils.flattenLocals(locs);
 
-    value._normalizedFile = true;
     acc[key] = value;
     return acc;
   }, {});
@@ -301,62 +316,55 @@ function normalizeFiles(patterns, locals, options) {
  */
 
 function normalizeString(key, value, locals, options) {
-  var args = [].slice.call(arguments, 1);
-
   var objects = utils.argsOfType('object', arguments);
   var strings = utils.argsOfType('string', arguments);
 
+  var args = [].slice.call(arguments, 1);
   var props = utils.siftProps.apply(utils.siftProps, args);
   var opts = options || props.options;
   var locs = props.locals;
   var val = {};
 
+  var expectLocals = args[0];
   var o = {};
   o[key] = {};
 
-  if (strings) {
-    if (strings.length === 1) {
-      var content = (value && value.content) || value;
+  if ((value && utils.isObject(value)) || objects == null) {
+    var files = normalizeFiles(key, value, locals, options);
+    if (files != null) {
+      return files;
+    } else {
+      o[key] = {path: key};
+      var content = value && value.content;
 
-      o[key].path = key;
-      o[key].content = content;
-      o[key].locals = locs;
-      o[key].options = opts;
-      o[key]._s1 = true;
-    }
-
-    if (strings.length === 2) {
-      o[key] = {path: key, content: value, locals: locs, options: opts};
+      if (o[key].content == null && content != null) {
+        o[key].content = content;
+      }
     }
   }
 
-  if (objects == null) {
-    // console.log(chalk.gray('zero objects'));
-  } else {
-    if (objects.length === 1) {
-      // console.log(chalk.magenta('one: %j'), objects);
-    }
-
-    if (objects.length === 2) {
-      // console.log(chalk.magenta.bold('two: %j'), objects);
-    }
-
-    if (isObject(value) && hasAny(value, ['path', 'content'])) {
-      value = utils.siftLocals(value);
-      value.options = opts;
-      return createPathFromObjectKey(key, value);
+  if (value && utils.isString(value)) {
+    o[key] = {path: key, content: value};
+    o[key]._s1s2 = true;
+    if (objects == null) {
+      return o;
     }
   }
 
-  opts = utils.flattenOptions(opts);
-
-  // Second value === 'string'
-  if (utils.isString(value)) {
-    o[key].options = opts;
-    return o;
+  if (locals && utils.isObject(locals)) {
+    // locs = extend({}, locs, locals);
+    // opts = extend({}, opts, locals.options);
+    o[key]._s1s2o1 = true;
   }
 
-  return normalizeFiles(key, value, locals, opts);
+  if (options && utils.isObject(options)) {
+    // opts = extend({}, opts, options);
+    o[key]._s1s2o1o2 = true;
+  }
+
+  o[key].options = utils.flattenOptions(opts);
+  o[key].locals = utils.flattenLocals(omit(locs, 'options'));
+  return o;
 }
 
 
@@ -501,7 +509,7 @@ function normalizeFormat() {
   case 'function':
     return normalizeFn.apply(null, args);
   default:
-    return args;
+    return {};
   }
 }
 
@@ -515,12 +523,12 @@ function normalizeFormat() {
  * @return {Object}
  */
 
-module.exports = function (options) {
+var normalize = module.exports = function (options) {
   return function(o) {
     o = normalizeFormat.apply(null, arguments);
 
     return reduce(o, function (acc, value, key) {
-      if (Object.keys(value).length === 0) {
+      if (value && Object.keys(value).length === 0) {
         return acc;
       }
 
@@ -528,8 +536,10 @@ module.exports = function (options) {
       var str = (value && value.content);
 
       extend(opts, options, value.options);
+      value.ext = path.extname(value.path);
+
       value = parseContent(value, options);
-      if (value.data != null && value.content === str) {
+      if (value.content === value.orig) {
         value = omit(value, 'orig');
       }
 
@@ -538,6 +548,18 @@ module.exports = function (options) {
 
       acc[renameKey(key, opts)] = value;
       return acc;
+    }, {});
+  };
+};
+
+
+normalize.valueOnly = function (options) {
+  var fn = normalize(options);
+
+  return function(o) {
+    return reduce(fn(o), function(acc, value, key) {
+      value.ext = value.ext || path.extname(value.path);
+      return value;
     }, {});
   };
 };

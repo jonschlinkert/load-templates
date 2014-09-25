@@ -115,7 +115,7 @@ describe('utils:', function () {
 
 describe(chalk.magenta('[ function | object ]') + ' pattern:', function () {
   describe(chalk.bold('valid filepath:'), function () {
-    it.only('should detect when the string is a filepath:', function () {
+    it('should detect when the string is a filepath:', function () {
       var files = normalize(function(options) {
         var file = matter.read('fixtures/a.md');
         var o = {};
@@ -263,6 +263,12 @@ describe(chalk.magenta('[ string | object ]') + ' pattern:', function () {
       files['fixtures/a.txt'].should.have.property('data', { title: 'AAA' });
     });
 
+    it('should move arbitrary props on the third arg to `options`:', function () {
+      var files = normalize('fixtures/*.md', {a: 'b'}, {engine: 'hbs'});
+      files['fixtures/a.md'].should.have.property('locals', {a: 'b'});
+      files['fixtures/a.md'].should.have.property('options', {engine: 'hbs'});
+    });
+
     it('should NOT ATTEMPT to resolve glob patterns when second value is a string:', function () {
       var files = normalize('fixtures/*.md', 'flflflfl', {name: 'Brian Woodward'});
       files['fixtures/*.md'].should.have.property('path', 'fixtures/*.md');
@@ -274,11 +280,6 @@ describe(chalk.magenta('[ string | object ]') + ' pattern:', function () {
     it('should move arbitrary props on the second arg to `locals`:', function () {
       var files = normalize('a', {content: 'this is content', layout: 'b'});
       files['a'].should.have.property('locals', {layout: 'b'});
-    });
-    it('should move arbitrary props on the third arg to `options`:', function () {
-      var files = normalize('fixtures/*.md', {a: 'b'}, {engine: 'hbs'});
-      files['fixtures/a.md'].should.have.property('locals', {a: 'b'});
-      files['fixtures/a.md'].should.have.property('options', {engine: 'hbs'});
     });
 
     it('should load individual templates:', function () {
@@ -378,7 +379,6 @@ describe(chalk.magenta('[ string | string ]') + ' pattern:', function () {
     files['abc.md'].should.have.property('options', {c: 'd'});
   });
 });
-
 
 
 describe(chalk.magenta('[ object ]') + ' pattern:', function () {
@@ -522,10 +522,9 @@ describe(chalk.magenta('[ array ]') + ' pattern:', function () {
 });
 
 
-
 describe('normalize templates', function () {
   describe('path and content properties', function () {
-    var expected = { 'a/b/c.md': { path: 'a/b/c.md', content: 'this is content.'}};
+    var expected = { 'a/b/c.md': { path: 'a/b/c.md', ext: '.md', content: 'this is content.'}};
 
     it('should detect the key from an object with `path` and `content` properties', function () {
       var files = normalize({path: 'a/b/c.md', content: 'this is content.'});
@@ -555,9 +554,9 @@ describe('normalize templates', function () {
     describe('objects:', function () {
       it('should use `path` and/or `content` properties as indicators:', function () {
         var expected = {
-          'a/b/a.md': {path: 'a/b/a.md', content: 'this is content.'},
-          'a/b/b.md': {path: 'a/b/b.md', content: 'this is content.'},
-          'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.'}
+          'a/b/a.md': {path: 'a/b/a.md', ext: '.md', content: 'this is content.'},
+          'a/b/b.md': {path: 'a/b/b.md', ext: '.md', content: 'this is content.'},
+          'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is content.'}
         };
 
         var files = normalize({
@@ -571,9 +570,9 @@ describe('normalize templates', function () {
 
       it('should normalize locals:', function () {
         var expected = {
-          'a/b/a.md': {path: 'a/b/a.md', content: 'this is content.', locals: {a: {b: 'c'}}},
-          'a/b/b.md': {path: 'a/b/b.md', content: 'this is content.', locals: {a: {c: 'd'}}},
-          'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.'}
+          'a/b/a.md': {path: 'a/b/a.md', ext: '.md', content: 'this is content.', locals: {a: {b: 'c'}}},
+          'a/b/b.md': {path: 'a/b/b.md', ext: '.md', content: 'this is content.', locals: {a: {c: 'd'}}},
+          'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is content.'}
         };
 
         var files = normalize({
@@ -584,11 +583,11 @@ describe('normalize templates', function () {
         files.should.eql(expected);
       });
 
-      it('should normalize "method" locals:', function () {
+      it('should normalize "method-locals":', function () {
         var expected = {
-          'a/b/a.md': {path: 'a/b/a.md', content: 'this is content.', locals: {a: {b: 'c'}, foo: 'bar'}},
-          'a/b/b.md': {path: 'a/b/b.md', content: 'this is content.', locals: {a: {c: 'd'}, foo: 'bar'}},
-          'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.', locals: {foo: 'bar'}}
+          'a/b/a.md': {path: 'a/b/a.md', ext: '.md', content: 'this is content.', locals: {a: {b: 'c'}, foo: 'bar'}},
+          'a/b/b.md': {path: 'a/b/b.md', ext: '.md', content: 'this is content.', locals: {a: {c: 'd'}, foo: 'bar'}},
+          'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {foo: 'bar'}}
         };
 
         var files = normalize({
@@ -602,9 +601,9 @@ describe('normalize templates', function () {
 
       it('should normalize "method" locals:', function () {
         var expected = {
-          'a/b/a.md': {path: 'a/b/a.md', content: 'this is content.', locals: {a: {b: 'c'}, bar: 'bar'}},
-          'a/b/b.md': {path: 'a/b/b.md', content: 'this is content.', locals: {a: {c: 'd'}, bar: 'bar'}},
-          'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.', locals: {bar: 'baz'}}
+          'a/b/a.md': {path: 'a/b/a.md', ext: '.md', content: 'this is content.', locals: {a: {b: 'c'}, bar: 'bar'}},
+          'a/b/b.md': {path: 'a/b/b.md', ext: '.md', content: 'this is content.', locals: {a: {c: 'd'}, bar: 'bar'}},
+          'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {bar: 'baz'}}
         };
 
         var files = normalize({
@@ -615,12 +614,29 @@ describe('normalize templates', function () {
 
         files.should.eql(expected);
       });
+
+
+      it('should normalize options:', function () {
+        var expected = {
+          'a/b/a.md': {path: 'a/b/a.md', ext: '.md', content: 'this is content.', locals: {a: {b: 'c'}, bar: 'baz'}, options: {foo: true}},
+          'a/b/b.md': {path: 'a/b/b.md', ext: '.md', content: 'this is content.', locals: {a: {c: 'd'}, bar: 'baz'}, options: {foo: true}},
+          'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {bar: 'baz'}, options: {foo: true}}
+        };
+
+        var files = normalize({
+          'a/b/a.md': {content: 'this is content.', a: {b: 'c'}},
+          'a/b/b.md': {content: 'this is content.', locals: {a: {c: 'd'}}},
+          'a/b/c.md': {content: 'this is content.'}
+        }, {bar: 'baz'}, {foo: true});
+
+        files.should.eql(expected);
+      });
     });
   });
 
 
   describe('locals', function () {
-    var expected = { 'a/b/c.md': { path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b'}}};
+    var expected = { 'a/b/c.md': { path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {a: 'b'}}};
 
     it('should detect the key from an object with `path` and `content` properties', function () {
       var files = normalize({path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b'}});
@@ -647,7 +663,6 @@ describe('normalize templates', function () {
     });
 
     it('should detect the key from an object with `path` and `content` properties', function () {
- console.log(chalk.bold('marker'))
       var files = normalize('a/b/c.md', {content: 'this is content.', a: 'b'});
       files.should.eql(expected);
     });
@@ -666,7 +681,7 @@ describe('normalize templates', function () {
   });
 
   describe('options', function () {
-    var expected = { 'a/b/c.md': { path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b'}, options: {y: 'z'}}};
+    var expected = { 'a/b/c.md': { path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {a: 'b'}, options: {y: 'z'}}};
 
     it('should detect the key from an object with `path` and `content` properties', function () {
       var files = normalize({path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b'}, options: {y: 'z'}});
@@ -740,6 +755,7 @@ describe('glob patterns', function () {
         content: 'This is from a.txt.',
         orig: '---\ntitle: AAA\n---\nThis is from a.txt.',
         path: 'fixtures/a.txt',
+        ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
       },
@@ -748,6 +764,7 @@ describe('glob patterns', function () {
         content: 'This is from b.txt.',
         orig: '---\ntitle: BBB\n---\nThis is from b.txt.',
         path: 'fixtures/b.txt',
+        ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
       },
@@ -756,6 +773,7 @@ describe('glob patterns', function () {
         content: 'This is from c.txt.',
         orig: '---\ntitle: CCC\n---\nThis is from c.txt.',
         path: 'fixtures/c.txt',
+        ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
       }
@@ -777,6 +795,7 @@ describe('glob patterns', function () {
         content: 'This is from a.txt.',
         orig: '---\ntitle: AAA\n---\nThis is from a.txt.',
         path: 'fixtures/a.txt',
+        ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
       },
@@ -785,6 +804,7 @@ describe('glob patterns', function () {
         content: 'This is from b.txt.',
         orig: '---\ntitle: BBB\n---\nThis is from b.txt.',
         path: 'fixtures/b.txt',
+        ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
       },
@@ -793,6 +813,7 @@ describe('glob patterns', function () {
         content: 'This is from c.txt.',
         orig: '---\ntitle: CCC\n---\nThis is from c.txt.',
         path: 'fixtures/c.txt',
+        ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
       }
@@ -824,22 +845,22 @@ describe('random', function () {
 
   it('random stuff', function () {
     var files = normalize({path: 'a/b/c.md', content: 'this is content.', a: 'b', options: {y: 'z'}}, {c: 'd'}, {e: 'f'});
-    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b', c: 'd'}, options: {y: 'z', e: 'f'}}});
+    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {a: 'b', c: 'd'}, options: {y: 'z', e: 'f'}}});
   });
 
   it('random stuff', function () {
     var files = normalize({path: 'a/b/c.md', content: 'this is foo'}, {foo: 'bar'});
-    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', content: 'this is foo', locals: {foo: 'bar'}}});
+    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is foo', locals: {foo: 'bar'}}});
   });
 
   it('random stuff', function () {
     var files = normalize('a/b/c.md', {content: 'this is baz', a: 'b', options: {foo: 'bar'}}, {bar: 'baz'});
-    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', content: 'this is baz', locals: {a: 'b'}, options: {bar: 'baz', foo: 'bar'}}});
+    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is baz', locals: {a: 'b'}, options: {bar: 'baz', foo: 'bar'}}});
   });
 
   it('random stuff', function () {
     var files = normalize('a/b/c.md', {content: 'this is baz', a: 'b', options: {foo: 'bar'}}, {bar: 'baz'});
-    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', content: 'this is baz', locals: {a: 'b'}, options: {bar: 'baz', foo: 'bar'}}});
+    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is baz', locals: {a: 'b'}, options: {bar: 'baz', foo: 'bar'}}});
   });
 
   it('multiple templates:', function () {
