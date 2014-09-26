@@ -49,6 +49,7 @@
     "has-any-deep": "^0.2.0",
     "is-empty": "0.0.1",
     "is-plain-object": "^0.1.0",
+    "kind-of": "^0.1.0",
     "map-files": "^0.1.2",
     "mixin-deep": "^0.1.0",
     "object-pick": "^0.1.0",

@@ -10,8 +10,10 @@
 var fs = require('fs');
 var path = require('path');
 var chalk = require('chalk');
+var typeOf = require('kind-of');
 var extend = require('mixin-deep');
 var hasAny = require('has-any');
+var arrUtils = require('array-utils');
 var hasAnyDeep = require('has-any-deep');
 var isObject = require('is-plain-object');
 var omit = require('omit-keys');
@@ -29,6 +31,7 @@ var utils = require('./lib/utils');
  */
 
 var heuristics = [
+  '_invalidpath',
   '_mappedFile',
   '_normalizedFile',
   '_parsed',
@@ -52,10 +55,10 @@ var heuristics = [
  *
  * ```js
  * // before
- * normalize({path: 'a/b/c.md', content: 'this is foo'});
+ * loader({path: 'a/b/c.md', content: 'this is foo'});
  *
  * // after
- * normalize('a/b/c.md': {path: 'a/b/c.md', content: 'this is foo'});
+ * loader('a/b/c.md': {path: 'a/b/c.md', content: 'this is foo'});
  * ```
  *
  * @param  {String} `path`
@@ -76,7 +79,7 @@ function createKeyFromPath(filepath, value) {
  * when the second arg is a string.
  *
  * ```js
- * normalize('abc', {content: 'this is content'});
+ * loader('abc', {content: 'this is content'});
  * //=> normalize('abc', {path: 'abc', content: 'this is content'});
  * ```
  *
@@ -98,7 +101,7 @@ function createPathFromStringKey(o) {
  * Create the `path` property from a singular object key.
  *
  * ```js
- * normalize({'a/b/d.md': {content: 'this is content'}})
+ * loader({'a/b/d.md': {content: 'this is content'}})
  * ```
  *
  * @param  {String} `key`
@@ -236,8 +239,8 @@ function mapFilesFn(patterns, options) {
  * First arg is a file path or glob pattern.
  *
  * ```js
- * normalize('a/b/c.md', ...);
- * normalize('a/b/*.md', ...);
+ * loader('a/b/c.md', ...);
+ * loader('a/b/*.md', ...);
  * ```
  *
  * @param  {String} `key`
@@ -266,8 +269,6 @@ function normalizeFiles(patterns, locals, options) {
 
   return reduce(files, function (acc, value, key) {
     extend(opts, options);
-
-    var content = (value && value.content) || value;
 
     value.options = utils.flattenOptions(opts);
     value.locals = utils.flattenLocals(locs);
@@ -316,9 +317,10 @@ function normalizeFiles(patterns, locals, options) {
  */
 
 function normalizeString(key, value, locals, options) {
-  var objects = utils.argsOfType('object', arguments);
-  var strings = utils.argsOfType('string', arguments);
+  var objects = utils.valuesOfType('object', arguments);
+  var strings = utils.valuesOfType('string', arguments);
 
+  var files;
   var args = [].slice.call(arguments, 1);
   var props = utils.siftProps.apply(utils.siftProps, args);
   var opts = options || props.options;
@@ -329,8 +331,22 @@ function normalizeString(key, value, locals, options) {
   var o = {};
   o[key] = {};
 
+  // If only `key` is defined
+  if (value == null) {
+    // see if `key` is a value file path
+    files = normalizeFiles(key);
+    if (files != null) {
+      return files;
+
+    // if not, add a heuristic
+    } else {
+      o[key] = {path: key, _invalidpath: true};
+      return o;
+    }
+  }
+
   if ((value && utils.isObject(value)) || objects == null) {
-    var files = normalizeFiles(key, value, locals, options);
+    files = normalizeFiles(key, value, locals, options);
     if (files != null) {
       return files;
     } else {
@@ -342,6 +358,7 @@ function normalizeString(key, value, locals, options) {
       }
     }
   }
+
 
   if (value && utils.isString(value)) {
     o[key] = {path: key, content: value};
@@ -420,10 +437,10 @@ function normalizeDeepObject(obj, locals, options) {
  * should be objects.
  *
  * ```js
- * normalize({'a/b/c.md', ...});
+ * loader({'a/b/c.md', ...});
  *
  * // or
- * normalize({path: 'a/b/c.md', ...});
+ * loader({path: 'a/b/c.md', ...});
  * ```
  *
  * @param  {Object} `object` Template object
@@ -459,7 +476,7 @@ function normalizeObject(o) {
  * patterns or file paths.
  *
  * ```js
- * normalize(['a/b/c.md', 'a/b/*.md']);
+ * loader(['a/b/c.md', 'a/b/*.md']);
  * ```
  *
  * @param  {Object} `patterns` Template object
@@ -478,7 +495,7 @@ function normalizeArray(patterns, locals, options) {
  * patterns or file paths.
  *
  * ```js
- * normalize(['a/b/c.md', 'a/b/*.md']);
+ * loader(['a/b/c.md', 'a/b/*.md']);
  * ```
  *
  * @param  {Object} `patterns` Template object
@@ -499,7 +516,7 @@ function normalizeFn(fn, options) {
 function normalizeFormat() {
   var args = [].slice.call(arguments);
 
-  switch (utils.typeOf(args[0])) {
+  switch (typeOf(args[0])) {
   case 'string':
     return normalizeString.apply(null, args);
   case 'object':
@@ -517,17 +534,19 @@ function normalizeFormat() {
 /**
  * Final normalization step to remove empty values and rename
  * the object key. By now the template should be _mostly_
- * normalized.
+ * loaderd.
  *
  * @param  {Object} `object` Template object
  * @return {Object}
  */
 
-var normalize = module.exports = function (options) {
-  return function(o) {
-    o = normalizeFormat.apply(null, arguments);
+var loader = module.exports = function (options) {
+  options = extend({}, options);
 
-    return reduce(o, function (acc, value, key) {
+  return function(obj) {
+    obj = normalizeFormat.apply(null, arguments);
+
+    return reduce(obj, function (acc, value, key) {
       if (value && Object.keys(value).length === 0) {
         return acc;
       }
@@ -538,26 +557,39 @@ var normalize = module.exports = function (options) {
       extend(opts, options, value.options);
       value.ext = path.extname(value.path);
 
-      value = parseContent(value, options);
+      value = parseContent(value, opts);
       if (value.content === value.orig) {
         value = omit(value, 'orig');
       }
+      if (opts.debug == null) {
+        value = omit(value, heuristics);
+      }
 
-      value = omit(value, heuristics);
       value = omitEmpty(value);
-
       acc[renameKey(key, opts)] = value;
+
+      loader.normalize(opts, acc, value, key);
       return acc;
     }, {});
   };
 };
 
 
-normalize.valueOnly = function (options) {
-  var fn = normalize(options);
+loader.normalize = function (options, acc, value, key) {
+  if (options && options.normalize) {
+    return options.normalize(acc, value, key);
+  }
 
-  return function(o) {
-    return reduce(fn(o), function(acc, value, key) {
+  acc[key] = value;
+  return acc;
+};
+
+
+loader.valueOnly = function (options) {
+  var fn = loader(options);
+
+  return function(obj) {
+    return reduce(fn(obj), function(acc, value, key) {
       value.ext = value.ext || path.extname(value.path);
       return value;
     }, {});
