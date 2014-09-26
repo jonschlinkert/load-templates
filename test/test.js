@@ -12,9 +12,11 @@ var path = require('path');
 var chalk = require('chalk');
 var matter = require('gray-matter');
 var should = require('should');
-var _loader = require('./');
+
+var _loader = require('..');
 var loader = _loader();
-var utils = require('./lib/utils');
+var utils = require('../lib/utils');
+
 
 describe('utils:', function () {
   describe('options:', function () {
@@ -116,7 +118,7 @@ describe('utils:', function () {
 });
 
 
-describe.only('loader.normalize()', function () {
+describe('loader.normalize()', function () {
   it('should use a custom normalization function to rename the key.', function () {
     loader = _loader({
       normalize: function(acc, value, key) {
@@ -129,6 +131,9 @@ describe.only('loader.normalize()', function () {
     var actual = loader('fixtures/a.txt', {a: 'b'}, {foo: true});
     actual.should.have.property('a.txt');
     actual['a.txt'].should.have.property('data', { title: 'AAA' });
+
+    // restore state
+    loader = _loader();
   });
 
   it('should use a custom normalization function to add a `name` property.', function () {
@@ -144,6 +149,9 @@ describe.only('loader.normalize()', function () {
     var actual = loader('fixtures/a.txt', {a: 'b'}, {foo: true});
     actual.should.have.property('a.txt');
     actual['a.txt'].should.have.property('name', 'a.txt');
+
+    // restore state
+    loader = _loader();
   });
 });
 
@@ -582,6 +590,19 @@ describe('normalize templates', function () {
         var files = loader('a/b/c.md', 'this is content.');
         files.should.eql(expected);
       });
+    });
+  });
+
+
+  describe('sparse fields:', function () {
+    it('should normalize options', function () {
+      var files = loader('a', {content: 'This is content.', options: {ext: '.foo'}});
+      files.should.eql({a: {path: 'a', content: 'This is content.', ext: '.foo', options: {ext: '.foo'}}});
+    });
+
+    it('should normalize locals', function () {
+      var files = loader('a', {content: 'This is content.'}, {ext: '.foo'});
+      files.should.eql({a: {path: 'a', content: 'This is content.', ext: '.foo'}});
     });
   });
 
