@@ -22,6 +22,7 @@ var matter = require('gray-matter');
 var omitEmpty = require('omit-empty');
 var reduce = require('reduce-object');
 var utils = require('./lib/utils');
+var _ = require('lodash');
 
 
 /**
@@ -157,6 +158,7 @@ function parseFn(str, options) {
     return opts.parseFn(str, options);
   }
 
+  opts = omit(options, ['delims']);
   return matter(str, opts);
 }
 
@@ -172,13 +174,10 @@ function parseFn(str, options) {
 function parseContent(obj, options) {
   var o = extend({}, obj);
 
-  if (o.data != null) {
-    return o;
-  }
-
-  if (utils.isString(o.content)) {
-    var parsed = parseFn(o.content, options);
-    o = extend({}, o, parsed);
+  if (utils.isString(o.content) && !o.hasOwnProperty('orig')) {
+    var orig = o.content;
+    o = parseFn(o.content, options);
+    o.orig = orig;
   }
 
   o._parsed = true;
@@ -224,7 +223,7 @@ function mapFilesFn(patterns, options) {
   return reduce(files, function (acc, value, key) {
     if (utils.isString(value)) {
       value = parseFn(value);
-      value.path = key;
+      value.path = value.path || key;
     }
 
     value._parsed = true;
@@ -259,12 +258,11 @@ function normalizeFiles(patterns, locals, options) {
   }
 
   if (options && utils.isObject(options)) {
-    opts = extend({}, opts, options);
+    opts = _.merge({}, opts, options);
   }
 
   if (files && Object.keys(files).length === 0) {
     return null;
-    // return utils.generateKey(patterns, locs, opts);
   }
 
   return reduce(files, function (acc, value, key) {
@@ -331,6 +329,7 @@ function normalizeString(key, value, locals, options) {
   var o = {};
   o[key] = {};
 
+
   // If only `key` is defined
   if (value == null) {
     // see if `key` is a value file path
@@ -340,7 +339,8 @@ function normalizeString(key, value, locals, options) {
 
     // if not, add a heuristic
     } else {
-      o[key] = {path: key, _invalidpath: true};
+      o[key]._invalidpath = true;
+      o[key].path = o[key].path || key;
       return o;
     }
   }
@@ -350,18 +350,39 @@ function normalizeString(key, value, locals, options) {
     if (files != null) {
       return files;
     } else {
-      o[key] = {path: key};
-      var content = value && value.content;
 
+      var root = utils.pickRoot(value);
+      var loc = {};
+      var opt = {};
+
+      loc = _.merge({}, loc, utils.pickLocals(value));
+      loc = _.merge({}, loc, locals);
+
+      opt = _.merge({}, opt, loc.options);
+      opt = _.merge({}, opt, value.options);
+      opt = _.merge({}, opt, options);
+
+      _.merge(root, utils.pickRoot(loc));
+      _.merge(root, utils.pickRoot(opt));
+
+      o[key] = root;
+      o[key].locals = loc;
+      o[key].options = opt;
+      o[key].path = value.path || key;
+
+      var content = value && value.content;
       if (o[key].content == null && content != null) {
         o[key].content = content;
       }
     }
   }
 
-
   if (value && utils.isString(value)) {
-    o[key] = {path: key, content: value};
+    var root = utils.pickRoot(locals);
+    o[key] = root;
+    o[key].content = value;
+    o[key].path = o[key].path = key;
+
     o[key]._s1s2 = true;
     if (objects == null) {
       return o;
@@ -375,12 +396,15 @@ function normalizeString(key, value, locals, options) {
   }
 
   if (options && utils.isObject(options)) {
-    // opts = extend({}, opts, options);
     o[key]._s1s2o1o2 = true;
   }
 
-  o[key].options = utils.flattenOptions(opts);
-  o[key].locals = utils.flattenLocals(omit(locs, 'options'));
+  var opt = utils.flattenOptions(opts);
+  opt = extend({}, opt, o[key].options);
+  o[key].options = opt;
+
+  locs = omit(locs, 'options');
+  o[key].locals = utils.flattenLocals(locs);
   return o;
 }
 
@@ -453,6 +477,7 @@ function normalizeObject(o) {
   var locals1 = utils.pickLocals(args[1]);
   var locals2 = utils.pickLocals(args[2]);
   var val;
+
 
   var opts = args.length === 3 ? locals2 : {};
 
@@ -540,7 +565,7 @@ function normalizeFormat() {
  * @return {Object}
  */
 
-var loader = module.exports = function (options) {
+var loader = function (options) {
   options = extend({}, options);
 
   return function(obj) {
@@ -551,16 +576,19 @@ var loader = module.exports = function (options) {
         return acc;
       }
 
+      // save the content for comparison after parsing
       var opts = {};
-      var str = (value && value.content);
 
       extend(opts, options, value.options);
-      value.ext = path.extname(value.path);
+      value.ext = value.ext || path.extname(value.path);
 
-      value = parseContent(value, opts);
+      var parsed = parseContent(value, opts);
+      value = _.merge({}, value, parsed);
+
       if (value.content === value.orig) {
         value = omit(value, 'orig');
       }
+
       if (opts.debug == null) {
         value = omit(value, heuristics);
       }
@@ -584,7 +612,6 @@ loader.normalize = function (options, acc, value, key) {
   return acc;
 };
 
-
 loader.valueOnly = function (options) {
   var fn = loader(options);
 
@@ -595,3 +622,20 @@ loader.valueOnly = function (options) {
     }, {});
   };
 };
+
+
+/**
+ * Expose utils
+ */
+
+loader.generateKey = utils.generateKey;
+loader.generateId = utils.generateId;
+
+
+/**
+ * Expose `loader`
+ *
+ * @type {Object}
+ */
+
+module.exports = loader;
