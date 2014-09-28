@@ -128,7 +128,7 @@ describe('loader.normalize()', function () {
       }
     });
 
-    var actual = loader('fixtures/a.txt', {a: 'b'}, {foo: true});
+    var actual = loader('test/fixtures/a.txt', {a: 'b'}, {foo: true});
     actual.should.have.property('a.txt');
     actual['a.txt'].should.have.property('data', { title: 'AAA' });
 
@@ -146,7 +146,7 @@ describe('loader.normalize()', function () {
       }
     });
 
-    var actual = loader('fixtures/a.txt', {a: 'b'}, {foo: true});
+    var actual = loader('test/fixtures/a.txt', {a: 'b'}, {foo: true});
     actual.should.have.property('a.txt');
     actual['a.txt'].should.have.property('name', 'a.txt');
 
@@ -160,12 +160,12 @@ describe(chalk.magenta('[ function | object ]') + ' pattern:', function () {
   describe(chalk.bold('valid filepath:'), function () {
     it('should detect when the string is a filepath:', function () {
       var files = loader(function(options) {
-        var file = matter.read('fixtures/a.md');
+        var file = matter.read('test/fixtures/a.md');
         var o = {};
         o[file.path] = file;
         return o;
       });
-      files['fixtures/a.md'].should.have.property('path', 'fixtures/a.md');
+      files['test/fixtures/a.md'].should.have.property('path', 'test/fixtures/a.md');
     });
   });
 });
@@ -174,149 +174,149 @@ describe(chalk.magenta('[ function | object ]') + ' pattern:', function () {
 describe(chalk.magenta('[ string | object ]') + ' pattern:', function () {
   describe(chalk.bold('valid filepath:'), function () {
     it('should detect when the string is a filepath:', function () {
-      var files = loader('fixtures/one/a.md');
-      files['fixtures/one/a.md'].should.have.property('path', 'fixtures/one/a.md');
+      var files = loader('test/fixtures/one/a.md');
+      files['test/fixtures/one/a.md'].should.have.property('path', 'test/fixtures/one/a.md');
     });
 
     it('should read the file and return an object:', function () {
-      var files = loader('fixtures/a.md');
-      files['fixtures/a.md'].should.be.an.object;
+      var files = loader('test/fixtures/a.md');
+      files['test/fixtures/a.md'].should.be.an.object;
     });
 
     it('should extend the object with `content` from the file:', function () {
-      var files = loader('fixtures/one/a.md');
-      files['fixtures/one/a.md'].should.have.property('content', 'This is {{title}}');
+      var files = loader('test/fixtures/one/a.md');
+      files['test/fixtures/one/a.md'].should.have.property('content', 'This is {{title}}');
     });
 
     it('should extend the object with the `path` for the file:', function () {
-      var files = loader('fixtures/a.md');
-      files['fixtures/a.md'].should.have.property('path', 'fixtures/a.md');
+      var files = loader('test/fixtures/a.md');
+      files['test/fixtures/a.md'].should.have.property('path', 'test/fixtures/a.md');
     });
 
     it('should extend the object with `content`:', function () {
-      var files = loader('fixtures/a.md');
-      files['fixtures/a.md'].should.have.property('content', 'This is fixture a.md');
+      var files = loader('test/fixtures/a.md');
+      files['test/fixtures/a.md'].should.have.property('content', 'This is fixture a.md');
     });
 
     it('should extend the object with `locals`:', function () {
-      var files = loader('fixtures/a.md', {a: 'b'});
-      files['fixtures/a.md'].should.have.property('locals', {a: 'b'});
+      var files = loader('test/fixtures/a.md', {a: 'b'});
+      files['test/fixtures/a.md'].should.have.property('locals', {a: 'b'});
     });
 
     it('should extend the object with `options`:', function () {
-      var files = loader('fixtures/a.md', {a: 'b'}, {something: true});
-      files['fixtures/a.md'].should.have.property('locals', {a: 'b'});
-      files['fixtures/a.md'].should.have.property('options', {something: true});
+      var files = loader('test/fixtures/a.md', {a: 'b'}, {something: true});
+      files['test/fixtures/a.md'].should.have.property('locals', {a: 'b'});
+      files['test/fixtures/a.md'].should.have.property('options', {something: true});
     });
 
     it('should parse front matter:', function () {
-      var files = loader('fixtures/a.md');
-      files['fixtures/a.md'].should.have.property('data', { title: 'AAA' });
+      var files = loader('test/fixtures/a.md');
+      files['test/fixtures/a.md'].should.have.property('data', { title: 'AAA' });
     });
 
     it('should create `orig` from parsed file string:', function () {
-      var files = loader('fixtures/a.md');
-      files['fixtures/a.md'].should.have.property('orig', '---\ntitle: AAA\n---\nThis is fixture a.md');
+      var files = loader('test/fixtures/a.md');
+      files['test/fixtures/a.md'].should.have.property('orig', '---\ntitle: AAA\n---\nThis is fixture a.md');
     });
 
     it('should keep `locals` and `data` from front matter separate:', function () {
-      var files = loader('fixtures/a.md', {a: 'b'});
-      files['fixtures/a.md'].should.have.property('locals', { a: 'b' });
-      files['fixtures/a.md'].should.have.property('data', { title: 'AAA' });
-      files['fixtures/a.md'].should.have.property('orig', '---\ntitle: AAA\n---\nThis is fixture a.md');
+      var files = loader('test/fixtures/a.md', {a: 'b'});
+      files['test/fixtures/a.md'].should.have.property('locals', { a: 'b' });
+      files['test/fixtures/a.md'].should.have.property('data', { title: 'AAA' });
+      files['test/fixtures/a.md'].should.have.property('orig', '---\ntitle: AAA\n---\nThis is fixture a.md');
     });
 
     it('should get locals from the second argument:', function () {
-      var files = loader('fixtures/one/a.md', {name: 'Brian Woodward'});
-      files['fixtures/one/a.md'].should.have.property('locals', {name: 'Brian Woodward'});
+      var files = loader('test/fixtures/one/a.md', {name: 'Brian Woodward'});
+      files['test/fixtures/one/a.md'].should.have.property('locals', {name: 'Brian Woodward'});
     });
   });
 
   describe(chalk.bold('valid glob pattern:'), function () {
     it('should expand glob patterns:', function () {
-      var files = loader('fixtures/*.txt');
+      var files = loader('test/fixtures/*.txt');
       files.should.be.an.object;
-      files['fixtures/a.txt'].should.exist;
+      files['test/fixtures/a.txt'].should.exist;
     });
 
     it('should read files and return an object for each:', function () {
-      var files = loader('fixtures/*.txt');
+      var files = loader('test/fixtures/*.txt');
       files.should.be.an.object;
-      files['fixtures/a.txt'].should.exist;
-      files['fixtures/b.txt'].should.exist;
-      files['fixtures/c.txt'].should.exist;
+      files['test/fixtures/a.txt'].should.exist;
+      files['test/fixtures/b.txt'].should.exist;
+      files['test/fixtures/c.txt'].should.exist;
     });
 
     it('should extend the objects with locals:', function () {
-      var files = loader('fixtures/*.txt', {name: 'Brian Woodward'});
-      files['fixtures/a.txt'].should.have.property('locals', {name: 'Brian Woodward'});
-      files['fixtures/b.txt'].should.have.property('locals', {name: 'Brian Woodward'});
-      files['fixtures/c.txt'].should.have.property('locals', {name: 'Brian Woodward'});
+      var files = loader('test/fixtures/*.txt', {name: 'Brian Woodward'});
+      files['test/fixtures/a.txt'].should.have.property('locals', {name: 'Brian Woodward'});
+      files['test/fixtures/b.txt'].should.have.property('locals', {name: 'Brian Woodward'});
+      files['test/fixtures/c.txt'].should.have.property('locals', {name: 'Brian Woodward'});
     });
 
     it('should extend the objects with a `path` property.', function () {
-      var files = loader('fixtures/*.txt');
-      files['fixtures/a.txt'].should.have.property('path', 'fixtures/a.txt');
-      files['fixtures/b.txt'].should.have.property('path', 'fixtures/b.txt');
-      files['fixtures/c.txt'].should.have.property('path', 'fixtures/c.txt');
+      var files = loader('test/fixtures/*.txt');
+      files['test/fixtures/a.txt'].should.have.property('path', 'test/fixtures/a.txt');
+      files['test/fixtures/b.txt'].should.have.property('path', 'test/fixtures/b.txt');
+      files['test/fixtures/c.txt'].should.have.property('path', 'test/fixtures/c.txt');
     });
 
     it('should extend the objects with `content` from the file:', function () {
-      var files = loader('fixtures/*.txt');
-      files['fixtures/a.txt'].should.have.property('content', 'This is from a.txt.');
-      files['fixtures/b.txt'].should.have.property('content', 'This is from b.txt.');
-      files['fixtures/c.txt'].should.have.property('content', 'This is from c.txt.');
+      var files = loader('test/fixtures/*.txt');
+      files['test/fixtures/a.txt'].should.have.property('content', 'This is from a.txt.');
+      files['test/fixtures/b.txt'].should.have.property('content', 'This is from b.txt.');
+      files['test/fixtures/c.txt'].should.have.property('content', 'This is from c.txt.');
     });
 
     it('should extend the objects with `options`:', function () {
-      var files = loader('fixtures/*.txt', {a: 'b'}, {c: true});
-      files['fixtures/a.txt'].should.have.property('options', {c: true});
-      files['fixtures/b.txt'].should.have.property('options', {c: true});
-      files['fixtures/c.txt'].should.have.property('options', {c: true});
+      var files = loader('test/fixtures/*.txt', {a: 'b'}, {c: true});
+      files['test/fixtures/a.txt'].should.have.property('options', {c: true});
+      files['test/fixtures/b.txt'].should.have.property('options', {c: true});
+      files['test/fixtures/c.txt'].should.have.property('options', {c: true});
     });
 
     it('should detect options passed on the locals object:', function () {
-      var files = loader('fixtures/*.txt', {a: 'b', options: {b: 'b'}}, {c: true});
-      files['fixtures/a.txt'].should.have.property('options', {b: 'b', c: true});
-      files['fixtures/b.txt'].should.have.property('options', {b: 'b', c: true});
-      files['fixtures/c.txt'].should.have.property('options', {b: 'b', c: true});
+      var files = loader('test/fixtures/*.txt', {a: 'b', options: {b: 'b'}}, {c: true});
+      files['test/fixtures/a.txt'].should.have.property('options', {b: 'b', c: true});
+      files['test/fixtures/b.txt'].should.have.property('options', {b: 'b', c: true});
+      files['test/fixtures/c.txt'].should.have.property('options', {b: 'b', c: true});
 
       // ensure that locals is correct
-      files['fixtures/a.txt'].should.have.property('locals', {a: 'b'});
-      files['fixtures/b.txt'].should.have.property('locals', {a: 'b'});
-      files['fixtures/c.txt'].should.have.property('locals', {a: 'b'});
+      files['test/fixtures/a.txt'].should.have.property('locals', {a: 'b'});
+      files['test/fixtures/b.txt'].should.have.property('locals', {a: 'b'});
+      files['test/fixtures/c.txt'].should.have.property('locals', {a: 'b'});
     });
 
     it('should parse front matter:', function () {
-      var files = loader('fixtures/*.txt');
-      files['fixtures/a.txt'].should.have.property('data', { title: 'AAA' });
-      files['fixtures/b.txt'].should.have.property('data', { title: 'BBB' });
-      files['fixtures/c.txt'].should.have.property('data', { title: 'CCC' });
+      var files = loader('test/fixtures/*.txt');
+      files['test/fixtures/a.txt'].should.have.property('data', { title: 'AAA' });
+      files['test/fixtures/b.txt'].should.have.property('data', { title: 'BBB' });
+      files['test/fixtures/c.txt'].should.have.property('data', { title: 'CCC' });
     });
 
     it('should create `orig` from parsed file string:', function () {
-      var files = loader('fixtures/*.txt');
-      files['fixtures/a.txt'].should.have.property('orig', '---\ntitle: AAA\n---\nThis is from a.txt.');
-      files['fixtures/b.txt'].should.have.property('orig', '---\ntitle: BBB\n---\nThis is from b.txt.');
-      files['fixtures/c.txt'].should.have.property('orig', '---\ntitle: CCC\n---\nThis is from c.txt.');
+      var files = loader('test/fixtures/*.txt');
+      files['test/fixtures/a.txt'].should.have.property('orig', '---\ntitle: AAA\n---\nThis is from a.txt.');
+      files['test/fixtures/b.txt'].should.have.property('orig', '---\ntitle: BBB\n---\nThis is from b.txt.');
+      files['test/fixtures/c.txt'].should.have.property('orig', '---\ntitle: CCC\n---\nThis is from c.txt.');
     });
 
     it('should keep `locals` and `data` from front matter separate:', function () {
-      var files = loader('fixtures/*.txt', {a: 'b'});
-      files['fixtures/a.txt'].should.have.property('locals', { a: 'b' });
-      files['fixtures/a.txt'].should.have.property('data', { title: 'AAA' });
+      var files = loader('test/fixtures/*.txt', {a: 'b'});
+      files['test/fixtures/a.txt'].should.have.property('locals', { a: 'b' });
+      files['test/fixtures/a.txt'].should.have.property('data', { title: 'AAA' });
     });
 
     it('should move arbitrary props on the third arg to `options`:', function () {
-      var files = loader('fixtures/*.md', {a: 'b'}, {engine: 'hbs'});
-      files['fixtures/a.md'].should.have.property('locals', {a: 'b'});
-      files['fixtures/a.md'].should.have.property('options', {engine: 'hbs'});
+      var files = loader('test/fixtures/*.md', {a: 'b'}, {engine: 'hbs'});
+      files['test/fixtures/a.md'].should.have.property('locals', {a: 'b'});
+      files['test/fixtures/a.md'].should.have.property('options', {engine: 'hbs'});
     });
 
     it('should NOT ATTEMPT to resolve glob patterns when second value is a string:', function () {
-      var files = loader('fixtures/*.md', 'flflflfl', {name: 'Brian Woodward'});
-      files['fixtures/*.md'].should.have.property('path', 'fixtures/*.md');
-      files['fixtures/*.md'].should.have.property('content', 'flflflfl');
+      var files = loader('test/fixtures/*.md', 'flflflfl', {name: 'Brian Woodward'});
+      files['test/fixtures/*.md'].should.have.property('path', 'test/fixtures/*.md');
+      files['test/fixtures/*.md'].should.have.property('content', 'flflflfl');
     });
   });
 
@@ -472,95 +472,95 @@ describe(chalk.magenta('[ object ]') + ' pattern:', function () {
 describe(chalk.magenta('[ array ]') + ' pattern:', function () {
   describe(chalk.bold('valid glob pattern:'), function () {
     it('should expand an array of glob patterns:', function () {
-      var files = loader(['fixtures/*.txt']);
+      var files = loader(['test/fixtures/*.txt']);
       files.should.be.an.object;
-      files['fixtures/a.txt'].should.exist;
+      files['test/fixtures/a.txt'].should.exist;
     });
 
     it('should read files and return an object for each:', function () {
-      var files = loader(['fixtures/*.txt']);
+      var files = loader(['test/fixtures/*.txt']);
       files.should.be.an.object;
-      files['fixtures/a.txt'].should.exist;
-      files['fixtures/b.txt'].should.exist;
-      files['fixtures/c.txt'].should.exist;
+      files['test/fixtures/a.txt'].should.exist;
+      files['test/fixtures/b.txt'].should.exist;
+      files['test/fixtures/c.txt'].should.exist;
     });
 
     it('should create a `path` property from each filepath.', function () {
-      var files = loader(['fixtures/*.txt']);
-      files['fixtures/a.txt'].should.have.property('path', 'fixtures/a.txt');
-      files['fixtures/b.txt'].should.have.property('path', 'fixtures/b.txt');
-      files['fixtures/c.txt'].should.have.property('path', 'fixtures/c.txt');
+      var files = loader(['test/fixtures/*.txt']);
+      files['test/fixtures/a.txt'].should.have.property('path', 'test/fixtures/a.txt');
+      files['test/fixtures/b.txt'].should.have.property('path', 'test/fixtures/b.txt');
+      files['test/fixtures/c.txt'].should.have.property('path', 'test/fixtures/c.txt');
     });
 
     it('should extend the objects with locals:', function () {
-      var files = loader(['fixtures/*.txt'], {name: 'Brian Woodward'});
-      files['fixtures/a.txt'].should.have.property('locals', {name: 'Brian Woodward'});
-      files['fixtures/b.txt'].should.have.property('locals', {name: 'Brian Woodward'});
-      files['fixtures/c.txt'].should.have.property('locals', {name: 'Brian Woodward'});
+      var files = loader(['test/fixtures/*.txt'], {name: 'Brian Woodward'});
+      files['test/fixtures/a.txt'].should.have.property('locals', {name: 'Brian Woodward'});
+      files['test/fixtures/b.txt'].should.have.property('locals', {name: 'Brian Woodward'});
+      files['test/fixtures/c.txt'].should.have.property('locals', {name: 'Brian Woodward'});
     });
 
     it('should extend the objects with locals and options:', function () {
-      var files = loader(['fixtures/*.md', 'fixtures/*.txt'], {a: 'b'}, {
+      var files = loader(['test/fixtures/*.md', 'test/fixtures/*.txt'], {a: 'b'}, {
         engine: 'hbs'
       });
 
-      files['fixtures/a.md'].should.have.property('locals', {a: 'b'});
-      files['fixtures/a.txt'].should.have.property('locals', {a: 'b'});
-      files['fixtures/a.md'].should.have.property('options', {engine: 'hbs'});
-      files['fixtures/a.txt'].should.have.property('options', {engine: 'hbs'});
+      files['test/fixtures/a.md'].should.have.property('locals', {a: 'b'});
+      files['test/fixtures/a.txt'].should.have.property('locals', {a: 'b'});
+      files['test/fixtures/a.md'].should.have.property('options', {engine: 'hbs'});
+      files['test/fixtures/a.txt'].should.have.property('options', {engine: 'hbs'});
     });
 
     it('should extend the objects with a `path` property.', function () {
-      var files = loader(['fixtures/*.txt']);
-      files['fixtures/a.txt'].should.have.property('path', 'fixtures/a.txt');
-      files['fixtures/b.txt'].should.have.property('path', 'fixtures/b.txt');
-      files['fixtures/c.txt'].should.have.property('path', 'fixtures/c.txt');
+      var files = loader(['test/fixtures/*.txt']);
+      files['test/fixtures/a.txt'].should.have.property('path', 'test/fixtures/a.txt');
+      files['test/fixtures/b.txt'].should.have.property('path', 'test/fixtures/b.txt');
+      files['test/fixtures/c.txt'].should.have.property('path', 'test/fixtures/c.txt');
     });
 
     it('should extend the objects with `content` from the file:', function () {
-      var files = loader(['fixtures/*.txt']);
-      files['fixtures/a.txt'].should.have.property('content', 'This is from a.txt.');
-      files['fixtures/b.txt'].should.have.property('content', 'This is from b.txt.');
-      files['fixtures/c.txt'].should.have.property('content', 'This is from c.txt.');
+      var files = loader(['test/fixtures/*.txt']);
+      files['test/fixtures/a.txt'].should.have.property('content', 'This is from a.txt.');
+      files['test/fixtures/b.txt'].should.have.property('content', 'This is from b.txt.');
+      files['test/fixtures/c.txt'].should.have.property('content', 'This is from c.txt.');
     });
 
     it('should extend the objects with `options`:', function () {
-      var files = loader(['fixtures/*.txt'], {a: 'b'}, {c: true});
-      files['fixtures/a.txt'].should.have.property('options', {c: true});
-      files['fixtures/b.txt'].should.have.property('options', {c: true});
-      files['fixtures/c.txt'].should.have.property('options', {c: true});
+      var files = loader(['test/fixtures/*.txt'], {a: 'b'}, {c: true});
+      files['test/fixtures/a.txt'].should.have.property('options', {c: true});
+      files['test/fixtures/b.txt'].should.have.property('options', {c: true});
+      files['test/fixtures/c.txt'].should.have.property('options', {c: true});
     });
 
     it('should detect options passed on the locals object:', function () {
-      var files = loader(['fixtures/*.txt'], {a: 'b', options: {b: 'b'}}, {c: true});
-      files['fixtures/a.txt'].should.have.property('options', {b: 'b', c: true});
-      files['fixtures/b.txt'].should.have.property('options', {b: 'b', c: true});
-      files['fixtures/c.txt'].should.have.property('options', {b: 'b', c: true});
+      var files = loader(['test/fixtures/*.txt'], {a: 'b', options: {b: 'b'}}, {c: true});
+      files['test/fixtures/a.txt'].should.have.property('options', {b: 'b', c: true});
+      files['test/fixtures/b.txt'].should.have.property('options', {b: 'b', c: true});
+      files['test/fixtures/c.txt'].should.have.property('options', {b: 'b', c: true});
 
       // ensure that locals is correct
-      files['fixtures/a.txt'].should.have.property('locals', {a: 'b'});
-      files['fixtures/b.txt'].should.have.property('locals', {a: 'b'});
-      files['fixtures/c.txt'].should.have.property('locals', {a: 'b'});
+      files['test/fixtures/a.txt'].should.have.property('locals', {a: 'b'});
+      files['test/fixtures/b.txt'].should.have.property('locals', {a: 'b'});
+      files['test/fixtures/c.txt'].should.have.property('locals', {a: 'b'});
     });
 
     it('should parse front matter:', function () {
-      var files = loader(['fixtures/*.txt']);
-      files['fixtures/a.txt'].should.have.property('data', { title: 'AAA' });
-      files['fixtures/b.txt'].should.have.property('data', { title: 'BBB' });
-      files['fixtures/c.txt'].should.have.property('data', { title: 'CCC' });
+      var files = loader(['test/fixtures/*.txt']);
+      files['test/fixtures/a.txt'].should.have.property('data', { title: 'AAA' });
+      files['test/fixtures/b.txt'].should.have.property('data', { title: 'BBB' });
+      files['test/fixtures/c.txt'].should.have.property('data', { title: 'CCC' });
     });
 
     it('should create `orig` from parsed file string:', function () {
-      var files = loader(['fixtures/*.txt']);
-      files['fixtures/a.txt'].should.have.property('orig', '---\ntitle: AAA\n---\nThis is from a.txt.');
-      files['fixtures/b.txt'].should.have.property('orig', '---\ntitle: BBB\n---\nThis is from b.txt.');
-      files['fixtures/c.txt'].should.have.property('orig', '---\ntitle: CCC\n---\nThis is from c.txt.');
+      var files = loader(['test/fixtures/*.txt']);
+      files['test/fixtures/a.txt'].should.have.property('orig', '---\ntitle: AAA\n---\nThis is from a.txt.');
+      files['test/fixtures/b.txt'].should.have.property('orig', '---\ntitle: BBB\n---\nThis is from b.txt.');
+      files['test/fixtures/c.txt'].should.have.property('orig', '---\ntitle: CCC\n---\nThis is from c.txt.');
     });
 
     it('should keep `locals` and `data` from front matter separate:', function () {
-      var files = loader(['fixtures/*.txt'], {a: 'b'});
-      files['fixtures/a.txt'].should.have.property('locals', { a: 'b' });
-      files['fixtures/a.txt'].should.have.property('data', { title: 'AAA' });
+      var files = loader(['test/fixtures/*.txt'], {a: 'b'});
+      files['test/fixtures/a.txt'].should.have.property('locals', { a: 'b' });
+      files['test/fixtures/a.txt'].should.have.property('data', { title: 'AAA' });
     });
   });
 });
@@ -809,29 +809,29 @@ describe('normalize templates', function () {
 describe('glob patterns', function () {
   describe('arrays', function () {
     var expected = {
-      'fixtures/a.txt': {
+      'test/fixtures/a.txt': {
         data: { title: 'AAA' },
         content: 'This is from a.txt.',
         orig: '---\ntitle: AAA\n---\nThis is from a.txt.',
-        path: 'fixtures/a.txt',
+        path: 'test/fixtures/a.txt',
         ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
       },
-     'fixtures/b.txt': {
+     'test/fixtures/b.txt': {
         data: { title: 'BBB' },
         content: 'This is from b.txt.',
         orig: '---\ntitle: BBB\n---\nThis is from b.txt.',
-        path: 'fixtures/b.txt',
+        path: 'test/fixtures/b.txt',
         ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
       },
-     'fixtures/c.txt': {
+     'test/fixtures/c.txt': {
         data: { title: 'CCC' },
         content: 'This is from c.txt.',
         orig: '---\ntitle: CCC\n---\nThis is from c.txt.',
-        path: 'fixtures/c.txt',
+        path: 'test/fixtures/c.txt',
         ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
@@ -839,39 +839,39 @@ describe('glob patterns', function () {
     };
 
     it('should read a glob of files and return an object of templates.', function () {
-      loader(['fixtures/*.txt'], {a: 'b'}, {foo: true}).should.eql(expected);
+      loader(['test/fixtures/*.txt'], {a: 'b'}, {foo: true}).should.eql(expected);
     });
 
     it('should read a glob of files and return an object of templates.', function () {
-      loader(['fixtures/*.txt'], {a: 'b', options: {foo: true}}).should.eql(expected);
+      loader(['test/fixtures/*.txt'], {a: 'b', options: {foo: true}}).should.eql(expected);
     });
   });
 
   describe('strings', function () {
     var expected = {
-      'fixtures/a.txt': {
+      'test/fixtures/a.txt': {
         data: { title: 'AAA' },
         content: 'This is from a.txt.',
         orig: '---\ntitle: AAA\n---\nThis is from a.txt.',
-        path: 'fixtures/a.txt',
+        path: 'test/fixtures/a.txt',
         ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
       },
-     'fixtures/b.txt': {
+     'test/fixtures/b.txt': {
         data: { title: 'BBB' },
         content: 'This is from b.txt.',
         orig: '---\ntitle: BBB\n---\nThis is from b.txt.',
-        path: 'fixtures/b.txt',
+        path: 'test/fixtures/b.txt',
         ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
       },
-     'fixtures/c.txt': {
+     'test/fixtures/c.txt': {
         data: { title: 'CCC' },
         content: 'This is from c.txt.',
         orig: '---\ntitle: CCC\n---\nThis is from c.txt.',
-        path: 'fixtures/c.txt',
+        path: 'test/fixtures/c.txt',
         ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
@@ -879,7 +879,7 @@ describe('glob patterns', function () {
     };
 
     it('should read a glob of files and return an object of templates.', function () {
-      var actual = loader('fixtures/*.txt', {a: 'b'}, {foo: true});
+      var actual = loader('test/fixtures/*.txt', {a: 'b'}, {foo: true});
       actual.should.eql(expected);
     });
   });

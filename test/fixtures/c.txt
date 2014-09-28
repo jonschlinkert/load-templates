@@ -1,4 +1,4 @@
 ---
 title: CCC
 ---
-This is fixture c.md
+This is from c.txt.
