@@ -1,0 +1,4 @@
+---
+title: BBB
+---
+This is from b.txt.
