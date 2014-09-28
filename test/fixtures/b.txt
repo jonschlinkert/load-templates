@@ -1,4 +1,4 @@
 ---
 title: BBB
 ---
-This is fixture b.txt
+This is from b.txt.

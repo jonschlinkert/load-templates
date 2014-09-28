@@ -1,281 +1,620 @@
+/*!
+ * load-templates <https://github.com/jonschlinkert/load-templates>
+ *
+ * Copyright (c) 2014 Jon Schlinkert, contributors.
+ * Licensed under the MIT License
+ */
+
 'use strict';
 
-/**
- * Module dependencies
- */
-
-var _ = require('lodash');
 var fs = require('fs');
 var path = require('path');
-var glob = require('globby');
-var isRelative = require('is-relative');
-var arrayify = require('arrayify-compact');
-var extend = _.extend;
+var typeOf = require('kind-of');
+var extend = require('mixin-deep');
+var hasAny = require('has-any');
+var debug = require('debug')('load-templates');
+var hasAnyDeep = require('has-any-deep');
+var omit = require('omit-keys');
+var mapFiles = require('map-files');
+var matter = require('gray-matter');
+var omitEmpty = require('omit-empty');
+var reduce = require('reduce-object');
+var utils = require('./lib/utils');
+var _ = require('lodash');
 
 
 /**
+ * If we detected a `path` property directly on the object
+ * that was passed, this means that the object is not
+ * formatted with a key (as expected).
+ *
  * ```js
- * var loader = require('load-templates');
+ * // before
+ * loader({path: 'a/b/c.md', content: 'this is foo'});
+ *
+ * // after
+ * loader('a/b/c.md': {path: 'a/b/c.md', content: 'this is foo'});
  * ```
- * @param {Object} `options` Options to initialize `loader` with
- *     @option {String} [option] `cwd` Current working directory to use for file paths.
- *     @option {Function} [option] `parse` Function to use for parsing templates.
- *     @option {Function} [option] `rename` Renaming function to use on the `key` of each template loaded, `path.basename` is the default.
- *     @option {Function} [option] `normalize` Function to use for normalizing `file` objects before they are returned.
- *     @option {Boolean} [option] `norename` Set to `true` to disable the default `rename` function.
- *     @option {Boolean} [option] `noparse` Set to `true` to disable the default `parse` function.
- *     @option {Boolean} [option] `nonormalize` Set to `true` to disable the default `normalize` function.
- * @api public
+ *
+ * @param  {String} `path`
+ * @param  {Object} `value`
+ * @return {Object}
  */
 
-function loader(options) {
-  loader.options = extend({
-    cwd: process.cwd()
-  }, options);
-  return loader;
+function createKeyFromPath(filepath, value) {
+  var o = {};
+  o[filepath] = value;
+  return o;
 }
 
 
 /**
- * Options cache.
+ * Create the `path` property from the string
+ * passed in the first arg. This is only used
+ * when the second arg is a string.
  *
- * @type {Object}
+ * ```js
+ * loader('abc', {content: 'this is content'});
+ * //=> normalize('abc', {path: 'abc', content: 'this is content'});
+ * ```
+ *
+ * @param  {Object} a
+ * @return {Object}
  */
 
-loader.options = {};
+function createPathFromStringKey(o) {
+  for (var key in o) {
+    if (o.hasOwnProperty(key)) {
+      o[key].path = o[key].path || key;
+    }
+  }
+  return o;
+}
 
 
 /**
- * Properties expected on the root of a normalized `file` object.
+ * Default function for reading any files resolved.
  *
- * @type {Array}
+ * Pass a custom `parseFn` function on the options to change
+ * how files are parsed.
+ *
+ * @param  {String} `filepath`
+ * @param  {Object} `options`
+ * @return {Object}
  */
 
-loader.rootProps = ['data', 'locals', 'content', 'path', 'orig'];
+function readFn(filepath, options) {
+  var opts = extend({ enc: 'utf8' }, options);
+
+  if (opts.readFn) {
+    return opts.readFn(filepath, options);
+  }
+
+  return fs.readFileSync(filepath, opts.enc);
+}
 
 
 /**
- * Expand glob patterns, load, read, parse and normalize files from
- * file paths, strings, objects, or arrays of these types.
+ * Default function for parsing any files resolved.
+ *
+ * Pass a custom `parseFn` function on the options to change
+ * how files are parsed.
+ *
+ * @param  {String} `filepath`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+function parseFn(str, options) {
+  var opts = extend({ autodetect: true }, options);
+
+  if (opts.parseFn) {
+    return opts.parseFn(str, options);
+  }
+
+  opts = omit(options, ['delims']);
+  return matter(str, opts);
+}
+
+
+/**
+ * [parseContent description]
+ *
+ * @param  {[type]} value
+ * @param  {[type]} options
+ * @return {[type]}
+ */
+
+function parseContent(obj, options) {
+  debug('parsing content', obj);
+
+  var o = extend({}, obj);
+
+  if (utils.isString(o.content) && !o.hasOwnProperty('orig')) {
+    var orig = o.content;
+    o = parseFn(o.content, options);
+    o.orig = orig;
+  }
+
+  o._parsed = true;
+  return o;
+}
+
+
+/**
+ * Rename the key of a template object.
+ *
+ * Pass a custom `renameKey` function on the options to change
+ * how keys are renamed.
+ *
+ * @param  {String} `key`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+function renameKey(key, options) {
+  debug('renaming key:', key);
+
+  var opts = options || {};
+  if (opts.renameKey) {
+    return opts.renameKey(key, options);
+  }
+  return key;
+}
+
+
+/**
+ * Map files resolved from glob patterns or file paths.
+ *
+ *
+ * @param  {String|Array} `patterns`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+function mapFilesFn(patterns, options) {
+  debug('mapping files:', patterns);
+
+  var files = mapFiles(patterns, extend({
+    rename: renameKey,
+    parse: readFn
+  }, options));
+
+  return reduce(files, function (acc, value, key) {
+    debug('reducing file: %s', key, value);
+
+    if (utils.isString(value)) {
+      value = parseFn(value);
+      value.path = value.path || key;
+    }
+
+    value._parsed = true;
+    value._mappedFile = true;
+    acc[key] = value;
+    return acc;
+  }, {});
+}
+
+
+/**
+ * First arg is a file path or glob pattern.
+ *
+ * ```js
+ * loader('a/b/c.md', ...);
+ * loader('a/b/*.md', ...);
+ * ```
+ *
+ * @param  {String} `key`
+ * @param  {Object} `value`
+ * @return {Object}
+ */
+
+function normalizeFiles(patterns, locals, options) {
+  debug('normalizing patterns: %s', patterns);
+
+  var files = mapFilesFn(patterns, options);
+  var locs = {};
+  var opts = {};
+
+  if (locals && utils.isObject(locals)) {
+    locs = utils.pickLocals(locals);
+    opts = utils.pickOptions(locals);
+  }
+
+  if (options && utils.isObject(options)) {
+    opts = _.merge({}, opts, options);
+  }
+
+  if (files && Object.keys(files).length === 0) {
+    return null;
+  }
+
+  return reduce(files, function (acc, value, key) {
+    debug('reducing normalized file: %s', key);
+
+    extend(opts, options);
+    value.options = utils.flattenOptions(opts);
+    value.locals = utils.flattenLocals(locs);
+
+    acc[key] = value;
+    return acc;
+  }, {});
+}
+
+
+/**
+ * First value is a string, second value is a string or
+ * an object.
+ *
+ *   - first arg can be a file-path
+ *   - first arg can be a non-file-path string
+ *   - first arg can be a glob pattern
+ *   - second arg can a string
+ *   - when the second arg is a string, the first arg cannot be a file path
+ *   - the second can be an object
+ *   - when the second arg is an object, it may _be_ locals
+ *   - when the second arg is an object, it may _have_ an `options` property
+ *   - the second can be an object
+ *   - in this pattern, when a third arg exists, it _must be_ the options object.
+ *   - when a third arg exists, the second arg may still have an options property
+ *   - when a third arg exists, `options` and `locals.options` are merged.
  *
  * **Examples:**
  *
- * Filepaths or arrays of glob patterns.
- *
  * ```js
- * var temlates = loader.load(['pages/*.hbs']);
- * var posts = loader.load('posts/*.md');
+ * template.normalize('a/b/c.md');
+ * template.normalize('a/b/c.md', 'this is content');
+ * template.normalize('a/b/c.md', {content: 'this is content'});
+ * template.normalize('a/b/c.md', {path: 'a/b/c.md'});
+ * template.normalize('a/b/c.md', {path: 'a/b/c.md', content: 'this is content'});
+ * template.normalize('a/b/c.md', {path: 'a/b/c.md'}, {a: 'b'});
+ * template.normalize('a/b/c.md', {path: 'a/b/c.md'}, {a: 'b'}, {c: 'd'});
+ * template.normalize('a/b/c.md', {path: 'a/b/c.md'}, {a: 'b', options: {c: 'd'}});
+ * template.normalize('a/b/c.md', {path: 'a/b/c.md', locals: {a: 'b'}, options: {c: 'd'}});
  * ```
  *
- * As strings or objects:
- *
- * ```js
- * // loader.load(key, value, locals);
- * var docs = loader.load({'foo/bar.md': {content: 'this is content.'}}, {foo: 'bar'});
- *
- * // loader.load(key, value, locals);
- * var post = loader.load('abc.md', 'My name is <%= name %>.', {name: 'Jon Schlinkert'});
- * ```
- *
- * @param {String|Object|Array} `key` Array, object, string or file paths.
- * @param {String|Object} `value` String of content, `file` object with `content` property, or `locals` if the first arg is a file path.
- * @param {Object} `options` Options or `locals`.
- * @return {Object} Normalized file object.
- * @api public
+ * @param  {Object} `value` Always an object.
+ * @param  {Object} `locals` Always an object.
+ * @param  {Object} `options` Always an object.
+ * @return {Object} Returns a normalized object.
  */
 
-loader.load = function (key, value, options) {
-  var method = loader[typeOf(key)];
-  if (method) {
-    return method.call(this, key, value, options);
-  }
-};
+function normalizeString(key, value, locals, options) {
+  debug('normalizing string: %s', key, value);
+
+  var objects = utils.valuesOfType('object', arguments);
+  var args = [].slice.call(arguments, 1);
+  var props = utils.siftProps.apply(utils.siftProps, args);
+  var opts = options || props.options;
+  var locs = props.locals;
+  var files;
+  var root = {};
+  var opt = {};
+  var o = {};
+  o[key] = {};
 
 
-/**
- * Expand glob patterns, load, read, parse and normalize files
- * from file paths or strings.
- *
- * @param  {String} `key` Glob patterns or file paths.
- * @param  {String|Object} `value` String of content, `file` object with `content` property, or `locals` if the first arg is a file path.
- * @param {Object} `options` Options or `locals`.
- * @return {Object} Normalized file object.
- * @api public
- */
+  // If only `key` is defined
+  if (value == null) {
+    // see if `key` is a value file path
+    files = normalizeFiles(key);
+    if (files != null) {
+      return files;
 
-loader.string = function (key, value, options) {
-  var args = [].slice.call(arguments).filter(Boolean);
-  var file = {}, files = [];
-
-  if (typeof args[1] === 'string') {
-    file[key] = {};
-    file[key].content = value;
-  } else {
-    var patterns = arrayify(key).map(function(pattern) {
-      if (!isRelative) {
-        return pattern;
-      }
-      return loader._cwd(pattern);
-    });
-
-    files = glob.sync(patterns, {nonull: false});
-
-    if (files.length > 0) {
-      files.forEach(function (filepath) {
-        var key = loader.rename(filepath);
-        file[key] = loader.parse(filepath);
-        file[key].path = filepath;
-        file[key].data = extend({}, file[key].data, value);
-      });
+    // if not, add a heuristic
     } else {
-      file[key] = value || {};
+      o[key]._invalidpath = true;
+      o[key].path = o[key].path || key;
+      return o;
     }
   }
 
-  // The object should be parsed and key renamed.
-  return loader.object(file, options);
-};
+  if ((value && utils.isObject(value)) || objects == null) {
+    debug('[value] s1o1: %s, %j', key, value);
+    files = normalizeFiles(key, value, locals, options);
+    if (files != null) {
+      return files;
+    } else {
+      debug('[value] s1o2: %s, %j', key, value);
+      root = utils.pickRoot(value);
+      var loc = {};
+      opt = {};
 
+      loc = _.merge({}, loc, utils.pickLocals(value));
+      loc = _.merge({}, loc, locals);
 
-/**
- * Normalize an array of patterns.
- *
- * @param  {Object} `patterns` Glob patterns or array of filepaths.
- * @param  {Object} `options` Options or `locals`
- * @return {Array}  Array of normalized file objects.
- * @api public
- */
+      opt = _.merge({}, opt, loc.options);
+      opt = _.merge({}, opt, value.options);
+      opt = _.merge({}, opt, options);
 
-loader.array = function (patterns, options) {
-  var o = {};
-  arrayify(patterns).forEach(function (pattern) {
-    extend(o, loader.load(pattern, options));
-  });
-  return o;
-};
+      _.merge(root, utils.pickRoot(loc));
+      _.merge(root, utils.pickRoot(opt));
 
+      o[key] = root;
+      o[key].locals = loc;
+      o[key].options = opt;
+      o[key].path = value.path || key;
 
-/**
- * Normalize a template object.
- *
- * @param  {Object} `file` The object to normalize.
- * @param  {Object} `options` Options or `locals`
- * @api public
- */
-
-loader.object = function (file, options) {
-  return this.normalize(file, options);
-};
-
-
-/**
- * The current working directory to use. Default is `process.cwd()`.
- *
- * @param  {String} `filepath`
- * @api public
- */
-
-loader._cwd = function (filepath) {
-  var cwd = path.resolve(this.options.cwd);
-  return path.join(cwd, filepath);
-};
-
-
-/**
- * Rename the `key` of each template loaded using whatever rename function
- * is defined on the options. `path.basename` is the default.
- *
- * @param  {String} `filepath`
- * @api public
- */
-
-loader.rename = function (filepath) {
-  if (this.options.rename) {
-    return this.options.rename(filepath);
-  }
-  return filepath;
-};
-
-
-/**
- * Parse the content of each template loaded using whatever parsing function
- * is defined on the options. `fs.readFileSync` is used by default.
- *
- * @param  {String} `filepath` The path of the file to read/parse.
- * @param  {Object} `Options` Options or `locals`.
- * @api public
- */
-
-loader.parse = function (filepath, options) {
-  var remove = _.keys(this.options).concat('normalized');
-  var opts = extend({}, this.options, options);
-  var o = {};
-
-  if (opts.noparse) {
-    return filepath;
-  }
-
-  if (opts.parse) {
-    return opts.parse(filepath, _.omit(opts, remove));
-  }
-
-  o.path = filepath;
-  o.content = fs.readFileSync(filepath, 'utf8');
-  o.data = _.omit(opts, remove);
-  return o;
-};
-
-
-/**
- * Normalize a template using whatever normalize function is
- * defined on the options.
- *
- * @param  {Object} `file` The template object to normalize.
- * @param  {Object} `Options` Options or `locals`.
- * @api public
- */
-
-loader.normalize = function (file, options) {
-  var remove = _.keys(this.options).concat('normalized');
-  var opts = _.extend({}, this.options, options);
-
-  if (opts.nonormalize) {
-    return file;
-  }
-
-  if (opts.normalize) {
-    return opts.normalize(file);
-  }
-  var o = {}, data = _.omit(opts, remove);
-
-  _.forIn(file, function (value, key) {
-    value.path = value.path || key;
-
-    if (!value.hasOwnProperty('normalized')) {
-      key = loader.rename(key);
-      delete value.normalized;
+      var content = value && value.content;
+      if (o[key].content == null && content != null) {
+        o[key].content = content;
+      }
     }
+  }
 
-    var root = _.pick(value, loader.rootProps);
-    root.data = extend({}, data, value.data, _.omit(value, loader.rootProps));
+  if (value && utils.isString(value)) {
+    debug('[value] string: %s, %s', key, value);
+
+    root = utils.pickRoot(locals);
     o[key] = root;
-  });
+    o[key].content = value;
+    o[key].path = o[key].path = key;
 
+    o[key]._s1s2 = true;
+    if (objects == null) {
+      return o;
+    }
+  }
+
+  // TODO: when would this happen?
+  if (locals && utils.isObject(locals)) {
+    o[key]._s1s2o1 = true;
+  }
+
+  // TODO: when would this happen?
+  if (options && utils.isObject(options)) {
+    o[key]._s1s2o1o2 = true;
+  }
+
+  opt = utils.flattenOptions(opts);
+  opt = extend({}, opt, o[key].options);
+  o[key].options = opt;
+
+  locs = omit(locs, 'options');
+  o[key].locals = utils.flattenLocals(locs);
   return o;
+}
+
+
+/**
+ * Normalize objects that have `rootKeys` directly on
+ * the root of the object.
+ *
+ * **Example**
+ *
+ * ```js
+ * {path: 'a/b/c.md', content: 'this is content.'}
+ * ```
+ *
+ * @param  {Object} `value` Always an object.
+ * @param  {Object} `locals` Always an object.
+ * @param  {Object} `options` Always an object.
+ * @return {Object} Returns a normalized object.
+ */
+
+function normalizeShallowObject(value, locals, options) {
+  debug('normalizing shallow object: %j', value);
+  var o = utils.siftLocals(value);
+  o.options = extend({}, options, o.options);
+  o.locals = extend({}, locals, o.locals);
+  return o;
+}
+
+
+/**
+ * Normalize nested templates that have the following pattern:
+ *
+ * ```js
+ * => {'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.'}}
+ * ```
+ * or:
+ *
+ * ```js
+ * { 'a/b/a.md': {path: 'a/b/a.md', content: 'this is content.'},
+ *   'a/b/b.md': {path: 'a/b/b.md', content: 'this is content.'},
+ *   'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.'} }
+ *```
+ */
+
+function normalizeDeepObject(obj, locals, options) {
+  debug('normalizing deep object: %j', obj);
+
+  return reduce(obj, function (acc, value, key) {
+    acc[key] = normalizeShallowObject(value, locals, options);
+    return acc;
+  }, {});
+}
+
+
+/**
+ * When the first arg is an object, all arguments
+ * should be objects.
+ *
+ * ```js
+ * loader({'a/b/c.md', ...});
+ *
+ * // or
+ * loader({path: 'a/b/c.md', ...});
+ * ```
+ *
+ * @param  {Object} `object` Template object
+ * @param  {Object} `locals` Possibly locals, with `options` property
+ * @return {Object} `options` Possibly options
+ */
+
+function normalizeObject(o) {
+  debug('normalizing object: %j', o);
+
+  var args = [].slice.call(arguments);
+  var locals1 = utils.pickLocals(args[1]);
+  var locals2 = utils.pickLocals(args[2]);
+  var val;
+
+  var opts = args.length === 3 ? locals2 : {};
+
+  if (hasAny(o, ['path', 'content'])) {
+    val = normalizeShallowObject(o, locals1, opts);
+    return createKeyFromPath(val.path, val);
+  }
+
+  if (hasAnyDeep(o, ['path', 'content'])) {
+    val = normalizeDeepObject(o, locals1, opts);
+    return createPathFromStringKey(val);
+  }
+
+  throw new Error('Invalid template object. Must' +
+    'have a `path` or `content` property.');
+}
+
+
+/**
+ * When the first arg is an array, assume it's glob
+ * patterns or file paths.
+ *
+ * ```js
+ * loader(['a/b/c.md', 'a/b/*.md']);
+ * ```
+ *
+ * @param  {Object} `patterns` Template object
+ * @param  {Object} `locals` Possibly locals, with `options` property
+ * @return {Object} `options` Possibly options
+ */
+
+function normalizeArray(patterns, locals, options) {
+  debug('normalizing array:', patterns);
+  var opts = extend({}, locals && locals.options, options);
+  return normalizeFiles(patterns, locals, opts);
+}
+
+
+/**
+ * When the first arg is an array, assume it's glob
+ * patterns or file paths.
+ *
+ * ```js
+ * loader(['a/b/c.md', 'a/b/*.md']);
+ * ```
+ *
+ * @param  {Object} `patterns` Template object
+ * @param  {Object} `locals` Possibly locals, with `options` property
+ * @return {Object} `options` Possibly options
+ */
+
+function normalizeFn(fn, options) {
+  var file = fn.call(null, options);
+  debug('normalizing fn:', file);
+  return file;
+}
+
+
+/**
+ * Normalize base template formats.
+ */
+
+function normalizeFormat() {
+  var args = [].slice.call(arguments);
+  debug('normalize format', args);
+
+  switch (typeOf(args[0])) {
+  case 'string':
+    return normalizeString.apply(null, args);
+  case 'object':
+    return normalizeObject.apply(null, args);
+  case 'array':
+    return normalizeArray.apply(null, args);
+  case 'function':
+    return normalizeFn.apply(null, args);
+  default:
+    return {};
+  }
+}
+
+
+/**
+ * Final normalization step to remove empty values and rename
+ * the object key. By now the template should be _mostly_
+ * loaderd.
+ *
+ * @param  {Object} `object` Template object
+ * @return {Object}
+ */
+
+var loader = function (options) {
+  options = extend({}, options);
+  debug('loader', options);
+
+  return function(obj) {
+    debug('pre-normalize', obj);
+
+    obj = normalizeFormat.apply(null, arguments);
+
+    return reduce(obj, function (acc, value, key) {
+      if (value && Object.keys(value).length === 0) {
+        return acc;
+      }
+
+      // save the content for comparison after parsing
+      var opts = {};
+
+      extend(opts, options, value.options);
+      value.ext = value.ext || path.extname(value.path);
+
+      var parsed = parseContent(value, opts);
+      value = _.merge({}, value, parsed);
+
+      if (value.content === value.orig) {
+        value = omit(value, 'orig');
+      }
+
+      if (opts.debug == null) {
+        value = omit(value, utils.heuristics);
+      }
+
+      value = omitEmpty(value);
+      acc[renameKey(key, opts)] = value;
+
+      loader.normalize(opts, acc, value, key);
+      return acc;
+    }, {});
+  };
+};
+
+
+loader.normalize = function (options, acc, value, key) {
+  debug('normalize: %s, %value', key);
+  if (options && options.normalize) {
+    return options.normalize(acc, value, key);
+  }
+  acc[key] = value;
+  return acc;
+};
+
+
+loader.valueOnly = function (options) {
+  debug('valueOnly:', options);
+  var fn = loader(options);
+
+  return function(obj) {
+    return reduce(fn(obj), function(acc, value) {
+      value.ext = value.ext || path.extname(value.path);
+      return value;
+    }, {});
+  };
 };
 
 
 /**
- * Get the type of an object.
- *
- * @param  {*} value
- * @return {*}
- * @api private
+ * Expose utils
  */
 
-function typeOf(value) {
-  return Object.prototype.toString.call(value).toLowerCase()
-    .replace(/\[object ([\S]+)\]/, '$1');
-}
+loader.generateKey = utils.generateKey;
+loader.generateId = utils.generateId;
+
+
+/**
+ * Expose `loader`
+ *
+ * @type {Object}
+ */
 
 module.exports = loader;
