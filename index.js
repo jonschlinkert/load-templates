@@ -389,12 +389,12 @@ function normalizeString(key, value, locals, options) {
     }
   }
 
+  // TODO: when would this happen?
   if (locals && utils.isObject(locals)) {
-    // locs = extend({}, locs, locals);
-    // opts = extend({}, opts, locals.options);
     o[key]._s1s2o1 = true;
   }
 
+  // TODO: when would this happen?
   if (options && utils.isObject(options)) {
     o[key]._s1s2o1o2 = true;
   }
