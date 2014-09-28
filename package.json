@@ -1,7 +1,7 @@
 {
   "name": "load-templates",
   "description": "Load templates.",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "homepage": "https://github.com/jonschlinkert/load-templates",
   "author": {
     "name": "Jon Schlinkert",
@@ -43,13 +43,13 @@
   ],
   "dependencies": {
     "array-slice": "^0.2.0",
-    "deep-pick": "^0.1.0",
+    "debug": "^2.0.0",
     "gray-matter": "^0.5.0",
     "has-any": "^0.1.0",
     "has-any-deep": "^0.2.0",
-    "is-empty": "0.0.1",
     "is-plain-object": "^0.1.0",
     "kind-of": "^0.1.0",
+    "lodash": "^2.4.1",
     "map-files": "^0.1.2",
     "mixin-deep": "^0.1.0",
     "object-pick": "^0.1.0",

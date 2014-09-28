@@ -9,13 +9,11 @@
 
 var fs = require('fs');
 var path = require('path');
-var chalk = require('chalk');
 var typeOf = require('kind-of');
 var extend = require('mixin-deep');
 var hasAny = require('has-any');
-var arrUtils = require('array-utils');
+var debug = require('debug')('load-templates');
 var hasAnyDeep = require('has-any-deep');
-var isObject = require('is-plain-object');
 var omit = require('omit-keys');
 var mapFiles = require('map-files');
 var matter = require('gray-matter');
@@ -23,30 +21,6 @@ var omitEmpty = require('omit-empty');
 var reduce = require('reduce-object');
 var utils = require('./lib/utils');
 var _ = require('lodash');
-
-
-/**
- * Set heuristics to speed up normalization decisions.
- *
- * @type {Array}
- */
-
-var heuristics = [
-  '_invalidpath',
-  '_mappedFile',
-  '_normalizedFile',
-  '_parsed',
-  '_s1',
-  '_s1s2',
-  '_s1s2o1',
-  '_s1s2o1o2',
-  '_s1o1',
-  '_s1o1o2',
-  '_s1o1o2o3',
-  '_o1',
-  '_o1o2',
-  '_o1o2o3'
-];
 
 
 /**
@@ -94,26 +68,6 @@ function createPathFromStringKey(o) {
       o[key].path = o[key].path || key;
     }
   }
-  return o;
-}
-
-
-/**
- * Create the `path` property from a singular object key.
- *
- * ```js
- * loader({'a/b/d.md': {content: 'this is content'}})
- * ```
- *
- * @param  {String} `key`
- * @param  {Object} `value`
- * @return {String}
- */
-
-function createPathFromObjectKey(key, value) {
-  var o = {};
-  value.path = value.path || key;
-  o[key] = value;
   return o;
 }
 
@@ -172,6 +126,8 @@ function parseFn(str, options) {
  */
 
 function parseContent(obj, options) {
+  debug('parsing content', obj);
+
   var o = extend({}, obj);
 
   if (utils.isString(o.content) && !o.hasOwnProperty('orig')) {
@@ -197,6 +153,8 @@ function parseContent(obj, options) {
  */
 
 function renameKey(key, options) {
+  debug('renaming key:', key);
+
   var opts = options || {};
   if (opts.renameKey) {
     return opts.renameKey(key, options);
@@ -215,12 +173,16 @@ function renameKey(key, options) {
  */
 
 function mapFilesFn(patterns, options) {
+  debug('mapping files:', patterns);
+
   var files = mapFiles(patterns, extend({
     rename: renameKey,
     parse: readFn
   }, options));
 
   return reduce(files, function (acc, value, key) {
+    debug('reducing file: %s', key, value);
+
     if (utils.isString(value)) {
       value = parseFn(value);
       value.path = value.path || key;
@@ -230,7 +192,7 @@ function mapFilesFn(patterns, options) {
     value._mappedFile = true;
     acc[key] = value;
     return acc;
-  }, {})
+  }, {});
 }
 
 
@@ -248,6 +210,8 @@ function mapFilesFn(patterns, options) {
  */
 
 function normalizeFiles(patterns, locals, options) {
+  debug('normalizing patterns: %s', patterns);
+
   var files = mapFilesFn(patterns, options);
   var locs = {};
   var opts = {};
@@ -266,8 +230,9 @@ function normalizeFiles(patterns, locals, options) {
   }
 
   return reduce(files, function (acc, value, key) {
-    extend(opts, options);
+    debug('reducing normalized file: %s', key);
 
+    extend(opts, options);
     value.options = utils.flattenOptions(opts);
     value.locals = utils.flattenLocals(locs);
 
@@ -315,17 +280,16 @@ function normalizeFiles(patterns, locals, options) {
  */
 
 function normalizeString(key, value, locals, options) {
-  var objects = utils.valuesOfType('object', arguments);
-  var strings = utils.valuesOfType('string', arguments);
+  debug('normalizing string: %s', key, value);
 
-  var files;
+  var objects = utils.valuesOfType('object', arguments);
   var args = [].slice.call(arguments, 1);
   var props = utils.siftProps.apply(utils.siftProps, args);
   var opts = options || props.options;
   var locs = props.locals;
-  var val = {};
-
-  var expectLocals = args[0];
+  var files;
+  var root = {};
+  var opt = {};
   var o = {};
   o[key] = {};
 
@@ -346,14 +310,15 @@ function normalizeString(key, value, locals, options) {
   }
 
   if ((value && utils.isObject(value)) || objects == null) {
+    debug('[value] s1o1: %s, %j', key, value);
     files = normalizeFiles(key, value, locals, options);
     if (files != null) {
       return files;
     } else {
-
-      var root = utils.pickRoot(value);
+      debug('[value] s1o2: %s, %j', key, value);
+      root = utils.pickRoot(value);
       var loc = {};
-      var opt = {};
+      opt = {};
 
       loc = _.merge({}, loc, utils.pickLocals(value));
       loc = _.merge({}, loc, locals);
@@ -378,7 +343,9 @@ function normalizeString(key, value, locals, options) {
   }
 
   if (value && utils.isString(value)) {
-    var root = utils.pickRoot(locals);
+    debug('[value] string: %s, %s', key, value);
+
+    root = utils.pickRoot(locals);
     o[key] = root;
     o[key].content = value;
     o[key].path = o[key].path = key;
@@ -399,7 +366,7 @@ function normalizeString(key, value, locals, options) {
     o[key]._s1s2o1o2 = true;
   }
 
-  var opt = utils.flattenOptions(opts);
+  opt = utils.flattenOptions(opts);
   opt = extend({}, opt, o[key].options);
   o[key].options = opt;
 
@@ -426,6 +393,7 @@ function normalizeString(key, value, locals, options) {
  */
 
 function normalizeShallowObject(value, locals, options) {
+  debug('normalizing shallow object: %j', value);
   var o = utils.siftLocals(value);
   o.options = extend({}, options, o.options);
   o.locals = extend({}, locals, o.locals);
@@ -449,6 +417,8 @@ function normalizeShallowObject(value, locals, options) {
  */
 
 function normalizeDeepObject(obj, locals, options) {
+  debug('normalizing deep object: %j', obj);
+
   return reduce(obj, function (acc, value, key) {
     acc[key] = normalizeShallowObject(value, locals, options);
     return acc;
@@ -473,11 +443,12 @@ function normalizeDeepObject(obj, locals, options) {
  */
 
 function normalizeObject(o) {
+  debug('normalizing object: %j', o);
+
   var args = [].slice.call(arguments);
   var locals1 = utils.pickLocals(args[1]);
   var locals2 = utils.pickLocals(args[2]);
   var val;
-
 
   var opts = args.length === 3 ? locals2 : {};
 
@@ -510,6 +481,7 @@ function normalizeObject(o) {
  */
 
 function normalizeArray(patterns, locals, options) {
+  debug('normalizing array:', patterns);
   var opts = extend({}, locals && locals.options, options);
   return normalizeFiles(patterns, locals, opts);
 }
@@ -530,6 +502,7 @@ function normalizeArray(patterns, locals, options) {
 
 function normalizeFn(fn, options) {
   var file = fn.call(null, options);
+  debug('normalizing fn:', file);
   return file;
 }
 
@@ -540,6 +513,7 @@ function normalizeFn(fn, options) {
 
 function normalizeFormat() {
   var args = [].slice.call(arguments);
+  debug('normalize format', args);
 
   switch (typeOf(args[0])) {
   case 'string':
@@ -567,8 +541,11 @@ function normalizeFormat() {
 
 var loader = function (options) {
   options = extend({}, options);
+  debug('loader', options);
 
   return function(obj) {
+    debug('pre-normalize', obj);
+
     obj = normalizeFormat.apply(null, arguments);
 
     return reduce(obj, function (acc, value, key) {
@@ -590,7 +567,7 @@ var loader = function (options) {
       }
 
       if (opts.debug == null) {
-        value = omit(value, heuristics);
+        value = omit(value, utils.heuristics);
       }
 
       value = omitEmpty(value);
@@ -604,19 +581,21 @@ var loader = function (options) {
 
 
 loader.normalize = function (options, acc, value, key) {
+  debug('normalize: %s, %value', key);
   if (options && options.normalize) {
     return options.normalize(acc, value, key);
   }
-
   acc[key] = value;
   return acc;
 };
 
+
 loader.valueOnly = function (options) {
+  debug('valueOnly:', options);
   var fn = loader(options);
 
   return function(obj) {
-    return reduce(fn(obj), function(acc, value, key) {
+    return reduce(fn(obj), function(acc, value) {
       value.ext = value.ext || path.extname(value.path);
       return value;
     }, {});
