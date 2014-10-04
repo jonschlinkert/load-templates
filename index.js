@@ -25,6 +25,19 @@ var _ = require('lodash');
 
 
 /**
+ * Merge util. I'm doing it this way temporarily until
+ * benchmarks are done so I can swap in a different function.
+ *
+ * @param  {Object} `obj`
+ * @return {Object}
+ * @api private
+ */
+
+function merge(o) {
+  return utils.extend.apply(null, arguments);
+}
+
+/**
  * If we detected a `path` property directly on the object
  * that was passed, this means that the object is not
  * formatted with a key (as expected).
@@ -47,7 +60,6 @@ function createKeyFromPath(filepath, value) {
   o[filepath] = value;
   return o;
 }
-
 
 /**
  * Create the `path` property from the string
@@ -223,7 +235,7 @@ function normalizeFiles(patterns, locals, options) {
   }
 
   if (options && utils.isObject(options)) {
-    opts = _.merge({}, opts, options);
+    opts = merge({}, opts, options);
   }
 
   if (files && Object.keys(files).length === 0) {
@@ -294,7 +306,6 @@ function normalizeString(key, value, locals, options) {
   var o = {};
   o[key] = {};
 
-
   // If only `key` is defined
   if (value == null) {
     // see if `key` is a value file path
@@ -321,15 +332,15 @@ function normalizeString(key, value, locals, options) {
       var loc = {};
       opt = {};
 
-      _.merge(loc, utils.pickLocals(value));
-      _.merge(loc, locals);
+      merge(loc, utils.pickLocals(value));
+      merge(loc, locals);
 
-      _.merge(opt, loc.options);
-      _.merge(opt, value.options);
-      _.merge(opt, options);
+      merge(opt, loc.options);
+      merge(opt, value.options);
+      merge(opt, options);
 
-      _.merge(root, utils.pickRoot(loc));
-      _.merge(root, utils.pickRoot(opt));
+      merge(root, utils.pickRoot(loc));
+      merge(root, utils.pickRoot(opt));
 
       o[key] = root;
       o[key].locals = loc;
@@ -503,7 +514,7 @@ function normalizeArray(patterns, locals, options) {
  * @return {Object} `options` Possibly options
  */
 
-function normalizeFn(fn, options) {
+function normalizeFunction(fn, options) {
   var file = fn.call(null, options);
   debug('normalizing fn:', file);
   return file;
@@ -526,7 +537,7 @@ function normalizeFormat() {
   case 'array':
     return normalizeArray.apply(null, args);
   case 'function':
-    return normalizeFn.apply(null, args);
+    return normalizeFunction.apply(null, args);
   default:
     return {};
   }
@@ -548,7 +559,6 @@ var loader = function (options) {
 
   return function(obj) {
     debug('pre-normalize', obj);
-
     obj = normalizeFormat.apply(null, arguments);
 
     return reduce(obj, function (acc, value, key) {
@@ -563,8 +573,8 @@ var loader = function (options) {
       value.ext = value.ext || path.extname(value.path);
 
       var parsed = parseContent(value, opts);
-      value = _.merge({}, value, parsed);
 
+      value = merge({}, value, parsed);
       if (value.content === value.orig) {
         value = omit(value, 'orig');
       }
@@ -604,14 +614,6 @@ loader.valueOnly = function (options) {
     }, {});
   };
 };
-
-
-/**
- * Expose utils
- */
-
-loader.generateKey = utils.generateKey;
-loader.generateId = utils.generateId;
 
 
 /**
