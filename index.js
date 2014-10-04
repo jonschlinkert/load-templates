@@ -8,6 +8,7 @@
 'use strict';
 
 var fs = require('fs');
+var arr = require('arr');
 var path = require('path');
 var typeOf = require('kind-of');
 var extend = require('mixin-deep');
@@ -320,12 +321,12 @@ function normalizeString(key, value, locals, options) {
       var loc = {};
       opt = {};
 
-      loc = _.merge({}, loc, utils.pickLocals(value));
-      loc = _.merge({}, loc, locals);
+      _.merge(loc, utils.pickLocals(value));
+      _.merge(loc, locals);
 
-      opt = _.merge({}, opt, loc.options);
-      opt = _.merge({}, opt, value.options);
-      opt = _.merge({}, opt, options);
+      _.merge(opt, loc.options);
+      _.merge(opt, value.options);
+      _.merge(opt, options);
 
       _.merge(root, utils.pickRoot(loc));
       _.merge(root, utils.pickRoot(opt));
@@ -358,6 +359,8 @@ function normalizeString(key, value, locals, options) {
 
   // TODO: when would this happen?
   if (locals && utils.isObject(locals)) {
+    // locs = locals;
+    // opts = utils.pickOptions(locals);
     o[key]._s1s2o1 = true;
   }
 
@@ -367,7 +370,7 @@ function normalizeString(key, value, locals, options) {
   }
 
   opt = utils.flattenOptions(opts);
-  opt = extend({}, opt, o[key].options);
+  extend(opt, o[key].options);
   o[key].options = opt;
 
   locs = omit(locs, 'options');

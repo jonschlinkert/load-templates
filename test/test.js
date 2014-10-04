@@ -917,11 +917,34 @@ describe('random', function () {
   });
 
   it('random stuff', function () {
-    var files = loader('a/b/c.md', {content: 'this is baz', a: 'b', options: {foo: 'bar'}}, {bar: 'baz'});
-    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is baz', locals: {a: 'b'}, options: {bar: 'baz', foo: 'bar'}}});
+    var tmpl = loader('a/b/c.md', {content: 'this is baz', a: 'b', options: {foo: 'bar'}}, {bar: 'baz'});
+    tmpl.should.eql({'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is baz', locals: {a: 'b'}, options: {bar: 'baz', foo: 'bar'}}});
   });
 
-  it('multiple templates:', function () {
+  it('random stuff', function () {
+    var ctx = {
+      locals: {
+        engine: '_',
+        name: 'Jon Schlinkert',
+        layout: 'sidebar',
+        helpers: {
+          include: function(name) {
+            var filepath = path.join('test/fixtures', name);
+            return fs.readFileSync(filepath, 'utf8');
+          },
+          wrap: function(str) {
+            var res = template.renderSync(str);
+            return '(' + res + ')';
+          }
+        }
+      },
+    };
+
+    // var tmpl = loader('abc', {content: '<%= wrap(include("content.tmpl")) %> This is a page!'}, ctx);
+    // console.log(tmpl)
+  });
+
+  it('should load multiple templates:', function () {
     var files = loader({
       'a/b/a.md': {content: 'this is content'},
       'a/b/b.md': {content: 'this is content'},
