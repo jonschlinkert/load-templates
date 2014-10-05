@@ -11,14 +11,14 @@
 var fs = require('fs');
 var arr = require('arr');
 var path = require('path');
+var debug = require('debug')('load-templates');
 var extend = require('mixin-deep');
 var hasAny = require('has-any');
-var debug = require('debug')('load-templates');
 var hasAnyDeep = require('has-any-deep');
 var isObject = require('is-plain-object');
-var omit = require('omit-keys');
 var mapFiles = require('map-files');
 var matter = require('gray-matter');
+var omit = require('omit-keys');
 var omitEmpty = require('omit-empty');
 var reduce = require('reduce-object');
 var typeOf = require('kind-of');
@@ -40,52 +40,6 @@ Loader.prototype.get = function(key) {
   return this.options[key];
 };
 
-/**
- * If we detected a `path` property directly on the object
- * that was passed, this means that the object is not
- * formatted with a key (as expected).
- *
- * ```js
- * // before
- * loader({path: 'a/b/c.md', content: 'this is foo'});
- *
- * // after
- * loader('a/b/c.md': {path: 'a/b/c.md', content: 'this is foo'});
- * ```
- *
- * @param  {String} `path`
- * @param  {Object} `value`
- * @return {Object}
- */
-
-function createKeyFromPath(filepath, value) {
-  var o = {};
-  o[filepath] = value;
-  return o;
-}
-
-/**
- * Create the `path` property from the string
- * passed in the first arg. This is only used
- * when the second arg is a string.
- *
- * ```js
- * loader('abc', {content: 'this is content'});
- * //=> normalize('abc', {path: 'abc', content: 'this is content'});
- * ```
- *
- * @param  {Object} a
- * @return {Object}
- */
-
-function createPathFromStringKey(o) {
-  for (var key in o) {
-    if (o.hasOwnProperty(key)) {
-      o[key].path = o[key].path || key;
-    }
-  }
-  return o;
-}
 
 /**
  * Default function for reading any files resolved.
@@ -108,6 +62,7 @@ Loader.prototype.readFn = function(filepath, options) {
   return fs.readFileSync(filepath, opts.enc);
 };
 
+
 /**
  * Default function for parsing any files resolved.
  *
@@ -127,6 +82,7 @@ Loader.prototype.parseFn = function(str, options) {
   opts = omit(options, ['delims']);
   return matter(str, opts);
 };
+
 
 /**
  * Unless a custom parse function is passed, by default YAML
@@ -152,6 +108,7 @@ Loader.prototype.parseContent = function(obj, options) {
   return o;
 };
 
+
 /**
  * Map files resolved from glob patterns or file paths.
  *
@@ -161,13 +118,11 @@ Loader.prototype.parseContent = function(obj, options) {
  * @return {Object}
  */
 
-Loader.prototype.mapFilesFn = function(patterns, options) {
+Loader.prototype.parseFiles = function(patterns, options) {
   debug('mapping files:', patterns);
 
-  var files = mapFiles(patterns, extend({
-    rename: this.renameKey,
-    parse: this.readFn
-  }, options));
+  var opts = {rename: this.renameKey, parse: this.readFn};
+  var files = mapFiles(patterns, extend(opts, options));
 
   return reduce(files, function (acc, value, key) {
     debug('reducing file: %s', key, value);
@@ -182,7 +137,8 @@ Loader.prototype.mapFilesFn = function(patterns, options) {
     acc[key] = value;
     return acc;
   }.bind(this), {});
-}
+};
+
 
 /**
  * Rename the key of a template object.
@@ -200,11 +156,12 @@ Loader.prototype.renameKey = function(key, options) {
 
   var opts = merge({}, this.options, options);
   if (opts.renameKey) {
-    // return opts.renameKey(key, _.omit(opts, 'renameKey'));
-    return opts.renameKey(key, opts);
+    return opts.renameKey(key, omit(opts, 'renameKey'));
   }
+
   return key;
 };
+
 
 /**
  * First arg is a file path or glob pattern.
@@ -222,7 +179,7 @@ Loader.prototype.renameKey = function(key, options) {
 Loader.prototype.normalizeFiles = function(patterns, locals, options) {
   debug('normalizing patterns: %s', patterns);
 
-  var files = this.mapFilesFn(patterns, options);
+  var files = this.parseFiles(patterns, options);
   var locs = {};
   var opts = {};
 
@@ -249,7 +206,8 @@ Loader.prototype.normalizeFiles = function(patterns, locals, options) {
     acc[key] = value;
     return acc;
   }, {});
-}
+};
+
 
 /**
  * First value is a string, second value is a string or
@@ -359,7 +317,8 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
   locs = omit(locs, 'options');
   o[key].locals = utils.flattenLocals(locs);
   return o;
-}
+};
+
 
 /**
  * Normalize objects that have `rootKeys` directly on
@@ -385,6 +344,7 @@ Loader.prototype.normalizeShallowObject = function(value, locals, options) {
   return o;
 };
 
+
 /**
  * Normalize nested templates that have the following pattern:
  *
@@ -408,6 +368,7 @@ Loader.prototype.normalizeDeepObject = function(obj, locals, options) {
     return acc;
   }.bind(this), {});
 };
+
 
 /**
  * When the first arg is an object, all arguments
@@ -449,6 +410,7 @@ Loader.prototype.normalizeObject = function(o) {
     'have a `path` or `content` property.');
 };
 
+
 /**
  * When the first arg is an array, assume it's glob
  * patterns or file paths.
@@ -468,6 +430,7 @@ Loader.prototype.normalizeArray = function(patterns, locals, options) {
   return this.normalizeFiles(patterns, locals, opts);
 };
 
+
 /**
  * When the first arg is an array, assume it's glob
  * patterns or file paths.
@@ -486,6 +449,7 @@ Loader.prototype.normalizeFunction = function(fn, options) {
   debug('normalizing fn:', file);
   return file;
 };
+
 
 /**
  * Normalize base template formats.
@@ -508,6 +472,7 @@ Loader.prototype.format = function() {
       return {};
     }
 };
+
 
 /**
  * Final normalization step to remove empty values and rename
@@ -553,6 +518,7 @@ Loader.prototype.load = function() {
   }.bind(this), {});
 };
 
+
 /**
  * Base normalize method, abstracted to make it easier to
  * pass in custom methods.
@@ -572,6 +538,54 @@ Loader.prototype.normalize = function (options, acc, value, key) {
   acc[key] = value;
   return acc;
 };
+
+
+/**
+ * If we detected a `path` property directly on the object
+ * that was passed, this means that the object is not
+ * formatted with a key (as expected).
+ *
+ * ```js
+ * // before
+ * loader({path: 'a/b/c.md', content: 'this is foo'});
+ *
+ * // after
+ * loader('a/b/c.md': {path: 'a/b/c.md', content: 'this is foo'});
+ * ```
+ *
+ * @param  {String} `path`
+ * @param  {Object} `value`
+ * @return {Object}
+ */
+
+function createKeyFromPath(filepath, value) {
+  var o = {};
+  o[filepath] = value;
+  return o;
+}
+
+/**
+ * Create the `path` property from the string
+ * passed in the first arg. This is only used
+ * when the second arg is a string.
+ *
+ * ```js
+ * loader('abc', {content: 'this is content'});
+ * //=> normalize('abc', {path: 'abc', content: 'this is content'});
+ * ```
+ *
+ * @param  {Object} a
+ * @return {Object}
+ */
+
+function createPathFromStringKey(o) {
+  for (var key in o) {
+    if (o.hasOwnProperty(key)) {
+      o[key].path = o[key].path || key;
+    }
+  }
+  return o;
+}
 
 /**
  * Merge util. I'm doing it this way temporarily until
