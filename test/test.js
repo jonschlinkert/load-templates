@@ -156,20 +156,23 @@ describe('loader.normalize()', function () {
 });
 
 
-describe(chalk.magenta('[ function | object ]') + ' pattern:', function () {
+describe(chalk.magenta('[ function ]') + ' pattern:', function () {
   describe(chalk.bold('valid filepath:'), function () {
-    it('should detect when the string is a filepath:', function () {
-      var files = loader(function(options) {
-        var file = matter.read('test/fixtures/a.md');
+    it('should load templates from a functoin:', function () {
+      var file = matter.read('test/fixtures/a.md');
+
+      var files = loader(function (options) {
         var o = {};
         o[file.path] = file;
         return o;
       });
+      files['test/fixtures/a.md'].should.have.properties(['ext', 'data', 'path', 'content']);
+      files['test/fixtures/a.md'].should.have.property('ext', '.md');
+      files['test/fixtures/a.md'].should.have.property('data', {title: 'AAA'});
       files['test/fixtures/a.md'].should.have.property('path', 'test/fixtures/a.md');
     });
   });
 });
-
 
 describe(chalk.magenta('[ string | object ]') + ' pattern:', function () {
   describe(chalk.bold('valid filepath:'), function () {
@@ -230,6 +233,7 @@ describe(chalk.magenta('[ string | object ]') + ' pattern:', function () {
       var files = loader('test/fixtures/one/a.md', {name: 'Brian Woodward'});
       files['test/fixtures/one/a.md'].should.have.property('locals', {name: 'Brian Woodward'});
     });
+
   });
 
   describe(chalk.bold('valid glob pattern:'), function () {
@@ -332,9 +336,9 @@ describe(chalk.magenta('[ string | object ]') + ' pattern:', function () {
     });
 
     describe('when a `content` prop and actual content cannot be found:', function () {
-      it('should not add a content property:', function () {
+      it('should add a content property with a value of `null`:', function () {
         var files = loader({'bar1.md': {path: 'a/b/c.md', name: 'Jon Schlinkert'}});
-        files['bar1.md'].should.not.have.property('content');
+        files['bar1.md'].should.have.property('content', null);
       });
 
       it('should add other prorties found on the object:', function () {
@@ -343,30 +347,34 @@ describe(chalk.magenta('[ string | object ]') + ' pattern:', function () {
       });
     });
 
-    it.skip('should detect locals when passed as a second param', function () {
+    it('should detect locals when passed as a second param', function () {
       var files = loader('whatever', {name: 'Brian Woodward'});
       files['whatever'].should.have.property('locals', {name: 'Brian Woodward'});
     });
 
-    it.skip('should return `{content: null}` when content is not defined or detected.', function () {
+    it('should define `content` as `null` when content is not defined or detected.', function () {
       var files = loader('whatever', {name: 'Brian Woodward'});
       files['whatever'].should.have.property('content', null);
     });
-
 
     it('should load when content is a property on an object.', function () {
       var files = loader('a.md', {content: 'c'});
       files['a.md'].should.have.property('content', 'c');
     });
 
-    it.skip('should load even if the key is an invalid filepath.', function () {
+    it('should load even if the key is an invalid filepath.', function () {
       var files = loader('a.md');
-      files.should.have.property('__id__1');
+      files.should.have.property('a.md');
+      files['a.md'].should.have.property('content', null);
+      files['a.md'].should.have.property('path', 'a.md');
+      files['a.md'].should.have.property('ext', '.md');
     });
 
-    it.skip('should load even if the key is an invalid filepath.', function () {
+    it('should load even if the key is an invalid filepath.', function () {
       var files = loader('a.md', 'b');
       files['a.md'].should.have.property('content', 'b');
+      files['a.md'].should.have.property('path', 'a.md');
+      files['a.md'].should.have.property('ext', '.md');
     });
 
     it('should detect content passed as a second arg', function () {
@@ -392,6 +400,34 @@ describe(chalk.magenta('[ string | object ]') + ' pattern:', function () {
         files['a'].should.have.property('locals', {layout: 'b'});
       });
     });
+  });
+});
+
+
+describe(chalk.magenta('[ string | object | object ]') + ' pattern:', function () {
+  it('should detect the last object as options:', function () {
+    var tmpl = loader('a.md', {content: 'abc'}, {c: 'c'});
+    tmpl['a.md'].should.have.properties('path', 'ext', 'content', 'options');
+    tmpl['a.md'].should.have.property('options', {c: 'c'});
+    tmpl.should.eql({'a.md': {path: 'a.md', ext: '.md', content: 'abc', options: {c: 'c'}}});
+  });
+
+  it('should merge options from the second object and last object:', function () {
+    var tmpl = loader('a.md', {content: 'abc', options: {b: 'b'}}, {c: 'c'});
+    tmpl.should.eql({'a.md': {path: 'a.md', ext: '.md', content: 'abc', options: {b: 'b', c: 'c'}}});
+  });
+
+  it('should detect locals on the second object:', function () {
+    var tmpl = loader('a.md', {content: 'abc', a: 'a'});
+    tmpl['a.md'].should.have.property('locals', {a: 'a'});
+    tmpl.should.eql({'a.md': {path: 'a.md', ext: '.md', content: 'abc', locals: {a: 'a'}}});
+  });
+
+  it('should sift locals and options correctly:', function () {
+    var tmpl = loader('a.md', {content: 'abc', a: 'a', options: {b: 'b'}}, {c: 'c'});
+    tmpl['a.md'].should.have.property('locals', {a: 'a'});
+     tmpl['a.md'].should.have.property('options', {b: 'b', c: 'c'});
+   tmpl.should.eql({'a.md': {path: 'a.md', ext: '.md', content: 'abc', locals: {a: 'a'}, options: {b: 'b', c: 'c'}}});
   });
 });
 
@@ -465,6 +501,19 @@ describe(chalk.magenta('[ object ]') + ' pattern:', function () {
     files['a'].should.have.property('path', 'a');
     files['a'].should.have.property('locals');
     files['a'].locals.should.have.property('layout', 'b');
+  });
+});
+
+
+describe(chalk.magenta('[ object | object ]') + ' pattern:', function () {
+  it('should make the second object locals when two objects are passed', function () {
+    var files = loader({path: 'a.md', content: 'abc'}, {a: 'a'});
+    files.should.eql({'a.md': {path: 'a.md', ext: '.md', content: 'abc', locals: {a: 'a'}}});
+  });
+
+  it('should detect options and locals on a complex template.', function () {
+    var files = loader({path: 'a/b/c.md', content: 'this is content.', a: 'b', options: {y: 'z'}}, {c: 'd'}, {e: 'f'});
+    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {a: 'b', c: 'd'}, options: {y: 'z', e: 'f'}}});
   });
 });
 
@@ -885,40 +934,20 @@ describe('glob patterns', function () {
   });
 });
 
-describe('random', function () {
+describe('random usage', function () {
   it('should normalize a template with a non-filepath key.', function () {
     var files = loader('foo', {content: 'this is content.'});
     files.should.eql({'foo': {path: 'foo', content: 'this is content.'}});
   });
 
-  it('should normalize a template with a non-filepath key.', function () {
+  it('should correctly detect options on a template with a non-filepath key.', function () {
     var files = loader('foo', {content: 'this is content.', a: 'b'}, {fez: 'foo'});
     files.should.eql({'foo': {path: 'foo', content: 'this is content.', locals: {a: 'b'}, options: {fez: 'foo'}}});
   });
 
-  it('should normalize a template with a non-filepath key.', function () {
+  it('should correctly detect locals on a template with a non-filepath key.', function () {
     var files = loader({'foo': {content: 'this is content.', a: 'b'}}, {fez: 'foo'});
     files.should.eql({'foo': {path: 'foo', content: 'this is content.', locals: {a: 'b', fez: 'foo'}}});
-  });
-
-  it('random stuff', function () {
-    var files = loader({path: 'a/b/c.md', content: 'this is content.', a: 'b', options: {y: 'z'}}, {c: 'd'}, {e: 'f'});
-    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {a: 'b', c: 'd'}, options: {y: 'z', e: 'f'}}});
-  });
-
-  it('random stuff', function () {
-    var files = loader({path: 'a/b/c.md', content: 'this is foo'}, {foo: 'bar'});
-    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is foo', locals: {foo: 'bar'}}});
-  });
-
-  it('random stuff', function () {
-    var files = loader('a/b/c.md', {content: 'this is baz', a: 'b', options: {foo: 'bar'}}, {bar: 'baz'});
-    files.should.eql({'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is baz', locals: {a: 'b'}, options: {bar: 'baz', foo: 'bar'}}});
-  });
-
-  it('random stuff', function () {
-    var tmpl = loader('a/b/c.md', {content: 'this is baz', a: 'b', options: {foo: 'bar'}}, {bar: 'baz'});
-    tmpl.should.eql({'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is baz', locals: {a: 'b'}, options: {bar: 'baz', foo: 'bar'}}});
   });
 
   it('random stuff', function () {
@@ -940,8 +969,9 @@ describe('random', function () {
       },
     };
 
-    // var tmpl = loader('abc', {content: '<%= wrap(include("content.tmpl")) %> This is a page!'}, ctx);
-    // console.log(tmpl)
+    var tmpl = loader('abc', {content: '<%= wrap(include("content.tmpl")) %> This is a page!'}, ctx);
+    tmpl['abc'].should.have.properties('locals');
+    tmpl['abc'].locals.should.have.properties('engine', 'layout', 'helpers');
   });
 
   it('should load multiple templates:', function () {

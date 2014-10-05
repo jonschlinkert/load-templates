@@ -43,20 +43,17 @@
   ],
   "dependencies": {
     "arr": "^0.1.4",
-    "array-slice": "^0.2.0",
     "debug": "^2.0.0",
     "gray-matter": "^0.5.0",
     "has-any": "^0.1.0",
     "has-any-deep": "^0.2.0",
     "is-plain-object": "^0.1.0",
     "kind-of": "^0.1.0",
-    "lodash": "^2.4.1",
     "map-files": "^0.1.2",
     "mixin-deep": "^0.1.0",
     "object-pick": "^0.1.0",
     "omit-empty": "^0.2.0",
     "omit-keys": "^0.1.0",
-    "reduce-object": "^0.1.2",
-    "uniqueid": "^0.1.0"
+    "reduce-object": "^0.1.2"
   }
 }

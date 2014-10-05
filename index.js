@@ -10,18 +10,18 @@
 var fs = require('fs');
 var arr = require('arr');
 var path = require('path');
-var typeOf = require('kind-of');
 var extend = require('mixin-deep');
 var hasAny = require('has-any');
 var debug = require('debug')('load-templates');
 var hasAnyDeep = require('has-any-deep');
+var isObject = require('is-plain-object');
 var omit = require('omit-keys');
 var mapFiles = require('map-files');
 var matter = require('gray-matter');
 var omitEmpty = require('omit-empty');
 var reduce = require('reduce-object');
+var typeOf = require('kind-of');
 var utils = require('./lib/utils');
-var _ = require('lodash');
 
 
 /**
@@ -84,7 +84,6 @@ function createPathFromStringKey(o) {
   return o;
 }
 
-
 /**
  * Default function for reading any files resolved.
  *
@@ -106,7 +105,6 @@ function readFn(filepath, options) {
   return fs.readFileSync(filepath, opts.enc);
 }
 
-
 /**
  * Default function for parsing any files resolved.
  *
@@ -120,39 +118,36 @@ function readFn(filepath, options) {
 
 function parseFn(str, options) {
   var opts = extend({ autodetect: true }, options);
-
   if (opts.parseFn) {
     return opts.parseFn(str, options);
   }
-
   opts = omit(options, ['delims']);
   return matter(str, opts);
 }
 
-
 /**
- * [parseContent description]
+ * Unless a custom parse function is passed, by default YAML
+ * front matter is parsed from the string in the `content`
+ * property.
  *
- * @param  {[type]} value
- * @param  {[type]} options
- * @return {[type]}
+ * @param  {Object} `value`
+ * @param  {Object} `options`
+ * @return {Object}
  */
 
 function parseContent(obj, options) {
   debug('parsing content', obj);
 
-  var o = extend({}, obj);
+  var o = obj || {};
 
-  if (utils.isString(o.content) && !o.hasOwnProperty('orig')) {
+  if (isString(o.content) && !o.hasOwnProperty('orig')) {
     var orig = o.content;
     o = parseFn(o.content, options);
     o.orig = orig;
   }
-
   o._parsed = true;
   return o;
 }
-
 
 /**
  * Rename the key of a template object.
@@ -175,7 +170,6 @@ function renameKey(key, options) {
   return key;
 }
 
-
 /**
  * Map files resolved from glob patterns or file paths.
  *
@@ -196,7 +190,7 @@ function mapFilesFn(patterns, options) {
   return reduce(files, function (acc, value, key) {
     debug('reducing file: %s', key, value);
 
-    if (utils.isString(value)) {
+    if (isString(value)) {
       value = parseFn(value);
       value.path = value.path || key;
     }
@@ -207,7 +201,6 @@ function mapFilesFn(patterns, options) {
     return acc;
   }, {});
 }
-
 
 /**
  * First arg is a file path or glob pattern.
@@ -229,12 +222,12 @@ function normalizeFiles(patterns, locals, options) {
   var locs = {};
   var opts = {};
 
-  if (locals && utils.isObject(locals)) {
+  if (locals && isObject(locals)) {
     locs = utils.pickLocals(locals);
     opts = utils.pickOptions(locals);
   }
 
-  if (options && utils.isObject(options)) {
+  if (options && isObject(options)) {
     opts = merge({}, opts, options);
   }
 
@@ -253,7 +246,6 @@ function normalizeFiles(patterns, locals, options) {
     return acc;
   }, {});
 }
-
 
 /**
  * First value is a string, second value is a string or
@@ -295,9 +287,9 @@ function normalizeFiles(patterns, locals, options) {
 function normalizeString(key, value, locals, options) {
   debug('normalizing string: %s', key, value);
 
-  var objects = utils.valuesOfType('object', arguments);
   var args = [].slice.call(arguments, 1);
-  var props = utils.siftProps.apply(utils.siftProps, args);
+  var objects = arr.objects(arguments);
+  var props = utils.siftProps.apply(null, args);
   var opts = options || props.options;
   var locs = props.locals;
   var files;
@@ -321,7 +313,7 @@ function normalizeString(key, value, locals, options) {
     }
   }
 
-  if ((value && utils.isObject(value)) || objects == null) {
+  if ((value && isObject(value)) || objects == null) {
     debug('[value] s1o1: %s, %j', key, value);
     files = normalizeFiles(key, value, locals, options);
     if (files != null) {
@@ -354,7 +346,7 @@ function normalizeString(key, value, locals, options) {
     }
   }
 
-  if (value && utils.isString(value)) {
+  if (value && isString(value)) {
     debug('[value] string: %s, %s', key, value);
 
     root = utils.pickRoot(locals);
@@ -368,15 +360,16 @@ function normalizeString(key, value, locals, options) {
     }
   }
 
-  // TODO: when would this happen?
-  if (locals && utils.isObject(locals)) {
-    // locs = locals;
-    // opts = utils.pickOptions(locals);
+  if (locals && isObject(locals)) {
+    debug('[value] string: %s, %s', key, value);
+    locs = extend({}, locs, locals.locals);
+    opts = extend({}, opts, locals.options);
     o[key]._s1s2o1 = true;
   }
 
-  // TODO: when would this happen?
-  if (options && utils.isObject(options)) {
+  if (options && isObject(options)) {
+    debug('[value] string: %s, %s', key, value);
+    opts = extend({}, opts, options);
     o[key]._s1s2o1o2 = true;
   }
 
@@ -388,7 +381,6 @@ function normalizeString(key, value, locals, options) {
   o[key].locals = utils.flattenLocals(locs);
   return o;
 }
-
 
 /**
  * Normalize objects that have `rootKeys` directly on
@@ -414,7 +406,6 @@ function normalizeShallowObject(value, locals, options) {
   return o;
 }
 
-
 /**
  * Normalize nested templates that have the following pattern:
  *
@@ -438,7 +429,6 @@ function normalizeDeepObject(obj, locals, options) {
     return acc;
   }, {});
 }
-
 
 /**
  * When the first arg is an object, all arguments
@@ -480,7 +470,6 @@ function normalizeObject(o) {
     'have a `path` or `content` property.');
 }
 
-
 /**
  * When the first arg is an array, assume it's glob
  * patterns or file paths.
@@ -500,7 +489,6 @@ function normalizeArray(patterns, locals, options) {
   return normalizeFiles(patterns, locals, opts);
 }
 
-
 /**
  * When the first arg is an array, assume it's glob
  * patterns or file paths.
@@ -519,7 +507,6 @@ function normalizeFunction(fn, options) {
   debug('normalizing fn:', file);
   return file;
 }
-
 
 /**
  * Normalize base template formats.
@@ -543,7 +530,6 @@ function normalizeFormat() {
   }
 }
 
-
 /**
  * Final normalization step to remove empty values and rename
  * the object key. By now the template should be _mostly_
@@ -553,7 +539,7 @@ function normalizeFormat() {
  * @return {Object}
  */
 
-var loader = function (options) {
+function loader(options) {
   options = extend({}, options);
   debug('loader', options);
 
@@ -565,10 +551,8 @@ var loader = function (options) {
       if (value && Object.keys(value).length === 0) {
         return acc;
       }
-
       // save the content for comparison after parsing
       var opts = {};
-
       extend(opts, options, value.options);
       value.ext = value.ext || path.extname(value.path);
 
@@ -584,14 +568,25 @@ var loader = function (options) {
       }
 
       value = omitEmpty(value);
+      value.content = value.content || null;
       acc[renameKey(key, opts)] = value;
 
       loader.normalize(opts, acc, value, key);
       return acc;
     }, {});
   };
-};
+}
 
+/**
+ * Base normalize method, abstracted to make it easier to
+ * pass in custom methods.
+ *
+ * @param  {Object} `options`
+ * @param  {Object} `acc`
+ * @param  {String|Object} `value`
+ * @param  {String} `key`
+ * @return {Object} Normalized template object.
+ */
 
 loader.normalize = function (options, acc, value, key) {
   debug('normalize: %s, %value', key);
@@ -602,19 +597,15 @@ loader.normalize = function (options, acc, value, key) {
   return acc;
 };
 
+/**
+ * typeof utils
+ *
+ * @api private
+ */
 
-loader.valueOnly = function (options) {
-  debug('valueOnly:', options);
-  var fn = loader(options);
-
-  return function(obj) {
-    return reduce(fn(obj), function(acc, value) {
-      value.ext = value.ext || path.extname(value.path);
-      return value;
-    }, {});
-  };
-};
-
+function isString(val) {
+  return typeOf(val) === 'string';
+}
 
 /**
  * Expose `loader`
