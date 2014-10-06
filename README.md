@@ -20,13 +20,29 @@ npm test
 ```js
 var Loader = require('load-templates');
 var loader = new Loader();
+```
 
-var templates = loader.load('a/b/*.md');
+Throw some disorganized templates into the load method:
+
+```js
+loader.load('a.md', {a: 'b'});
+loader.load('*.md', {a: 'b'});
+loader.load(['*.md'], {a: 'b'});
+loader.load({path: 'a.md', a: 'b'});
+loader.load({'a.md': {path: 'a.md', a: 'b'}});
+```
+
+And get shiny, normalized template objects back:
+
+```js
+{ 'a.md': {path: 'a.md', content: 'this is content.', a: 'b'},
+  'b.md': {path: 'b.md', content: 'this is content.', a: 'b'},
+  'c.md': {path: 'c.md', content: 'this is content.', a: 'b'}}
 ```
 
 ### Valid formats
 
-See [the docs](./docs.md) for valid formats. WIP.
+See [the docs](./docs/conventions.md) and [tests](./tests) for valid formats. WIP.
 
 
 ## Author

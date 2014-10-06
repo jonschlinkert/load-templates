@@ -2,8 +2,9 @@
 
 var util = require('util');
 var path = require('path');
-var extend = require('mixin-deep');
-var loader = require('./');
+var Loader = require('..');
+var utils = require('../lib/utils')
+
 
 /**
  * Example application using load-templates
@@ -37,8 +38,8 @@ Engine.prototype.defaultTemplates = function () {
  */
 
 Engine.prototype.load = function () {
-  var opts = extend({}, this.options);
-  return loader(opts).apply(null, arguments);
+  var loader = new Loader(this.options);
+  return loader.load.apply(loader, arguments);
 };
 
 /**
@@ -58,7 +59,7 @@ Engine.prototype.create = function (type, plural) {
 
   Engine.prototype[plural] = function (key, value, locals, options) {
     var files = this.load(key, value, locals, options);
-    extend(this.cache[plural], files);
+    utils.extend(this.cache[plural], files);
     return this;
   };
   return this;
@@ -93,5 +94,9 @@ engine.pages('test/fixtures/a.md', {foo: 'bar'});
 engine.page('abc.md', 'This is content.', {name: 'Jon Schlinkert'});
 engine.partial({'foo/bar.md': {content: 'this is content.', data: {a: 'a'}}});
 engine.partial({path: 'one/two.md', content: 'this is content.', data: {b: 'b'}});
+engine.layout('test/fixtures/a.md', {a: 'b'});
+engine.page(['test/fixtures/one/*.md'], {a: 'b'});
+engine.page({path: 'test/fixtures/three/a.md', foo: 'b'});
+engine.page({'test/fixtures/a.txt': {path: 'a.md', a: 'b'}});
 
 console.log(util.inspect(engine, null, 10));

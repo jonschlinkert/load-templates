@@ -39,6 +39,7 @@ var utils = require('./lib/utils');
 
 function Loader(options) {
   this.options = options || {};
+  this.options.readPath = true;
 }
 
 
@@ -520,26 +521,25 @@ Loader.prototype.load = function() {
       return acc;
     }
     // save the content for comparison after parsing
-    var opts = {};
-    merge(opts, options, value.options);
+    merge(options, value.options);
     value.ext = value.ext || path.extname(value.path);
 
-    var parsed = this.parseContent(value, opts);
+    var parsed = this.parseContent(value, options);
 
     merge(value, parsed);
     if (value.content === value.orig) {
       value = omit(value, 'orig');
     }
 
-    if (opts.debug == null) {
+    if (options.debug == null) {
       value = omit(value, utils.heuristics);
     }
 
     value = omitEmpty(value);
     value.content = value.content || null;
-    acc[this.renameKey(key, opts)] = value;
 
-    this.normalize(opts, acc, value, key);
+    acc[this.renameKey(key, options)] = value;
+    this.normalize(options, acc, value, key);
     return acc;
   }.bind(this), {});
 };
