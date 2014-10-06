@@ -21,24 +21,24 @@ describe(chalk.magenta('utils:'), function () {
   });
   describe('options:', function () {
 
-    describe.only('.flatten():', function () {
+    describe('.flattenDeep():', function () {
       it('should flatten `prop` to the root of the object:', function () {
-        var locals = utils.flatten('a', {a: {b: 'b'}, b: {a: {c: 'c'}}, c: {a: {d: 'd'}}});
+        var locals = utils.flattenDeep('a', {a: {b: 'b'}, b: {a: {c: 'c'}}, c: {a: {d: 'd'}}});
         locals.should.eql({b: 'b', c: 'c', d: 'd'});
       });
 
       it('should "collect" `prop` from multiple objects:', function () {
         var one = {a: {b: 'b'}, b: {a: {c: 'c'}}, c: {a: {d: 'd'}}};
         var two = {a: {g: 'g'}, k: {a: {e: 'e', a: {h: 'h'}}}, z: {a: {f: 'f'}}};
-        var locals = utils.flatten('a', one, two);
+        var locals = utils.flattenDeep('a', one, two);
         locals.should.eql({b: 'b', c: 'c', d: 'd', e: 'e', f: 'f', g: 'g', h: 'h'});
       });
     });
 
-    describe('.flatten():', function () {
+    describe('.flattenDeep():', function () {
       it('should return an empty object when nothing is found:', function () {
-        utils.flatten({content: 'This is content.'}).should.eql({});
-        utils.flatten({}).should.eql({});
+        utils.flattenDeep({content: 'This is content.'}).should.eql({});
+        utils.flattenDeep({}).should.eql({});
       });
     });
 

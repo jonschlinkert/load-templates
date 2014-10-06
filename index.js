@@ -216,8 +216,8 @@ Loader.prototype.normalizeFiles = function(patterns, locals, options) {
   options = options || {};
   locals = locals || {};
 
-  var locs = merge({}, locals, locals.locals, options.locals);
-  var opts = merge({}, options, locals.options);
+  merge(locals, locals.locals, options.locals);
+  merge(options, locals.options);
 
   var files = this.parseFiles(patterns, options);
   if (files && Object.keys(files).length === 0) {
@@ -227,13 +227,8 @@ Loader.prototype.normalizeFiles = function(patterns, locals, options) {
   return reduce(files, function (acc, value, key) {
     debug('reducing normalized file: %s', key);
 
-    merge(opts, options);
-    var foo = utils.flatten('options', opts);
-    // console.log('opts:', opts);
-
-    value.options = utils.flattenOptions(opts);
-    // console.log('value.options:', value.options);
-    value.locals = utils.flattenLocals(locs);
+    value.options = utils.flattenOptions(options);
+    value.locals = utils.flattenLocals(locals);
     acc[key] = value;
     return acc;
   }, {});
@@ -531,7 +526,7 @@ Loader.prototype.load = function() {
 
     var parsed = this.parseContent(value, opts);
 
-    value = merge({}, value, parsed);
+    merge(value, parsed);
     if (value.content === value.orig) {
       value = omit(value, 'orig');
     }
