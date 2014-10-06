@@ -6,13 +6,13 @@
  */
 
 'use strict';
+
 // process.env.DEBUG = 'load-templates';
 
 var fs = require('fs');
 var arr = require('arr');
 var path = require('path');
 var debug = require('debug')('load-templates');
-var extend = require('mixin-deep');
 var hasAny = require('has-any');
 var hasAnyDeep = require('has-any-deep');
 var isObject = require('is-plain-object');
@@ -25,118 +25,52 @@ var typeOf = require('kind-of');
 var utils = require('./lib/utils');
 
 
+/**
+ * Initialize a new `Loader`
+ *
+ * ```js
+ * var loader = new Loader();
+ * ```
+ *
+ * @class Loader
+ * @param {Object} `obj` Optionally pass an `options` object to initialize with.
+ * @api public
+ */
 
 function Loader(options) {
   this.options = options || {};
 }
 
-Loader.prototype.set = function(key, value) {
-  debug('loader.set', key, value);
+
+/**
+ * Set or get an option.
+ *
+ * ```js
+ * loader.option('a', true)
+ * loader.option('a')
+ * // => true
+ * ```
+ *
+ * @param {String} `key` The option name.
+ * @param {*} `value` The value to set.
+ * @return {*|Object} Returns `value` if `key` is supplied, or `Loader` for chaining when an option is set.
+ * @api public
+ */
+
+Loader.prototype.option = function(key, value) {
+  var args = [].slice.call(arguments);
+
+  if (args.length === 1 && isString(key)) {
+    return this.options[key];
+  }
+
+  if (isObject(key)) {
+    merge.apply(merge, [this.options].concat(args));
+    return this;
+  }
+
   this.options[key] = value;
-};
-
-Loader.prototype.get = function(key) {
-  debug('loader.get', key);
-  return this.options[key];
-};
-
-
-/**
- * Default function for reading any files resolved.
- *
- * Pass a custom `parseFn` function on the options to change
- * how files are parsed.
- *
- * @param  {String} `filepath`
- * @param  {Object} `options`
- * @return {Object}
- */
-
-Loader.prototype.readFn = function(filepath, options) {
-  var opts = extend({ enc: 'utf8' }, options);
-
-  if (opts.readFn) {
-    return opts.readFn(filepath, options);
-  }
-
-  return fs.readFileSync(filepath, opts.enc);
-};
-
-
-/**
- * Default function for parsing any files resolved.
- *
- * Pass a custom `parseFn` function on the options to change
- * how files are parsed.
- *
- * @param  {String} `filepath`
- * @param  {Object} `options`
- * @return {Object}
- */
-
-Loader.prototype.parseFn = function(str, options) {
-  var opts = extend({ autodetect: true }, options);
-  if (opts.parseFn) {
-    return opts.parseFn(str, options);
-  }
-  opts = omit(options, ['delims']);
-  return matter(str, opts);
-};
-
-
-/**
- * Unless a custom parse function is passed, by default YAML
- * front matter is parsed from the string in the `content`
- * property.
- *
- * @param  {Object} `value`
- * @param  {Object} `options`
- * @return {Object}
- */
-
-Loader.prototype.parseContent = function(obj, options) {
-  debug('parsing content', obj);
-
-  var o = obj || {};
-
-  if (isString(o.content) && !o.hasOwnProperty('orig')) {
-    var orig = o.content;
-    o = this.parseFn(o.content, options);
-    o.orig = orig;
-  }
-  o._parsed = true;
-  return o;
-};
-
-
-/**
- * Map files resolved from glob patterns or file paths.
- *
- *
- * @param  {String|Array} `patterns`
- * @param  {Object} `options`
- * @return {Object}
- */
-
-Loader.prototype.parseFiles = function(patterns, options) {
-  debug('mapping files:', patterns);
-
-  var opts = {rename: this.renameKey, parse: this.readFn};
-  var files = mapFiles(patterns, extend(opts, options));
-
-  return reduce(files, function (acc, value, key) {
-    debug('reducing file: %s', key, value);
-
-    if (isString(value)) {
-      value = this.parseFn(value);
-      value.path = value.path || key;
-    }
-
-    value._parsed = true;
-    value._mappedFile = true;
-    acc[key] = value;
-    return acc;
-  }.bind(this), {});
+  return this;
 };
 
 
@@ -164,6 +98,107 @@ Loader.prototype.renameKey = function(key, options) {
 
 
 /**
+ * Default function for reading any files resolved.
+ *
+ * Pass a custom `readFn` function on the options to change
+ * how files are read.
+ *
+ * @param  {String} `filepath`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+Loader.prototype.readFn = function(filepath, options) {
+  var opts = merge({ enc: 'utf8' }, this.options, options);
+
+  if (opts.readFn) {
+    return opts.readFn(filepath, options);
+  }
+
+  return fs.readFileSync(filepath, opts.enc);
+};
+
+
+/**
+ * Default function for parsing any files resolved.
+ *
+ * Pass a custom `parseFn` function on the options to change
+ * how files are parsed.
+ *
+ * @param  {String} `filepath`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+Loader.prototype.parseFn = function(str, options) {
+  var opts = merge({ autodetect: true }, this.options, options);
+
+  if (opts.parseFn) {
+    return opts.parseFn(str, options);
+  }
+
+  return matter(str, omit(options, ['delims']));
+};
+
+
+/**
+ * Unless a custom parse function is passed, by default YAML
+ * front matter is parsed from the string in the `content`
+ * property.
+ *
+ * @param  {Object} `value`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+Loader.prototype.parseContent = function(obj, options) {
+  debug('parsing content', obj);
+  var o = obj || {};
+
+  if (isString(o.content) && !hasOwn(o, 'orig')) {
+    var orig = o.content;
+    o = this.parseFn(o.content, options);
+    o.orig = orig;
+  }
+
+  o._parsed = true;
+  return o;
+};
+
+
+/**
+ * Map files resolved from glob patterns or file paths.
+ *
+ *
+ * @param  {String|Array} `patterns`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+Loader.prototype.parseFiles = function(patterns, options) {
+  debug('mapping files:', patterns);
+
+  // rename option keys the way [mapFiles] expects
+  var opts = {rename: this.renameKey, parse: this.readFn};
+  var files = mapFiles(patterns, merge(opts, options));
+
+  return reduce(files, function (acc, value, key) {
+    debug('reducing file: %s', key, value);
+
+    if (isString(value)) {
+      value = this.parseFn(value);
+      value.path = value.path || key;
+    }
+
+    value._parsed = true;
+    value._mappedFile = true;
+    acc[key] = value;
+    return acc;
+  }.bind(this), {});
+};
+
+
+/**
  * First arg is a file path or glob pattern.
  *
  * ```js
@@ -178,20 +213,13 @@ Loader.prototype.renameKey = function(key, options) {
 
 Loader.prototype.normalizeFiles = function(patterns, locals, options) {
   debug('normalizing patterns: %s', patterns);
+  options = options || {};
+  locals = locals || {};
+
+  var locs = merge({}, locals, locals.locals, options.locals);
+  var opts = merge({}, options, locals.options);
 
   var files = this.parseFiles(patterns, options);
-  var locs = {};
-  var opts = {};
-
-  if (locals && isObject(locals)) {
-    locs = utils.pickLocals(locals);
-    opts = utils.pickOptions(locals);
-  }
-
-  if (options && isObject(options)) {
-    opts = merge({}, opts, options);
-  }
-
   if (files && Object.keys(files).length === 0) {
     return null;
   }
@@ -199,13 +227,36 @@ Loader.prototype.normalizeFiles = function(patterns, locals, options) {
   return reduce(files, function (acc, value, key) {
     debug('reducing normalized file: %s', key);
 
-    extend(opts, options);
-    value.options = utils.flattenOptions(opts);
-    value.locals = utils.flattenLocals(locs);
+    merge(opts, options);
+    var foo = utils.flatten('options', opts);
+    // console.log('opts:', opts);
 
+    value.options = utils.flattenOptions(opts);
+    // console.log('value.options:', value.options);
+    value.locals = utils.flattenLocals(locs);
     acc[key] = value;
     return acc;
   }, {});
+};
+
+
+/**
+ * When the first arg is an array, assume it's glob
+ * patterns or file paths.
+ *
+ * ```js
+ * loader(['a/b/c.md', 'a/b/*.md']);
+ * loader(['a/b/c.md', 'a/b/*.md'], {a: 'b'}, {foo: true});
+ * ```
+ *
+ * @param  {Object} `patterns` Template object
+ * @param  {Object} `locals` Possibly locals, with `options` property
+ * @return {Object} `options` Possibly options
+ */
+
+Loader.prototype.normalizeArray = function(patterns, locals, options) {
+  debug('normalizing array:', patterns);
+  return this.normalizeFiles(patterns, locals, options);
 };
 
 
@@ -299,19 +350,19 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
 
   if (locals && isObject(locals)) {
     debug('[value] string: %s, %s', key, value);
-    locs = extend({}, locs, locals.locals);
-    opts = extend({}, opts, locals.options);
+    merge(locs, locals.locals);
+    merge(opts, locals.options);
     o[key]._s1s2o1 = true;
   }
 
   if (options && isObject(options)) {
     debug('[value] string: %s, %s', key, value);
-    opts = extend({}, opts, options);
+    merge(opts, options);
     o[key]._s1s2o1o2 = true;
   }
 
   opt = utils.flattenOptions(opts);
-  extend(opt, o[key].options);
+  merge(opt, o[key].options);
   o[key].options = opt;
 
   locs = omit(locs, 'options');
@@ -339,8 +390,8 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
 Loader.prototype.normalizeShallowObject = function(value, locals, options) {
   debug('normalizing shallow object: %j', value);
   var o = utils.siftLocals(value);
-  o.options = extend({}, options, o.options);
-  o.locals = extend({}, locals, o.locals);
+  o.options = merge({}, options, o.options);
+  o.locals = merge({}, locals, o.locals);
   return o;
 };
 
@@ -424,26 +475,6 @@ Loader.prototype.normalizeObject = function(o) {
  * @return {Object} `options` Possibly options
  */
 
-Loader.prototype.normalizeArray = function(patterns, locals, options) {
-  debug('normalizing array:', patterns);
-  var opts = extend({}, locals && locals.options, options);
-  return this.normalizeFiles(patterns, locals, opts);
-};
-
-
-/**
- * When the first arg is an array, assume it's glob
- * patterns or file paths.
- *
- * ```js
- * loader(['a/b/c.md', 'a/b/*.md']);
- * ```
- *
- * @param  {Object} `patterns` Template object
- * @param  {Object} `locals` Possibly locals, with `options` property
- * @return {Object} `options` Possibly options
- */
-
 Loader.prototype.normalizeFunction = function(fn, options) {
   var file = fn.call(this, options);
   debug('normalizing fn:', file);
@@ -460,12 +491,12 @@ Loader.prototype.format = function() {
   debug('normalize format', args);
 
   switch (typeOf(args[0])) {
+    case 'array':
+      return this.normalizeArray.apply(this, args);
     case 'string':
       return this.normalizeString.apply(this, args);
     case 'object':
       return this.normalizeObject.apply(this, args);
-    case 'array':
-      return this.normalizeArray.apply(this, args);
     case 'function':
       return this.normalizeFunction.apply(this, args);
     default:
@@ -484,7 +515,7 @@ Loader.prototype.format = function() {
  */
 
 Loader.prototype.load = function() {
-  var options = extend({}, this.options);
+  var options = this.options || {};
   debug('loader', options);
 
   var tmpl = this.format.apply(this, arguments);
@@ -495,7 +526,7 @@ Loader.prototype.load = function() {
     }
     // save the content for comparison after parsing
     var opts = {};
-    extend(opts, options, value.options);
+    merge(opts, options, value.options);
     value.ext = value.ext || path.extname(value.path);
 
     var parsed = this.parseContent(value, opts);
@@ -541,9 +572,11 @@ Loader.prototype.normalize = function (options, acc, value, key) {
 
 
 /**
- * If we detected a `path` property directly on the object
- * that was passed, this means that the object is not
- * formatted with a key (as expected).
+ * Create a `path` property from the template object's key.
+ *
+ * If we detected a `path` property directly on the object that was
+ * passed, this means that the object is not formatted as a key/value
+ * pair the way we want our normalized templates.
  *
  * ```js
  * // before
@@ -553,9 +586,10 @@ Loader.prototype.normalize = function (options, acc, value, key) {
  * loader('a/b/c.md': {path: 'a/b/c.md', content: 'this is foo'});
  * ```
  *
- * @param  {String} `path`
+ * @param  {String} `filepath`
  * @param  {Object} `value`
  * @return {Object}
+ * @api private
  */
 
 function createKeyFromPath(filepath, value) {
@@ -574,13 +608,13 @@ function createKeyFromPath(filepath, value) {
  * //=> normalize('abc', {path: 'abc', content: 'this is content'});
  * ```
  *
- * @param  {Object} a
+ * @param  {Object} `obj`
  * @return {Object}
  */
 
 function createPathFromStringKey(o) {
   for (var key in o) {
-    if (o.hasOwnProperty(key)) {
+    if (hasOwn(o, key)) {
       o[key].path = o[key].path || key;
     }
   }
@@ -588,20 +622,20 @@ function createPathFromStringKey(o) {
 }
 
 /**
- * Merge util. I'm doing it this way temporarily until
- * benchmarks are done so I can swap in a different function.
+ * Merge util. This is temporarily until benchmarks are done
+ * so we can easily swap in a different function.
  *
  * @param  {Object} `obj`
  * @return {Object}
  * @api private
  */
 
-function merge(o) {
+function merge() {
   return utils.extend.apply(null, arguments);
 }
 
 /**
- * typeof utils
+ * Utilities for returning the native `typeof` a value.
  *
  * @api private
  */
@@ -609,6 +643,27 @@ function merge(o) {
 function isString(val) {
   return typeOf(val) === 'string';
 }
+
+function isObject(val) {
+  return typeOf(val) === 'object';
+}
+
+function isFunction(val) {
+  return typeOf(val) === 'function';
+}
+
+function isNumber(val) {
+  return typeOf(val) === 'number';
+}
+
+function isBoolean(val) {
+  return typeOf(val) === 'boolean';
+}
+
+function hasOwn(o, prop) {
+  return {}.hasOwnProperty.call(o, prop);
+}
+
 
 /**
  * Expose `loader`
