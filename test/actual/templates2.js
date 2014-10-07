@@ -77,7 +77,7 @@
   '75': { 'bar1.md': { path: 'a/b/c.md', locals: { name: 'Jon Schlinkert' }, ext: '.md', content: null } }, 
   '76': { 'baz.md': { path: 'a/b/c.md', locals: { go: true, name: 'Jon Schlinkert' }, ext: '.md', content: null } }, 
   '77': { foo: { content: 'this is content.', locals: { fez: 'foo', a: 'b' }, path: 'foo' } }, 
-  '78': { 'foo/bar.md': { content: 'this is content.', path: 'foo/bar.md', ext: '.md' } }, 
+  '78': { 'foo/bar.md': { content: 'this is content.', data: { a: 'a' }, path: 'foo/bar.md', ext: '.md' } }, 
   '79': { 'foo/bar.md': { content: 'this is content.', locals: { foo: 'bar' }, path: 'foo/bar.md', ext: '.md' } }, 
   '80': { 'foo/bar.md': { content: 'this is content.', path: 'foo/bar.md', ext: '.md' } }, 
   '81': { a: { content: 'A above\n{{body}}\nA below', locals: { layout: 'b' }, path: 'a' } }, 
@@ -91,5 +91,5 @@
   '89': { 'a/b/c.md': { path: 'a/b/c.md', content: 'this is content.', locals: { a: 'b' }, ext: '.md' } }, 
   '90': { 'a/b/c.md': { path: 'a/b/c.md', content: 'this is content.', ext: '.md' } }, 
   '91': { 'a/b/c.md': { path: 'a/b/c.md', content: 'this is foo', locals: { foo: 'bar' }, ext: '.md' } }, 
-  '92': { 'one/two.md': { path: 'one/two.md', content: 'this is content.', ext: '.md' } } 
+  '92': { 'one/two.md': { path: 'one/two.md', content: 'this is content.', data: { b: 'b' }, ext: '.md' } } 
 }

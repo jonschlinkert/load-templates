@@ -39,7 +39,6 @@ var utils = require('./lib/utils');
 
 function Loader(options) {
   this.options = options || {};
-  this.options.readPath = true;
 }
 
 
@@ -133,11 +132,12 @@ Loader.prototype.readFn = function(filepath, options) {
 
 Loader.prototype.parseFn = function(str, options) {
   var opts = merge({ autodetect: true }, this.options, options);
-
+  if (opts.noparse === true) {
+    return str;
+  }
   if (opts.parseFn) {
     return opts.parseFn(str, options);
   }
-
   return matter(str, omit(options, ['delims']));
 };
 
@@ -154,6 +154,7 @@ Loader.prototype.parseFn = function(str, options) {
 
 Loader.prototype.parseContent = function(obj, options) {
   debug('parsing content', obj);
+  var copy = omit(obj, ['content']);
   var o = obj || {};
 
   if (isString(o.content) && !hasOwn(o, 'orig')) {
@@ -162,6 +163,7 @@ Loader.prototype.parseContent = function(obj, options) {
     o.orig = orig;
   }
 
+  merge(o, copy);
   o._parsed = true;
   return o;
 };
@@ -311,11 +313,12 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
       merge(loc, utils.pickLocals(value));
       merge(loc, locals);
 
+      merge(root, utils.pickRoot(loc));
+
       merge(opt, loc.options);
       merge(opt, value.options);
       merge(opt, options);
 
-      merge(root, utils.pickRoot(loc));
       merge(root, utils.pickRoot(opt));
 
       o[key] = root;
@@ -479,10 +482,11 @@ Loader.prototype.normalizeFunction = function(fn, options) {
 
 
 /**
- * Normalize base template formats.
+ * Select the template normalization function to start
+ * with based on the first argument passed.
  */
 
-Loader.prototype.format = function() {
+Loader.prototype._format = function() {
   var args = [].slice.call(arguments);
   debug('normalize format', args);
 
@@ -511,34 +515,17 @@ Loader.prototype.format = function() {
  */
 
 Loader.prototype.load = function() {
-  var options = this.options || {};
   debug('loader', options);
 
-  var tmpl = this.format.apply(this, arguments);
+  var tmpl = this._format.apply(this, arguments);
+  var options = this.options || {};
 
   return reduce(tmpl, function (acc, value, key) {
     if (value && Object.keys(value).length === 0) {
       return acc;
     }
-    // save the content for comparison after parsing
-    merge(options, value.options);
-    value.ext = value.ext || path.extname(value.path);
 
-    var parsed = this.parseContent(value, options);
-
-    merge(value, parsed);
-    if (value.content === value.orig) {
-      value = omit(value, 'orig');
-    }
-
-    if (options.debug == null) {
-      value = omit(value, utils.heuristics);
-    }
-
-    value = omitEmpty(value);
-    value.content = value.content || null;
-
-    acc[this.renameKey(key, options)] = value;
+    // Normalize the template
     this.normalize(options, acc, value, key);
     return acc;
   }.bind(this), {});
@@ -558,12 +545,44 @@ Loader.prototype.load = function() {
 
 Loader.prototype.normalize = function (options, acc, value, key) {
   debug('normalize: %s, %value', key);
+
   if (options && options.normalize) {
     return options.normalize(acc, value, key);
   }
-  acc[key] = value;
+
+  value.ext = value.ext || path.extname(value.path);
+  var parsed = this.parseContent(value, options);
+  merge(value, parsed);
+
+  // Cleanup
+  value = cleanupProps(value, parsed, options);
+  value.content = value.content || null;
+
+  // Rename the object key
+  acc[this.renameKey(key, options)] = value;
   return acc;
 };
+
+
+/**
+ * Clean up some properties before return the final
+ * normalized template object.
+ *
+ * @param  {Object} `template`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+function cleanupProps(template, options) {
+  if (template.content === template.orig) {
+    template = omit(template, 'orig');
+  }
+  if (options.debug == null) {
+    template = omit(template, utils.heuristics);
+  }
+  template = omitEmpty(template);
+  return template
+}
 
 
 /**

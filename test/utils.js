@@ -20,7 +20,6 @@ describe(chalk.magenta('utils:'), function () {
     loader = new Loader();
   });
   describe('options:', function () {
-
     describe('.flattenDeep():', function () {
       it('should flatten `prop` to the root of the object:', function () {
         var locals = utils.flattenDeep('a', {a: {b: 'b'}, b: {a: {c: 'c'}}, c: {a: {d: 'd'}}});
