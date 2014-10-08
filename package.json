@@ -123,16 +123,16 @@
     "arr": "^0.1.4",
     "debug": "^2.0.0",
     "for-own": "^0.1.2",
-    "gray-matter": "^0.5.0",
     "has-any": "^0.1.0",
     "has-any-deep": "^0.2.0",
     "is-plain-object": "^0.1.0",
     "kind-of": "^0.1.0",
+    "make-iterator": "^0.1.0",
     "map-files": "^0.1.2",
     "object.omit": "^0.2.0",
     "object.pick": "^0.1.1",
-    "omit-empty": "^0.2.0",
+    "omit-empty": "^0.3.0",
     "omit-keys": "^0.1.0",
-    "reduce-object": "^0.1.2"
+    "reduce-object": "^0.1.3"
   }
 }

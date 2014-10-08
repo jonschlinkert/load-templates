@@ -11,6 +11,7 @@
 
 var fs = require('fs');
 var arr = require('arr');
+var au = require('args-utils');
 var path = require('path');
 var debug = require('debug')('load-templates');
 var hasAny = require('has-any');
@@ -272,7 +273,6 @@ Loader.prototype.normalizeArray = function(patterns, locals, options) {
 
 Loader.prototype.normalizeString = function(key, value, locals, options) {
   debug('normalizing string: %s', key, value);
-
   var args = [].slice.call(arguments, 1);
   var objects = arr.objects(arguments);
   var props = utils.siftProps.apply(this, args);
@@ -284,16 +284,17 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
   var o = {};
   o[key] = {};
 
-  // If only `key` is defined
+  // If only `value` is defined
   if (value == null) {
-    // see if `key` is a value file path
+
+    // check if `key` is a file path
     files = this.normalizeFiles(key);
     if (files != null) {
       return files;
 
     // if not, add a heuristic
     } else {
-      o[key]._invalidpath = true;
+      o[key]._hasPath = true;
       o[key].path = o[key].path || key;
       return o;
     }
@@ -302,6 +303,7 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
   if ((value && isObject(value)) || objects == null) {
     debug('[value] s1o1: %s, %j', key, value);
     files = this.normalizeFiles(key, value, locals, options);
+
     if (files != null) {
       return files;
     } else {
@@ -324,13 +326,18 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
       o[key] = root;
       o[key].locals = loc;
       o[key].options = opt;
-      o[key].path = value.path || key;
 
       var content = value && value.content;
       if (o[key].content == null && content != null) {
         o[key].content = content;
       }
     }
+  }
+
+  if (hasOwn(opt, '_hasPath') && opt._hasPath === false) {
+    o[key].path = null;
+  } else {
+    o[key].path = value.path || key;
   }
 
   if (value && isString(value)) {
@@ -474,10 +481,9 @@ Loader.prototype.normalizeObject = function(o) {
  * @return {Object} `options` Possibly options
  */
 
-Loader.prototype.normalizeFunction = function(fn, options) {
-  var file = fn.call(this, options);
-  debug('normalizing fn:', file);
-  return file;
+Loader.prototype.normalizeFunction = function(fn) {
+  debug('normalizing fn:', arguments);
+  return fn.apply(this, arguments);
 };
 
 
@@ -524,7 +530,6 @@ Loader.prototype.load = function() {
     if (value && Object.keys(value).length === 0) {
       return acc;
     }
-
     // Normalize the template
     this.normalize(options, acc, value, key);
     return acc;
@@ -545,24 +550,23 @@ Loader.prototype.load = function() {
 
 Loader.prototype.normalize = function (options, acc, value, key) {
   debug('normalize: %s, %value', key);
-
   if (options && options.normalize) {
     return options.normalize(acc, value, key);
   }
-
   value.ext = value.ext || path.extname(value.path);
+  var data = value.data;
+
   var parsed = this.parseContent(value, options);
-  merge(value, parsed);
 
   // Cleanup
-  value = cleanupProps(value, parsed, options);
+  merge(value, parsed);
+  value = cleanupProps(value, options);
   value.content = value.content || null;
 
   // Rename the object key
   acc[this.renameKey(key, options)] = value;
   return acc;
 };
-
 
 /**
  * Clean up some properties before return the final

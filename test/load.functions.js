@@ -30,9 +30,9 @@ describe(chalk.magenta('functions'), function () {
 
   describe(heading('[ function ]'), function () {
     describe(subhead('valid filepath:'), function () {
-      it('should load templates from a functoin:', function () {
-        var file = matter.read('test/fixtures/a.md');
+      it('should load templates from a function:', function () {
         var files = loader.load(function (options) {
+          var file = matter.read('test/fixtures/a.md');
           var o = {};
           o[file.path] = file;
           return o;
@@ -43,10 +43,10 @@ describe(chalk.magenta('functions'), function () {
         files['test/fixtures/a.md'].should.have.property('path', 'test/fixtures/a.md');
       });
 
-      it('should load templates from a functoin:', function () {
-        var file = matter.read('test/fixtures/a.md');
+      it('should load templates from a function:', function () {
 
         var files = loader.load(function (options) {
+          var file = matter.read('test/fixtures/a.md');
           var o = {};
           o[file.path] = file;
           return o;
