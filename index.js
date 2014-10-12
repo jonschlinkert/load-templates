@@ -11,12 +11,10 @@
 
 var fs = require('fs');
 var arr = require('arr');
-var au = require('args-utils');
 var path = require('path');
 var debug = require('debug')('load-templates');
 var hasAny = require('has-any');
 var hasAnyDeep = require('has-any-deep');
-var isObject = require('is-plain-object');
 var mapFiles = require('map-files');
 var matter = require('gray-matter');
 var omit = require('omit-keys');
@@ -156,7 +154,7 @@ Loader.prototype.parseFn = function(str, options) {
 Loader.prototype.parseContent = function(obj, options) {
   debug('parsing content', obj);
   var copy = omit(obj, ['content']);
-  var o = obj || {};
+  var o = {};
 
   if (isString(o.content) && !hasOwn(o, 'orig')) {
     var orig = o.content;
@@ -167,6 +165,22 @@ Loader.prototype.parseContent = function(obj, options) {
   merge(o, copy);
   o._parsed = true;
   return o;
+};
+
+
+/**
+ * Rename option keys the way [mapFiles] expects.
+ *
+ * @param  {String} `patterns`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+Loader.prototype.mapFiles = function(patterns, options) {
+  return mapFiles(patterns, merge({}, options, {
+    name: this.renameKey,
+    read: this.readFn
+  }));
 };
 
 
@@ -182,9 +196,7 @@ Loader.prototype.parseContent = function(obj, options) {
 Loader.prototype.parseFiles = function(patterns, options) {
   debug('mapping files:', patterns);
 
-  // rename option keys the way [mapFiles] expects
-  var opts = {rename: this.renameKey, parse: this.readFn};
-  var files = mapFiles(patterns, merge(opts, options));
+  var files = this.mapFiles(patterns, options);
 
   return reduce(files, function (acc, value, key) {
     debug('reducing file: %s', key, value);
@@ -554,12 +566,11 @@ Loader.prototype.normalize = function (options, acc, value, key) {
     return options.normalize(acc, value, key);
   }
   value.ext = value.ext || path.extname(value.path);
-  var data = value.data;
 
   var parsed = this.parseContent(value, options);
+  merge(value, parsed);
 
   // Cleanup
-  merge(value, parsed);
   value = cleanupProps(value, options);
   value.content = value.content || null;
 
@@ -584,8 +595,7 @@ function cleanupProps(template, options) {
   if (options.debug == null) {
     template = omit(template, utils.heuristics);
   }
-  template = omitEmpty(template);
-  return template
+  return omitEmpty(template);
 }
 
 
@@ -664,18 +674,6 @@ function isString(val) {
 
 function isObject(val) {
   return typeOf(val) === 'object';
-}
-
-function isFunction(val) {
-  return typeOf(val) === 'function';
-}
-
-function isNumber(val) {
-  return typeOf(val) === 'number';
-}
-
-function isBoolean(val) {
-  return typeOf(val) === 'boolean';
 }
 
 function hasOwn(o, prop) {

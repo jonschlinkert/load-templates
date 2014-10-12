@@ -1,7 +1,7 @@
 {
   "name": "load-templates",
   "description": "Load templates.",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "homepage": "https://github.com/jonschlinkert/load-templates",
   "author": {
     "name": "Jon Schlinkert",
@@ -35,6 +35,20 @@
     "verb": ">= 0.2.6",
     "verb-tag-jscomments": ">= 0.2.0"
   },
+  "dependencies": {
+    "arr": "^0.1.4",
+    "debug": "^2.0.0",
+    "for-own": "^0.1.2",
+    "has-any": "^0.1.0",
+    "has-any-deep": "^0.2.0",
+    "kind-of": "^0.1.0",
+    "map-files": "^0.2.0",
+    "object.omit": "^0.2.0",
+    "object.pick": "^0.1.1",
+    "omit-empty": "^0.3.0",
+    "omit-keys": "^0.1.0",
+    "reduce-object": "^0.1.3"
+  },
   "keywords": [
     "array",
     "assemble",
@@ -44,7 +58,6 @@
     "compile",
     "consolidate",
     "content",
-    "dash",
     "data",
     "delimiters",
     "delims",
@@ -79,8 +92,6 @@
     "jqtpl",
     "js",
     "linkedin",
-    "liquor",
-    "lo",
     "lo-dash",
     "load",
     "loader",
@@ -96,7 +107,6 @@
     "parse",
     "parser",
     "parsers",
-    "pass",
     "pass-through",
     "patterns",
     "process",
@@ -109,7 +119,6 @@
     "template",
     "templates",
     "templayed",
-    "through",
     "tmpl",
     "toffee",
     "underscore",
@@ -118,21 +127,5 @@
     "walrus",
     "whiskers",
     "yaml"
-  ],
-  "dependencies": {
-    "arr": "^0.1.4",
-    "debug": "^2.0.0",
-    "for-own": "^0.1.2",
-    "has-any": "^0.1.0",
-    "has-any-deep": "^0.2.0",
-    "is-plain-object": "^0.1.0",
-    "kind-of": "^0.1.0",
-    "make-iterator": "^0.1.0",
-    "map-files": "^0.1.2",
-    "object.omit": "^0.2.0",
-    "object.pick": "^0.1.1",
-    "omit-empty": "^0.3.0",
-    "omit-keys": "^0.1.0",
-    "reduce-object": "^0.1.3"
-  }
+  ]
 }
