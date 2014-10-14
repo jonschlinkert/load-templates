@@ -12,8 +12,10 @@
 var fs = require('fs');
 var arr = require('arr');
 var path = require('path');
+var util = require('util');
 var debug = require('debug')('load-templates');
 var hasAny = require('has-any');
+var Options = require('option-cache');
 var hasAnyDeep = require('has-any-deep');
 var mapFiles = require('map-files');
 var matter = require('gray-matter');
@@ -37,44 +39,14 @@ var utils = require('./lib/utils');
  */
 
 function Loader(options) {
-  this.options = options || {};
+  Options.call(this, options);
 }
+util.inherits(Loader, Options);
 
 
 /**
- * Set or get an option.
- *
- * ```js
- * loader.option('a', true)
- * loader.option('a')
- * // => true
- * ```
- *
- * @param {String} `key` The option name.
- * @param {*} `value` The value to set.
- * @return {*|Object} Returns `value` if `key` is supplied, or `Loader` for chaining when an option is set.
- * @api public
- */
-
-Loader.prototype.option = function(key, value) {
-  var args = [].slice.call(arguments);
-
-  if (args.length === 1 && isString(key)) {
-    return this.options[key];
-  }
-
-  if (isObject(key)) {
-    merge.apply(merge, [this.options].concat(args));
-    return this;
-  }
-
-  this.options[key] = value;
-  return this;
-};
-
-
-/**
- * Rename the key of a template object.
+ * Rename the `key` of a template object, often a file path. By
+ * default the key is just passed through unchanged.
  *
  * Pass a custom `renameKey` function on the options to change
  * how keys are renamed.
@@ -108,13 +80,38 @@ Loader.prototype.renameKey = function(key, options) {
  */
 
 Loader.prototype.readFn = function(filepath, options) {
-  var opts = merge({ enc: 'utf8' }, this.options, options);
+  debug('reading:', filepath);
 
+  var opts = merge({ enc: 'utf8' }, this.options, options);
   if (opts.readFn) {
-    return opts.readFn(filepath, options);
+    return opts.readFn(filepath, omit(opts, 'readFn'));
   }
 
   return fs.readFileSync(filepath, opts.enc);
+};
+
+
+/**
+ * Return an object of files. Pass a custom `mapFiles` function
+ * to change behavior.
+ *
+ * @param  {String} `patterns`
+ * @param  {Object} `options`
+ * @return {Object}
+ */
+
+Loader.prototype.mapFiles = function(patterns, options) {
+  debug('mapping files:', patterns);
+
+  var opts = merge({}, this.options, options);
+  if (opts.mapFiles) {
+    return opts.mapFiles(patterns, omit(opts, 'mapFiles'));
+  }
+
+  return mapFiles(patterns, {
+    name: this.renameKey,
+    read: this.readFn
+  });
 };
 
 
@@ -130,13 +127,17 @@ Loader.prototype.readFn = function(filepath, options) {
  */
 
 Loader.prototype.parseFn = function(str, options) {
+  debug('parsing:', str);
+
   var opts = merge({ autodetect: true }, this.options, options);
   if (opts.noparse === true) {
     return str;
   }
+
   if (opts.parseFn) {
-    return opts.parseFn(str, options);
+    return opts.parseFn(str, omit(opts, 'parseFn'));
   }
+
   return matter(str, omit(options, ['delims']));
 };
 
@@ -152,7 +153,7 @@ Loader.prototype.parseFn = function(str, options) {
  */
 
 Loader.prototype.parseContent = function(obj, options) {
-  debug('parsing content', obj);
+  debug('parsing content property', obj);
   var copy = omit(obj, ['content']);
   var o = {};
 
@@ -165,22 +166,6 @@ Loader.prototype.parseContent = function(obj, options) {
   merge(o, copy);
   o._parsed = true;
   return o;
-};
-
-
-/**
- * Rename option keys the way [mapFiles] expects.
- *
- * @param  {String} `patterns`
- * @param  {Object} `options`
- * @return {Object}
- */
-
-Loader.prototype.mapFiles = function(patterns, options) {
-  return mapFiles(patterns, merge({}, options, {
-    name: this.renameKey,
-    read: this.readFn
-  }));
 };
 
 
@@ -418,11 +403,6 @@ Loader.prototype.normalizeShallowObject = function(value, locals, options) {
  * Normalize nested templates that have the following pattern:
  *
  * ```js
- * => {'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.'}}
- * ```
- * or:
- *
- * ```js
  * { 'a/b/a.md': {path: 'a/b/a.md', content: 'this is content.'},
  *   'a/b/b.md': {path: 'a/b/b.md', content: 'this is content.'},
  *   'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.'} }
@@ -441,7 +421,8 @@ Loader.prototype.normalizeDeepObject = function(obj, locals, options) {
 
 /**
  * When the first arg is an object, all arguments
- * should be objects.
+ * should be objects. The only exception is when
+ * the last arg is a fucntion.
  *
  * ```js
  * loader({'a/b/c.md', ...});
@@ -659,7 +640,7 @@ function createPathFromStringKey(o) {
  */
 
 function merge() {
-  return utils.extend.apply(null, arguments);
+  return utils.extend.apply(utils.extend, arguments);
 }
 
 /**
