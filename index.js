@@ -13,6 +13,7 @@ var fs = require('fs');
 var arr = require('arr');
 var path = require('path');
 var util = require('util');
+var File = require('vinyl');
 var debug = require('debug')('load-templates');
 var hasAny = require('has-any');
 var Options = require('option-cache');
@@ -41,6 +42,11 @@ var utils = require('./lib/utils');
 function Loader(options) {
   Options.call(this, options);
 }
+
+/**
+ * Inherit `Options`
+ */
+
 util.inherits(Loader, Options);
 
 
@@ -270,6 +276,7 @@ Loader.prototype.normalizeArray = function(patterns, locals, options) {
 
 Loader.prototype.normalizeString = function(key, value, locals, options) {
   debug('normalizing string: %s', key, value);
+
   var args = [].slice.call(arguments, 1);
   var objects = arr.objects(arguments);
   var props = utils.siftProps.apply(this, args);
@@ -291,6 +298,12 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
 
     // if not, add a heuristic
     } else {
+      // If it's a glob pattern, this means it didn't expand
+      // so return an empty object.
+      if (/[*{}()]/.test(key)) {
+        return {};
+      }
+
       o[key]._hasPath = true;
       o[key].path = o[key].path || key;
       return o;
@@ -555,10 +568,33 @@ Loader.prototype.normalize = function (options, acc, value, key) {
   value = cleanupProps(value, options);
   value.content = value.content || null;
 
+  // Create a vinyl file?
+  if (options && options.vinyl) {
+    value = toVinyl(value);
+  }
+
   // Rename the object key
   acc[this.renameKey(key, options)] = value;
   return acc;
 };
+
+/**
+ * When `options.vinyl` is true, transform the value to
+ * a vinyl file.
+ *
+ * @param  {Object} `value`
+ * @return {Object} Returns a vinyl file.
+ * @api private
+ */
+
+function toVinyl(value) {
+  return new File({
+    contents: new Buffer(value.content),
+    path: value.path,
+    locals: value.locals || {},
+    options: value.options || {}
+  });
+}
 
 /**
  * Clean up some properties before return the final
