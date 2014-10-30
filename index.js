@@ -106,12 +106,12 @@ Loader.prototype.readFn = function(filepath, options) {
  * @return {Object}
  */
 
-Loader.prototype.mapFiles = function(patterns, options) {
+Loader.prototype.mapFiles = function(patterns, locals, options) {
   debug('mapping files:', patterns);
 
   var opts = merge({}, this.options, options);
   if (opts.mapFiles) {
-    return opts.mapFiles(patterns, omit(opts, 'mapFiles'));
+    return opts.mapFiles(patterns, locals, omit(opts, 'mapFiles'));
   }
 
   return mapFiles(patterns, {
@@ -184,10 +184,10 @@ Loader.prototype.parseContent = function(obj, options) {
  * @return {Object}
  */
 
-Loader.prototype.parseFiles = function(patterns, options) {
+Loader.prototype.parseFiles = function(patterns, locals, options) {
   debug('mapping files:', patterns);
 
-  var files = this.mapFiles(patterns, options);
+  var files = this.mapFiles(patterns, locals, options);
 
   return reduce(files, function (acc, value, key) {
     debug('reducing file: %s', key, value);
@@ -226,7 +226,7 @@ Loader.prototype.normalizeFiles = function(patterns, locals, options) {
   merge(locals, locals.locals, options.locals);
   merge(options, locals.options);
 
-  var files = this.parseFiles(patterns, options);
+  var files = this.parseFiles(patterns, locals, options);
   if (files && Object.keys(files).length === 0) {
     return null;
   }
