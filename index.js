@@ -10,19 +10,19 @@
 // process.env.DEBUG = 'load-templates';
 
 var fs = require('fs');
-var arr = require('arr');
 var path = require('path');
 var util = require('util');
-var File = require('vinyl');
+var slice = require('array-slice');
 var debug = require('debug')('load-templates');
 var hasAny = require('has-any');
 var Options = require('option-cache');
 var hasAnyDeep = require('has-any-deep');
 var mapFiles = require('map-files');
 var matter = require('gray-matter');
-var omit = require('omit-keys');
+var reduce = require('object.reduce');
+var filter = require('object.filter');
+var omit = require('object.omit');
 var omitEmpty = require('omit-empty');
-var reduce = require('reduce-object');
 var typeOf = require('kind-of');
 var utils = require('./lib/utils');
 
@@ -80,20 +80,22 @@ Loader.prototype.renameKey = function(key, options) {
  * Pass a custom `readFn` function on the options to change
  * how files are read.
  *
- * @param  {String} `filepath`
+ * @param  {String} `fp`
  * @param  {Object} `options`
  * @return {Object}
  */
 
-Loader.prototype.readFn = function(filepath, options) {
-  debug('reading:', filepath);
+Loader.prototype.readFn = function(fp, options) {
+  debug('reading:', fp);
 
   var opts = merge({ enc: 'utf8' }, this.options, options);
   if (opts.readFn) {
-    return opts.readFn(filepath, omit(opts, 'readFn'));
+    return opts.readFn(fp, omit(opts, 'readFn'));
   }
 
-  return fs.readFileSync(filepath, opts.enc);
+
+
+  return fs.readFileSync(fp, opts.enc);
 };
 
 
@@ -277,8 +279,10 @@ Loader.prototype.normalizeArray = function(patterns, locals, options) {
 Loader.prototype.normalizeString = function(key, value, locals, options) {
   debug('normalizing string: %s', key, value);
 
-  var args = [].slice.call(arguments, 1);
-  var objects = arr.objects(arguments);
+  var args = slice(arguments, 1);
+  var objects = filter(arguments, function (arg) {
+    return isObject(arg);
+  });
   var props = utils.siftProps.apply(this, args);
   var opts = options || props.options;
   var locs = props.locals;
@@ -452,7 +456,7 @@ Loader.prototype.normalizeDeepObject = function(obj, locals, options) {
 Loader.prototype.normalizeObject = function(o) {
   debug('normalizing object: %j', o);
 
-  var args = [].slice.call(arguments);
+  var args = slice(arguments);
   var locals1 = utils.pickLocals(args[1]);
   var locals2 = utils.pickLocals(args[2]);
   var val;
@@ -475,11 +479,12 @@ Loader.prototype.normalizeObject = function(o) {
 
 
 /**
- * When the first arg is an array, assume it's glob
- * patterns or file paths.
+ * Normalize function arguments.
  *
  * ```js
- * loader(['a/b/c.md', 'a/b/*.md']);
+ * loader(function() {
+ *   // do stuff with templates
+ * });
  * ```
  *
  * @param  {Object} `patterns` Template object
@@ -499,7 +504,7 @@ Loader.prototype.normalizeFunction = function(fn) {
  */
 
 Loader.prototype._format = function() {
-  var args = [].slice.call(arguments);
+  var args = slice(arguments);
   debug('normalize format', args);
 
   switch (typeOf(args[0])) {
@@ -568,33 +573,10 @@ Loader.prototype.normalize = function (options, acc, value, key) {
   value = cleanupProps(value, options);
   value.content = value.content || null;
 
-  // Create a vinyl file?
-  if (options && options.vinyl) {
-    value = toVinyl(value);
-  }
-
   // Rename the object key
   acc[this.renameKey(key, options)] = value;
   return acc;
 };
-
-/**
- * When `options.vinyl` is true, transform the value to
- * a vinyl file.
- *
- * @param  {Object} `value`
- * @return {Object} Returns a vinyl file.
- * @api private
- */
-
-function toVinyl(value) {
-  return new File({
-    contents: new Buffer(value.content),
-    path: value.path,
-    locals: value.locals || {},
-    options: value.options || {}
-  });
-}
 
 /**
  * Clean up some properties before return the final
