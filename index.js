@@ -494,7 +494,7 @@ Loader.prototype._format = function() {
     case 'function':
       return this.normalizeFunction.apply(this, args);
     default:
-      throw new Error('load-templates cannot load: ' + args);
+      return {};
     }
 };
 

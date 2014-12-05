@@ -23,10 +23,8 @@ describe('loader:', function () {
 
 
   describe('_format', function () {
-    it('should throw an error if an invalid format is passed.', function () {
-      (function () {
-        loader._format(42);
-      }).should.throw('load-templates cannot load: 42');
+    it('should return an object when an invalid format is passed.', function () {
+      loader._format(42).should.eql({});
     });
   });
 
