@@ -21,3 +21,8 @@ _test
 TODO.md
 benchmark
 coverage
+
+# npmignore
+test
+docs
+.verb*
