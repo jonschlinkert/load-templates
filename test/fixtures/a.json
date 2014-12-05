@@ -1,0 +1,5 @@
+{
+  "locals": {"title": "Home"},
+  "options": {"foo": true},
+  "content": "this is the {{title}} page."
+}
