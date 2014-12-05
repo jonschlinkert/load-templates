@@ -30,12 +30,27 @@ describe(chalk.magenta('strings'), function () {
 
   describe(heading('json files'), function () {
     it('should load templates from json files.', function () {
-      var files = loader.load(['test/fixtures/*.json']);
+      var files = loader.load(['test/fixtures/a.json']);
       files.should.eql({
         'test/fixtures/a.json': {
+          path: 'test/fixtures/a.json',
+          ext: '.json',
           content: 'this is the {{title}} page.',
           locals: { title: 'Home' },
           options: { foo: true }
+        }
+      });
+    });
+
+    it('should load templates from json files.', function () {
+      var files = loader.load(['test/fixtures/b.json']);
+      files.should.eql({
+        'test/fixtures/b.json': {
+          path: 'test/fixtures/b.json',
+          ext: '.json',
+          content: 'this is the {{title}} page.',
+          locals: { title: 'BBB', whatever: 'AAA' },
+          options: { bar: true }
         }
       });
     });
