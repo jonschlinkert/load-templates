@@ -21,10 +21,10 @@ var Options = require('option-cache');
 var hasAnyDeep = require('has-any-deep');
 var mapFiles = require('map-files');
 var matter = require('gray-matter');
+var omitEmpty = require('omit-empty');
 var reduce = require('object.reduce');
 var filter = require('object.filter');
 var omit = require('object.omit');
-var omitEmpty = require('omit-empty');
 var typeOf = require('kind-of');
 var utils = require('./lib/utils');
 
@@ -96,7 +96,15 @@ Loader.prototype.readFn = function(fp, options) {
   }
 
   if (/\.json$/.test(fp)) {
-    return require(path.resolve(fp));
+    var o = require(path.resolve(fp));
+    if (opts.normalize !== false) {
+      o.path = fp;
+      var res = utils.pickRoot(o);
+      var locals = utils.pickLocals(o);
+      res.locals = omit(extend({}, locals.locals, locals), ['locals']);
+      o = res;
+    }
+    return o;
   }
 
   return fs.readFileSync(fp, opts.enc);
