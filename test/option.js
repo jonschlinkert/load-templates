@@ -42,7 +42,7 @@ describe('.option()', function () {
       var actual = loader.load('test/fixtures/a.txt');
       actual.should.have.property('a.txt');
     });
-    it.skip('should use a custom `readFn` function to read templates:', function () {
+    it('should use a custom `readFn` function to read templates:', function () {
       loader.option('readFn', function (filepath) {
         return filepath;
       });

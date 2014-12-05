@@ -93,7 +93,9 @@ Loader.prototype.readFn = function(fp, options) {
     return opts.readFn(fp, omit(opts, 'readFn'));
   }
 
-
+  if (/\.json$/.test(fp)) {
+    return require(path.resolve(fp));
+  }
 
   return fs.readFileSync(fp, opts.enc);
 };
@@ -111,9 +113,9 @@ Loader.prototype.readFn = function(fp, options) {
 Loader.prototype.mapFiles = function(patterns, locals, options) {
   debug('mapping files:', patterns);
 
-  var opts = merge({}, this.options, options);
+  var opts = merge({}, this.options, locals, options);
   if (opts.mapFiles) {
-    return opts.mapFiles(patterns, locals, omit(opts, 'mapFiles'));
+    return opts.mapFiles(patterns, omit(opts, 'mapFiles'));
   }
 
   return mapFiles(patterns, {
@@ -190,7 +192,6 @@ Loader.prototype.parseFiles = function(patterns, locals, options) {
   debug('mapping files:', patterns);
 
   var files = this.mapFiles(patterns, locals, options);
-
   return reduce(files, function (acc, value, key) {
     debug('reducing file: %s', key, value);
 
@@ -202,6 +203,7 @@ Loader.prototype.parseFiles = function(patterns, locals, options) {
     value._parsed = true;
     value._mappedFile = true;
     acc[key] = value;
+
     return acc;
   }.bind(this), {});
 };
@@ -236,8 +238,9 @@ Loader.prototype.normalizeFiles = function(patterns, locals, options) {
   return reduce(files, function (acc, value, key) {
     debug('reducing normalized file: %s', key);
 
-    value.options = utils.flattenOptions(options);
-    value.locals = utils.flattenLocals(locals);
+    value.options = merge({}, value.options, utils.flattenOptions(options));
+    value.locals = merge({}, value.locals, utils.flattenLocals(locals));
+
     acc[key] = value;
     return acc;
   }, {});

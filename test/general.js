@@ -30,18 +30,60 @@ describe('loader:', function () {
     loader = new Loader();
   });
 
+
+  describe('readFn', function () {
+    it('should use the default `readFn` to read files.', function () {
+      var str = loader.readFn('test/fixtures/a.txt');
+      (/title: AAA/.test(str)).should.be.true;
+    });
+
+    it('should use a custom `readFn` to read files.', function () {
+      var str = loader.readFn('test/fixtures/a.txt', {
+        readFn: function (fp) {
+          var res = fs.readFileSync(fp, 'utf8');
+          return res.replace(/AAA/, 'BBB');
+        }
+      });
+      (/title: BBB/.test(str)).should.be.true;
+    });
+  });
+
+  describe('mapFiles', function () {
+    it('should use the default `mapFiles` to map files.', function () {
+      var template = loader.mapFiles('test/fixtures/a.txt')
+      template.should.have.property('test/fixtures/a.txt', '---\ntitle: AAA\n---\nThis is from a.txt.');
+    });
+
+    it('should use a custom `mapFiles` to map files.', function () {
+      var template = loader.mapFiles('test/fixtures/a.txt', {
+        mapFiles: function (fp) {
+          var str = fs.readFileSync(fp, 'utf8');
+          var name = path.basename(fp, path.extname(fp));
+          var file = {};
+          file[name] = {path: fp, content: str};
+          return file;
+        }
+      });
+
+      template.should.have.property('a', {
+        path: 'test/fixtures/a.txt',
+        content: '---\ntitle: AAA\n---\nThis is from a.txt.'
+      });
+    });
+  });
+
   describe('random usage', function () {
     it('should normalize a template with a non-filepath key.', function () {
       var files = loader.load('foo', {content: 'this is content.'});
       files.should.eql({'foo': {path: 'foo', content: 'this is content.'}});
     });
 
-    it('should correctly detect options on a template with a non-filepath key.', function () {
+    it('should detect options on a template with a non-filepath key.', function () {
       var files = loader.load('foo', {content: 'this is content.', a: 'b'}, {fez: 'foo'});
       files.should.eql({'foo': {path: 'foo', content: 'this is content.', locals: {a: 'b'}, options: {fez: 'foo'}}});
     });
 
-    it('should correctly detect locals on a template with a non-filepath key.', function () {
+    it('should detect locals on a template with a non-filepath key.', function () {
       var files = loader.load({'foo': {content: 'this is content.', a: 'b'}}, {fez: 'foo'});
       files.should.eql({'foo': {path: 'foo', content: 'this is content.', locals: {a: 'b', fez: 'foo'}}});
     });
