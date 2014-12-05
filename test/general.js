@@ -9,20 +9,11 @@
 
 var fs = require('fs');
 var path = require('path');
-var chalk = require('chalk');
 var matter = require('gray-matter');
 var should = require('should');
 var utils = require('../lib/utils');
 var Loader = require('..');
-var loader = new Loader();
-
-
-function heading(str) {
-  return chalk.magenta(str) + chalk.bold(' pattern:');
-}
-function subhead(str) {
-  return chalk.cyan(str);
-}
+var loader;
 
 
 describe('loader:', function () {
@@ -30,6 +21,28 @@ describe('loader:', function () {
     loader = new Loader();
   });
 
+
+  describe('_format', function () {
+    it('should throw an error if an invalid format is passed.', function () {
+      (function () {
+        loader._format(42);
+      }).should.throw('load-templates cannot load: 42');
+    });
+  });
+
+  describe('normalizeObject', function () {
+    it('should throw an error if object is missing path and content properties.', function () {
+      (function () {
+        loader.normalizeObject({a: 'b', c: 'd'});
+      }).should.throw('Invalid template object. Must have a `path` or `content` property.');
+    });
+  });
+
+  describe('normalizeString', function () {
+    it('should return an empty object when the first arg is an unexpanded glob pattern:', function () {
+      loader.normalizeString('\\*.js').should.eql({});
+    });
+  });
 
   describe('readFn', function () {
     it('should use the default `readFn` to read files.', function () {
@@ -69,6 +82,41 @@ describe('loader:', function () {
         path: 'test/fixtures/a.txt',
         content: '---\ntitle: AAA\n---\nThis is from a.txt.'
       });
+    });
+  });
+
+  describe('parseFn', function () {
+    it('should use the default parse function to parse files.', function () {
+      var template = loader.parseFn('---\ntitle: AAA\n---\nThis is from a.txt.');
+      template.should.eql({
+        orig: '---\ntitle: AAA\n---\nThis is from a.txt.',
+        data: { title: 'AAA' },
+        content: 'This is from a.txt.'
+      });
+    });
+
+    it('should use a custom `parseFn` function to parse files.', function () {
+      var template = loader.parseFn('---\ntitle: AAA\n---\nThis is from a.txt.', {
+        parseFn: function (str) {
+          var o = matter(str);
+          o.data.title = 'BBB';
+          return o;
+        }
+      });
+
+      template.should.eql({
+        orig: '---\ntitle: AAA\n---\nThis is from a.txt.',
+        data: { title: 'BBB' },
+        content: 'This is from a.txt.'
+      });
+    });
+
+    it('should return the value un-parsed when `options.noparse` is defined:', function () {
+      var template = loader.parseFn('---\ntitle: AAA\n---\nThis is from a.txt.', {
+        noparse: true
+      });
+
+      template.should.equal('---\ntitle: AAA\n---\nThis is from a.txt.');
     });
   });
 

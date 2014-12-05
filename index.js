@@ -8,6 +8,7 @@
 'use strict';
 
 // process.env.DEBUG = 'load-templates';
+// require('require-progress')
 
 var fs = require('fs');
 var path = require('path');
@@ -15,6 +16,7 @@ var util = require('util');
 var slice = require('array-slice');
 var debug = require('debug')('load-templates');
 var hasAny = require('has-any');
+var extend = require('extend-shallow');
 var Options = require('option-cache');
 var hasAnyDeep = require('has-any-deep');
 var mapFiles = require('map-files');
@@ -65,7 +67,7 @@ util.inherits(Loader, Options);
 Loader.prototype.renameKey = function(key, options) {
   debug('renaming key:', key);
 
-  var opts = merge({}, this.options, options);
+  var opts = extend({}, this.options, options);
   if (opts.renameKey) {
     return opts.renameKey(key, omit(opts, 'renameKey'));
   }
@@ -88,7 +90,7 @@ Loader.prototype.renameKey = function(key, options) {
 Loader.prototype.readFn = function(fp, options) {
   debug('reading:', fp);
 
-  var opts = merge({ enc: 'utf8' }, this.options, options);
+  var opts = extend({ enc: 'utf8' }, this.options, options);
   if (opts.readFn) {
     return opts.readFn(fp, omit(opts, 'readFn'));
   }
@@ -113,7 +115,7 @@ Loader.prototype.readFn = function(fp, options) {
 Loader.prototype.mapFiles = function(patterns, locals, options) {
   debug('mapping files:', patterns);
 
-  var opts = merge({}, this.options, locals, options);
+  var opts = extend({}, this.options, locals, options);
   if (opts.mapFiles) {
     return opts.mapFiles(patterns, omit(opts, 'mapFiles'));
   }
@@ -139,7 +141,7 @@ Loader.prototype.mapFiles = function(patterns, locals, options) {
 Loader.prototype.parseFn = function(str, options) {
   debug('parsing:', str);
 
-  var opts = merge({ autodetect: true }, this.options, options);
+  var opts = extend({ autodetect: true }, this.options, options);
   if (opts.noparse === true) {
     return str;
   }
@@ -150,34 +152,6 @@ Loader.prototype.parseFn = function(str, options) {
 
   return matter(str, omit(options, ['delims']));
 };
-
-
-/**
- * Unless a custom parse function is passed, by default YAML
- * front matter is parsed from the string in the `content`
- * property.
- *
- * @param  {Object} `value`
- * @param  {Object} `options`
- * @return {Object}
- */
-
-Loader.prototype.parseContent = function(obj, options) {
-  debug('parsing content property', obj);
-  var copy = omit(obj, ['content']);
-  var o = {};
-
-  if (isString(o.content) && !hasOwn(o, 'orig')) {
-    var orig = o.content;
-    o = this.parseFn(o.content, options);
-    o.orig = orig;
-  }
-
-  merge(o, copy);
-  o._parsed = true;
-  return o;
-};
-
 
 /**
  * Map files resolved from glob patterns or file paths.
@@ -227,8 +201,8 @@ Loader.prototype.normalizeFiles = function(patterns, locals, options) {
   options = options || {};
   locals = locals || {};
 
-  merge(locals, locals.locals, options.locals);
-  merge(options, locals.options);
+  extend(locals, locals.locals, options.locals);
+  extend(options, locals.options);
 
   var files = this.parseFiles(patterns, locals, options);
   if (files && Object.keys(files).length === 0) {
@@ -238,8 +212,8 @@ Loader.prototype.normalizeFiles = function(patterns, locals, options) {
   return reduce(files, function (acc, value, key) {
     debug('reducing normalized file: %s', key);
 
-    value.options = merge({}, value.options, utils.flattenOptions(options));
-    value.locals = merge({}, value.locals, utils.flattenLocals(locals));
+    value.options = extend({}, value.options, utils.flattenOptions(options));
+    value.locals = extend({}, value.locals, utils.flattenLocals(locals));
 
     acc[key] = value;
     return acc;
@@ -329,16 +303,16 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
       var loc = {};
       opt = {};
 
-      merge(loc, utils.pickLocals(value));
-      merge(loc, locals);
+      extend(loc, utils.pickLocals(value));
+      extend(loc, locals);
 
-      merge(root, utils.pickRoot(loc));
+      extend(root, utils.pickRoot(loc));
 
-      merge(opt, loc.options);
-      merge(opt, value.options);
-      merge(opt, options);
+      extend(opt, loc.options);
+      extend(opt, value.options);
+      extend(opt, options);
 
-      merge(root, utils.pickRoot(opt));
+      extend(root, utils.pickRoot(opt));
 
       o[key] = root;
       o[key].locals = loc;
@@ -351,7 +325,7 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
     }
   }
 
-  if (hasOwn(opt, '_hasPath') && opt._hasPath === false) {
+  if (opt._hasPath && opt._hasPath === false) {
     o[key].path = null;
   } else {
     o[key].path = value.path || key;
@@ -373,19 +347,19 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
 
   if (locals && isObject(locals)) {
     debug('[value] string: %s, %s', key, value);
-    merge(locs, locals.locals);
-    merge(opts, locals.options);
+    extend(locs, locals.locals);
+    extend(opts, locals.options);
     o[key]._s1s2o1 = true;
   }
 
   if (options && isObject(options)) {
     debug('[value] string: %s, %s', key, value);
-    merge(opts, options);
+    extend(opts, options);
     o[key]._s1s2o1o2 = true;
   }
 
   opt = utils.flattenOptions(opts);
-  merge(opt, o[key].options);
+  extend(opt, o[key].options);
   o[key].options = opt;
 
   locs = omit(locs, 'options');
@@ -412,9 +386,9 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
 
 Loader.prototype.normalizeShallowObject = function(value, locals, options) {
   debug('normalizing shallow object: %j', value);
-  var o = utils.siftLocals(value);
-  o.options = merge({}, options, o.options);
-  o.locals = merge({}, locals, o.locals);
+  var o = utils.collectLocals(value);
+  o.options = extend({}, options, o.options);
+  o.locals = extend({}, locals, o.locals);
   return o;
 };
 
@@ -476,7 +450,7 @@ Loader.prototype.normalizeObject = function(o) {
     return createPathFromStringKey(val);
   }
 
-  throw new Error('Invalid template object. Must' +
+  throw new Error('Invalid template object. Must ' +
     'have a `path` or `content` property.');
 };
 
@@ -520,7 +494,7 @@ Loader.prototype._format = function() {
     case 'function':
       return this.normalizeFunction.apply(this, args);
     default:
-      return {};
+      throw new Error('load-templates cannot load: ' + args);
     }
 };
 
@@ -535,17 +509,17 @@ Loader.prototype._format = function() {
  */
 
 Loader.prototype.load = function() {
-  debug('loader', options);
+  debug('loader', arguments);
 
   var tmpl = this._format.apply(this, arguments);
-  var options = this.options || {};
+  var opts = this.options;
 
   return reduce(tmpl, function (acc, value, key) {
     if (value && Object.keys(value).length === 0) {
       return acc;
     }
     // Normalize the template
-    this.normalize(options, acc, value, key);
+    this.normalize(opts, acc, value, key);
     return acc;
   }.bind(this), {});
 };
@@ -567,12 +541,8 @@ Loader.prototype.normalize = function (options, acc, value, key) {
   if (options && options.normalize) {
     return options.normalize(acc, value, key);
   }
+
   value.ext = value.ext || path.extname(value.path);
-
-  var parsed = this.parseContent(value, options);
-  merge(value, parsed);
-
-  // Cleanup
   value = cleanupProps(value, options);
   value.content = value.content || null;
 
@@ -649,19 +619,6 @@ function createPathFromStringKey(o) {
     }
   }
   return o;
-}
-
-/**
- * Merge util. This is temporarily until benchmarks are done
- * so we can easily swap in a different function.
- *
- * @param  {Object} `obj`
- * @return {Object}
- * @api private
- */
-
-function merge() {
-  return utils.extend.apply(utils.extend, arguments);
 }
 
 /**

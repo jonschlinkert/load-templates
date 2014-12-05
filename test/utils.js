@@ -12,13 +12,25 @@ var chalk = require('chalk');
 var should = require('should');
 var utils = require('../lib/utils');
 var Loader = require('..');
-var loader = new Loader();
+var loader;
 
 
 describe(chalk.magenta('utils:'), function () {
   beforeEach(function () {
     loader = new Loader();
   });
+
+
+  describe('hasOwn():', function () {
+    it('should return `true` if `object` hasOwnProperty `key`:', function () {
+      utils.hasOwn({a: 'b'}, 'a').should.be.true;
+    });
+
+    it('should return `false` if the `object` does not:', function () {
+      utils.hasOwn({a: 'b'}, 'b').should.be.false;
+    });
+  });
+
   describe('options:', function () {
     describe('.flattenDeep():', function () {
       it('should flatten `prop` to the root of the object:', function () {
@@ -26,15 +38,24 @@ describe(chalk.magenta('utils:'), function () {
         locals.should.eql({b: 'b', c: 'c', d: 'd'});
       });
 
-      it('should "collect" `prop` from multiple objects:', function () {
+      it('should deep flatten `prop` to the root of the object:', function () {
+        var locals = utils.flattenDeep('b', {a: {b: {a: 'b'}}, d: {e: {b: {c: 'd'}}}});
+        locals.should.eql({a: 'b', c: 'd'});
+      });
+
+      it('should return an empty object when no matching props are found:', function () {
+        var locals = utils.flattenDeep('b', 'd');
+        locals.should.eql({});
+      });
+
+      it('should flatten the same `prop` from multiple objects:', function () {
         var one = {a: {b: 'b'}, b: {a: {c: 'c'}}, c: {a: {d: 'd'}}};
         var two = {a: {g: 'g'}, k: {a: {e: 'e', a: {h: 'h'}}}, z: {a: {f: 'f'}}};
+
         var locals = utils.flattenDeep('a', one, two);
         locals.should.eql({b: 'b', c: 'c', d: 'd', e: 'e', f: 'f', g: 'g', h: 'h'});
       });
-    });
 
-    describe('.flattenDeep():', function () {
       it('should return an empty object when nothing is found:', function () {
         utils.flattenDeep({content: 'This is content.'}).should.eql({});
         utils.flattenDeep({}).should.eql({});
@@ -46,9 +67,7 @@ describe(chalk.magenta('utils:'), function () {
         var opts = utils.pickOptions({a: 'b', locals: {c: 'd'}, options: {foo: true}, content: 'This is content.'});
         opts.should.eql({options: {foo: true}});
       });
-    });
 
-    describe('.pickOptions():', function () {
       it('should return an empty object when nothing is found:', function () {
         utils.pickOptions({content: 'This is content.'}).should.eql({});
         utils.pickOptions({}).should.eql({});
@@ -60,9 +79,7 @@ describe(chalk.magenta('utils:'), function () {
         var opts = utils.flattenOptions({options: {foo: true}, bar: false});
         opts.should.eql({foo: true, bar: false});
       });
-    });
 
-    describe('.flattenOptions():', function () {
       it('should return an empty object when nothing is found:', function () {
         utils.flattenOptions({content: 'This is content.'}).should.eql({});
         utils.flattenOptions({}).should.eql({});
@@ -78,15 +95,29 @@ describe(chalk.magenta('utils:'), function () {
   });
 
   describe('locals:', function () {
+    describe('.collectLocals():', function () {
+      it('should collect locals from the given object:', function () {
+        var locals = utils.collectLocals({a: 'b', locals: {c: 'd'}, content: 'This is content.'});
+        locals.should.eql({content: 'This is content.', locals: {a: 'b', c: 'd'}});
+      });
+
+      it('should return an empty `locals` object when no relevant props are found:', function () {
+        utils.collectLocals({content: 'This is content.'}).should.eql({content: 'This is content.', locals: {}});
+        utils.collectLocals({}).should.eql({locals: {}});
+      });
+
+      it('should return an empty object when the value is undefined:', function () {
+        utils.collectLocals().should.eql({});
+      });
+    });
+
     describe('.pickLocals():', function () {
       it('should pick locals from the given object:', function () {
         var locals = utils.pickLocals({a: 'b', locals: {c: 'd'}, content: 'This is content.'});
         locals.should.eql({a: 'b', locals: {c: 'd'}});
       });
-    });
 
-    describe('.pickLocals():', function () {
-      it('should return an empty object when nothing is found:', function () {
+      it('should return an empty object when no relevant props are found:', function () {
         utils.pickLocals({content: 'This is content.'}).should.eql({});
         utils.pickLocals({}).should.eql({});
       });
@@ -97,10 +128,8 @@ describe(chalk.magenta('utils:'), function () {
         var locals = utils.flattenLocals({a: 'b', locals: {c: 'd'}, content: 'This is content.'});
         locals.should.eql({a: 'b', c: 'd'});
       });
-    });
 
-    describe('.flattenLocals():', function () {
-      it('should return an empty object when nothing is found:', function () {
+      it('should return an empty object when no relevant props are found:', function () {
         utils.flattenLocals({content: 'This is content.'}).should.eql({});
         utils.flattenLocals({}).should.eql({});
       });
@@ -111,9 +140,7 @@ describe(chalk.magenta('utils:'), function () {
         var locals = utils.omitLocals({a: 'b', locals: {c: 'd'}, content: 'This is content.'});
         locals.should.eql({a: 'b', content: 'This is content.'});
       });
-    });
 
-    describe('.omitLocals():', function () {
       it('should return an empty object when nothing is found:', function () {
         utils.omitLocals({}).should.eql({});
       });

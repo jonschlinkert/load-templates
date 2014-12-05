@@ -31,8 +31,13 @@ describe(chalk.magenta('strings'), function () {
   describe(heading('json files'), function () {
     it('should load templates from json files.', function () {
       var files = loader.load(['test/fixtures/*.json']);
-      console.log(files)
-
+      files.should.eql({
+        'test/fixtures/a.json': {
+          content: 'this is the {{title}} page.',
+          locals: { title: 'Home' },
+          options: { foo: true }
+        }
+      });
     });
   });
 });
