@@ -17,15 +17,19 @@
   "licenses": [
     {
       "type": "MIT",
-      "url": "https://github.com/jonschlinkert/load-templates/blob/master/LICENSE-MIT"
+      "url": "https://github.com/jonschlinkert/load-templates/blob/master/LICENSE"
     }
+  ],
+  "files": [
+    "lib",
+    "index.js"
   ],
   "main": "index.js",
   "engines": {
     "node": ">=0.10.0"
   },
   "scripts": {
-    "test": "mocha -R spec",
+    "test": "mocha",
     "cover": "istanbul cover node_modules/.bin/_mocha && open coverage/lcov-report/index.html",
     "ci": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage"
   },

@@ -1,15 +1,15 @@
 /*!
  * load-templates <https://github.com/jonschlinkert/load-templates>
  *
- * Copyright (c) 2014 Jon Schlinkert, contributors.
- * Licensed under the MIT License
+ * Copyright (c) 2014-2015, Jon Schlinkert.
+ * Licensed under the MIT License.
  */
 
 'use strict';
 
 var path = require('path');
 var chalk = require('chalk');
-var should = require('should');
+require('should');
 var matter = require('gray-matter');
 var utils = require('../lib/utils');
 var Loader = require('..');
