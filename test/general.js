@@ -7,10 +7,11 @@
 
 'use strict';
 
+require('should');
 var fs = require('fs');
 var path = require('path');
+var relative = require('relative');
 var matter = require('gray-matter');
-require('should');
 var utils = require('../lib/utils');
 var Loader = require('..');
 var loader;
@@ -61,7 +62,7 @@ describe('loader:', function () {
 
   describe('mapFiles', function () {
     it('should use the default `mapFiles` to map files.', function () {
-      var template = loader.mapFiles('test/fixtures/a.txt')
+      var template = loader.mapFiles('test/fixtures/a.txt');
       template.should.have.property('test/fixtures/a.txt', '---\ntitle: AAA\n---\nThis is from a.txt.');
     });
 
@@ -71,7 +72,7 @@ describe('loader:', function () {
           var str = fs.readFileSync(fp, 'utf8');
           var name = path.basename(fp, path.extname(fp));
           var file = {};
-          file[name] = {path: fp, content: str};
+          file[name] = {path: relative(fp), content: str};
           return file;
         }
       });
@@ -89,7 +90,7 @@ describe('loader:', function () {
       template.should.eql({
         orig: '---\ntitle: AAA\n---\nThis is from a.txt.',
         data: { title: 'AAA' },
-        content: 'This is from a.txt.'
+        content: '\nThis is from a.txt.'
       });
     });
 
@@ -105,7 +106,7 @@ describe('loader:', function () {
       template.should.eql({
         orig: '---\ntitle: AAA\n---\nThis is from a.txt.',
         data: { title: 'BBB' },
-        content: 'This is from a.txt.'
+        content: '\nThis is from a.txt.'
       });
     });
 

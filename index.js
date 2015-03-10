@@ -7,9 +7,6 @@
 
 'use strict';
 
-// process.env.DEBUG = 'load-templates';
-// require('require-progress')
-
 var fs = require('fs');
 var path = require('path');
 var util = require('util');
@@ -21,6 +18,7 @@ var Options = require('option-cache');
 var hasAnyDeep = require('has-any-deep');
 var mapFiles = require('map-files');
 var matter = require('gray-matter');
+var relative = require('relative');
 var omitEmpty = require('omit-empty');
 var reduce = require('object.reduce');
 var filter = require('object.filter');
@@ -67,14 +65,13 @@ util.inherits(Loader, Options);
 Loader.prototype.renameKey = function(key, options) {
   debug('renaming key:', key);
 
-  var opts = extend({}, this.options, options);
+  var opts = extend({}, options);
   if (opts.renameKey) {
     return opts.renameKey(key, omit(opts, 'renameKey'));
   }
 
-  return key;
+  return relative(key);
 };
-
 
 /**
  * Default function for reading any files resolved.
@@ -98,7 +95,7 @@ Loader.prototype.readFn = function(fp, options) {
   if (/\.json$/.test(fp)) {
     var o = require(path.resolve(fp));
     if (opts.normalize !== false) {
-      o.path = fp;
+      o.path = relative(fp);
       var res = utils.pickRoot(o);
       var locals = utils.pickLocals(o);
       res.locals = omit(extend({}, locals.locals, locals), ['locals']);
@@ -109,7 +106,6 @@ Loader.prototype.readFn = function(fp, options) {
 
   return fs.readFileSync(fp, opts.enc);
 };
-
 
 /**
  * Return an object of files. Pass a custom `mapFiles` function
@@ -122,6 +118,7 @@ Loader.prototype.readFn = function(fp, options) {
 
 Loader.prototype.mapFiles = function(patterns, locals, options) {
   debug('mapping files:', patterns);
+  var self = this;
 
   var opts = extend({}, this.options, locals, options);
   if (opts.mapFiles) {
@@ -129,11 +126,10 @@ Loader.prototype.mapFiles = function(patterns, locals, options) {
   }
 
   return mapFiles(patterns, {
-    name: this.renameKey,
-    read: this.readFn
+    name: self.renameKey,
+    read: self.readFn
   });
 };
-
 
 /**
  * Default function for parsing any files resolved.
@@ -179,7 +175,7 @@ Loader.prototype.parseFiles = function(patterns, locals, options) {
 
     if (isString(value)) {
       value = this.parseFn(value);
-      value.path = value.path || key;
+      value.path = relative(value.path || key);
     }
 
     value._parsed = true;
@@ -189,7 +185,6 @@ Loader.prototype.parseFiles = function(patterns, locals, options) {
     return acc;
   }.bind(this), {});
 };
-
 
 /**
  * First arg is a file path or glob pattern.
@@ -228,7 +223,6 @@ Loader.prototype.normalizeFiles = function(patterns, locals, options) {
   }, {});
 };
 
-
 /**
  * When the first arg is an array, assume it's glob
  * patterns or file paths.
@@ -247,7 +241,6 @@ Loader.prototype.normalizeArray = function(patterns, locals, options) {
   debug('normalizing array:', patterns);
   return this.normalizeFiles(patterns, locals, options);
 };
-
 
 /**
  * First value is a string, second value is a string or
@@ -268,6 +261,7 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
   var objects = filter(arguments, function (arg) {
     return isObject(arg);
   });
+
   var props = utils.siftProps.apply(this, args);
   var opts = options || props.options;
   var locs = props.locals;
@@ -375,7 +369,6 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
   return o;
 };
 
-
 /**
  * Normalize objects that have `rootKeys` directly on
  * the root of the object.
@@ -400,7 +393,6 @@ Loader.prototype.normalizeShallowObject = function(value, locals, options) {
   return o;
 };
 
-
 /**
  * Normalize nested templates that have the following pattern:
  *
@@ -419,7 +411,6 @@ Loader.prototype.normalizeDeepObject = function(obj, locals, options) {
     return acc;
   }.bind(this), {});
 };
-
 
 /**
  * When the first arg is an object, all arguments
@@ -441,12 +432,11 @@ Loader.prototype.normalizeDeepObject = function(obj, locals, options) {
 Loader.prototype.normalizeObject = function(o) {
   debug('normalizing object: %j', o);
 
-  var args = slice(arguments);
-  var locals1 = utils.pickLocals(args[1]);
-  var locals2 = utils.pickLocals(args[2]);
+  var locals1 = utils.pickLocals(arguments[1]);
+  var locals2 = utils.pickLocals(arguments[2]);
   var val;
 
-  var opts = args.length === 3 ? locals2 : {};
+  var opts = arguments.length === 3 ? locals2 : {};
 
   if (hasAny(o, ['path', 'content'])) {
     val = this.normalizeShallowObject(o, locals1, opts);
@@ -461,7 +451,6 @@ Loader.prototype.normalizeObject = function(o) {
   throw new Error('Invalid template object. Must ' +
     'have a `path` or `content` property.');
 };
-
 
 /**
  * Normalize function arguments.
@@ -481,7 +470,6 @@ Loader.prototype.normalizeFunction = function(fn) {
   debug('normalizing fn:', arguments);
   return fn.apply(this, arguments);
 };
-
 
 /**
  * Select the template normalization function to start
@@ -505,7 +493,6 @@ Loader.prototype._format = function() {
       return {};
     }
 };
-
 
 /**
  * Final normalization step to remove empty values and rename
@@ -532,7 +519,6 @@ Loader.prototype.load = function() {
   }.bind(this), {});
 };
 
-
 /**
  * Base normalize method, abstracted to make it easier to
  * pass in custom methods.
@@ -553,9 +539,12 @@ Loader.prototype.normalize = function (options, acc, value, key) {
   value.ext = value.ext || path.extname(value.path);
   value = cleanupProps(value, options);
   value.content = value.content || null;
+  if (value.content) {
+    value.content = value.content.trim()
+  }
 
   // Rename the object key
-  acc[this.renameKey(key, options)] = value;
+  acc[relative(this.renameKey(key, options))] = value;
   return acc;
 };
 
@@ -577,7 +566,6 @@ function cleanupProps(template, options) {
   }
   return omitEmpty(template);
 }
-
 
 /**
  * Create a `path` property from the template object's key.
@@ -646,7 +634,6 @@ function isObject(val) {
 function hasOwn(o, prop) {
   return {}.hasOwnProperty.call(o, prop);
 }
-
 
 /**
  * Expose `loader`
