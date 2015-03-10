@@ -9,7 +9,7 @@
 
 var path = require('path');
 var chalk = require('chalk');
-var should = require('should');
+require('should');
 var utils = require('../lib/utils');
 var Loader = require('..');
 var loader;
