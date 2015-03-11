@@ -55,6 +55,7 @@
     "gulp": "^3.8.11",
     "gulp-istanbul": "^0.6.0",
     "gulp-mocha": "^2.0.0",
+    "mocha": "^2.2.1",
     "should": "^5.0.0"
   },
   "keywords": [
