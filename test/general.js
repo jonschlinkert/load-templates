@@ -23,7 +23,6 @@ describe('loader:', function () {
     loader = new Loader();
   });
 
-
   describe('_format', function () {
     it('should return an object when an invalid format is passed.', function () {
       loader._format(42).should.eql({});
@@ -46,8 +45,7 @@ describe('loader:', function () {
 
   describe('readFn', function () {
     it('should use the default `readFn` to read files.', function () {
-      var str = loader.readFn('test/fixtures/a.txt');
-      (/title: AAA/.test(str)).should.be.true;
+      loader.readFn('test/fixtures/a.txt').should.match(/title: AAA/);
     });
 
     it('should use a custom `readFn` to read files.', function () {
@@ -57,7 +55,7 @@ describe('loader:', function () {
           return res.replace(/AAA/, 'BBB');
         }
       });
-      (/title: BBB/.test(str)).should.be.true;
+      str.should.match(/title: BBB/);
     });
   });
 

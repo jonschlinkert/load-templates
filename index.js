@@ -7,25 +7,21 @@
 
 'use strict';
 
+var _ = require('lodash');
 var fs = require('fs');
 var path = require('path');
 var util = require('util');
-var slice = require('array-slice');
 var debug = require('debug')('load-templates');
 var hasAny = require('has-any');
-var extend = require('extend-shallow');
 var Options = require('option-cache');
 var hasAnyDeep = require('has-any-deep');
 var mapFiles = require('map-files');
 var matter = require('gray-matter');
 var relative = require('relative');
 var omitEmpty = require('omit-empty');
-var reduce = require('object.reduce');
-var filter = require('object.filter');
-var omit = require('object.omit');
 var typeOf = require('kind-of');
 var utils = require('./lib/utils');
-
+var extend = _.extend;
 
 /**
  * Initialize a new `Loader`
@@ -49,7 +45,6 @@ function Loader(options) {
 
 util.inherits(Loader, Options);
 
-
 /**
  * Rename the `key` of a template object, often a file path. By
  * default the key is just passed through unchanged.
@@ -64,13 +59,11 @@ util.inherits(Loader, Options);
 
 Loader.prototype.renameKey = function(key, options) {
   debug('renaming key:', key);
-
-  var opts = extend({}, options);
+  var opts = extend({}, this.options, options);
   if (opts.renameKey) {
-    return opts.renameKey(key, omit(opts, 'renameKey'));
+    return opts.renameKey(key, opts);
   }
-
-  return relative(key);
+  return key;
 };
 
 /**
@@ -87,18 +80,18 @@ Loader.prototype.renameKey = function(key, options) {
 Loader.prototype.readFn = function(fp, options) {
   debug('reading:', fp);
 
-  var opts = extend({ enc: 'utf8' }, this.options, options);
+  var opts = extend({}, { enc: 'utf8' }, this.options, options);
   if (opts.readFn) {
-    return opts.readFn(fp, omit(opts, 'readFn'));
+    return opts.readFn(fp, opts);
   }
 
   if (/\.json$/.test(fp)) {
-    var o = require(path.resolve(fp));
+    var o = JSON.parse(fs.readFileSync(path.resolve(fp), opts.enc));
     if (opts.normalize !== false) {
-      o.path = relative(fp);
+      o.path = fp;
       var res = utils.pickRoot(o);
       var locals = utils.pickLocals(o);
-      res.locals = omit(extend({}, locals.locals, locals), ['locals']);
+      res.locals = _.omit(extend({}, locals.locals, locals), ['locals']);
       o = res;
     }
     return o;
@@ -122,13 +115,10 @@ Loader.prototype.mapFiles = function(patterns, locals, options) {
 
   var opts = extend({}, this.options, locals, options);
   if (opts.mapFiles) {
-    return opts.mapFiles(patterns, omit(opts, 'mapFiles'));
+    return opts.mapFiles(patterns, opts);
   }
 
-  return mapFiles(patterns, {
-    name: self.renameKey,
-    read: self.readFn
-  });
+  return mapFiles(patterns, {name: self.renameKey, read: self.readFn});
 };
 
 /**
@@ -144,17 +134,15 @@ Loader.prototype.mapFiles = function(patterns, locals, options) {
 
 Loader.prototype.parseFn = function(str, options) {
   debug('parsing:', str);
-
-  var opts = extend({ autodetect: true }, this.options, options);
+  var opts = extend({}, { autodetect: true }, this.options, options);
   if (opts.noparse === true) {
     return str;
   }
 
   if (opts.parseFn) {
-    return opts.parseFn(str, omit(opts, 'parseFn'));
+    return opts.parseFn(str, opts);
   }
-
-  return matter(str, omit(options, ['delims']));
+  return matter(str, _.omit(options, ['delims']));
 };
 
 /**
@@ -167,23 +155,24 @@ Loader.prototype.parseFn = function(str, options) {
  */
 
 Loader.prototype.parseFiles = function(patterns, locals, options) {
-  debug('mapping files:', patterns);
+  debug('parsing files:', patterns);
 
   var files = this.mapFiles(patterns, locals, options);
-  return reduce(files, function (acc, value, key) {
+  var self = this;
+
+  return _.reduce(files, function (acc, value, key) {
     debug('reducing file: %s', key, value);
 
     if (isString(value)) {
-      value = this.parseFn(value);
-      value.path = relative(value.path || key);
+      value = self.parseFn(value);
+      value.path = value.path || key;
     }
 
     value._parsed = true;
     value._mappedFile = true;
     acc[key] = value;
-
     return acc;
-  }.bind(this), {});
+  }, {});
 };
 
 /**
@@ -212,7 +201,7 @@ Loader.prototype.normalizeFiles = function(patterns, locals, options) {
     return null;
   }
 
-  return reduce(files, function (acc, value, key) {
+  return _.reduce(files, function (acc, value, key) {
     debug('reducing normalized file: %s', key);
 
     value.options = extend({}, value.options, utils.flattenOptions(options));
@@ -257,10 +246,19 @@ Loader.prototype.normalizeArray = function(patterns, locals, options) {
 Loader.prototype.normalizeString = function(key, value, locals, options) {
   debug('normalizing string: %s', key, value);
 
-  var args = slice(arguments, 1);
-  var objects = filter(arguments, function (arg) {
-    return isObject(arg);
-  });
+  var len = arguments.length;
+  var args = new Array(len - 1);
+  for (var i = 0; i < len; i++) {
+    args[i] = arguments[i + 1];
+  }
+
+  var objects = [];
+  while (len--) {
+    var arg = args[len];
+    if (isObject(arg)) {
+      objects.push(arg);
+    }
+  }
 
   var props = utils.siftProps.apply(this, args);
   var opts = options || props.options;
@@ -364,7 +362,7 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
   extend(opt, o[key].options);
   o[key].options = opt;
 
-  locs = omit(locs, 'options');
+  locs = _.omit(locs, 'options');
   o[key].locals = utils.flattenLocals(locs);
   return o;
 };
@@ -405,11 +403,12 @@ Loader.prototype.normalizeShallowObject = function(value, locals, options) {
 
 Loader.prototype.normalizeDeepObject = function(obj, locals, options) {
   debug('normalizing deep object: %j', obj);
+  var self = this;
 
-  return reduce(obj, function (acc, value, key) {
-    acc[key] = this.normalizeShallowObject(value, locals, options);
+  return _.reduce(obj, function (acc, value, key) {
+    acc[key] = self.normalizeShallowObject(value, locals, options);
     return acc;
-  }.bind(this), {});
+  }, {});
 };
 
 /**
@@ -477,18 +476,16 @@ Loader.prototype.normalizeFunction = function(fn) {
  */
 
 Loader.prototype._format = function() {
-  var args = slice(arguments);
-  debug('normalize format', args);
-
-  switch (typeOf(args[0])) {
+  debug('normalize format', arguments);
+  switch (typeOf(arguments[0])) {
     case 'array':
-      return this.normalizeArray.apply(this, args);
+      return this.normalizeArray.apply(this, arguments);
     case 'string':
-      return this.normalizeString.apply(this, args);
+      return this.normalizeString.apply(this, arguments);
     case 'object':
-      return this.normalizeObject.apply(this, args);
+      return this.normalizeObject.apply(this, arguments);
     case 'function':
-      return this.normalizeFunction.apply(this, args);
+      return this.normalizeFunction.apply(this, arguments);
     default:
       return {};
     }
@@ -508,15 +505,17 @@ Loader.prototype.load = function() {
 
   var tmpl = this._format.apply(this, arguments);
   var opts = this.options;
+  var self = this;
 
-  return reduce(tmpl, function (acc, value, key) {
+  return _.reduce(tmpl, function (acc, value, key) {
     if (value && Object.keys(value).length === 0) {
       return acc;
     }
+
     // Normalize the template
-    this.normalize(opts, acc, value, key);
+    self.normalize(opts, acc, value, key);
     return acc;
-  }.bind(this), {});
+  }, {});
 };
 
 /**
@@ -538,13 +537,12 @@ Loader.prototype.normalize = function (options, acc, value, key) {
 
   value.ext = value.ext || path.extname(value.path);
   value = cleanupProps(value, options);
-  value.content = value.content || null;
-  if (value.content) {
-    value.content = value.content.trim()
-  }
+  value.content = value.content
+    ? value.content.trim()
+    : null;
 
   // Rename the object key
-  acc[relative(this.renameKey(key, options))] = value;
+  acc[this.renameKey(key, options)] = value;
   return acc;
 };
 
@@ -559,10 +557,10 @@ Loader.prototype.normalize = function (options, acc, value, key) {
 
 function cleanupProps(template, options) {
   if (template.content === template.orig) {
-    template = omit(template, 'orig');
+    template = _.omit(template, 'orig');
   }
   if (options.debug == null) {
-    template = omit(template, utils.heuristics);
+    template = _.omit(template, utils.heuristics);
   }
   return omitEmpty(template);
 }

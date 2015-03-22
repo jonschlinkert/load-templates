@@ -62,18 +62,6 @@ describe(chalk.magenta('utils:'), function () {
       });
     });
 
-    describe('.pickOptions():', function () {
-      it('should pick an options object:', function () {
-        var opts = utils.pickOptions({a: 'b', locals: {c: 'd'}, options: {foo: true}, content: 'This is content.'});
-        opts.should.eql({options: {foo: true}});
-      });
-
-      it('should return an empty object when nothing is found:', function () {
-        utils.pickOptions({content: 'This is content.'}).should.eql({});
-        utils.pickOptions({}).should.eql({});
-      });
-    });
-
     describe('.flattenOptions():', function () {
       it('should flatten an options object', function () {
         var opts = utils.flattenOptions({options: {foo: true}, bar: false});
@@ -86,12 +74,6 @@ describe(chalk.magenta('utils:'), function () {
       });
     });
 
-    describe('.omitOptions():', function () {
-      it('should omit an options object', function () {
-        var opts = utils.omitOptions({options: {foo: true}, bar: false});
-        opts.should.eql({bar: false});
-      });
-    });
   });
 
   describe('locals:', function () {
@@ -135,16 +117,6 @@ describe(chalk.magenta('utils:'), function () {
       });
     });
 
-    describe('.omitLocals():', function () {
-      it('should omit locals', function () {
-        var locals = utils.omitLocals({a: 'b', locals: {c: 'd'}, content: 'This is content.'});
-        locals.should.eql({a: 'b', content: 'This is content.'});
-      });
-
-      it('should return an empty object when nothing is found:', function () {
-        utils.omitLocals({}).should.eql({});
-      });
-    });
   });
 
   describe('root:', function () {
