@@ -11,7 +11,6 @@ var _ = require('lodash');
 var fs = require('fs');
 var path = require('path');
 var util = require('util');
-var slice = require('array-slice');
 var debug = require('debug')('load-templates');
 var hasAny = require('has-any');
 var Options = require('option-cache');
@@ -22,6 +21,7 @@ var relative = require('relative');
 var omitEmpty = require('omit-empty');
 var typeOf = require('kind-of');
 var utils = require('./lib/utils');
+var extend = _.extend;
 
 /**
  * Initialize a new `Loader`
@@ -58,14 +58,11 @@ util.inherits(Loader, Options);
  * @return {Object}
  */
 
-Loader.prototype.renameKey = function(key, options) {
+Loader.prototype.renameKey = function(key, opts) {
   debug('renaming key:', key);
-
-  var opts = _.extend({}, options);
   if (opts.renameKey) {
-    return opts.renameKey(key, _.omit(opts, 'renameKey'));
+    return opts.renameKey(key, opts);
   }
-
   return relative(key);
 };
 
@@ -83,18 +80,18 @@ Loader.prototype.renameKey = function(key, options) {
 Loader.prototype.readFn = function(fp, options) {
   debug('reading:', fp);
 
-  var opts = _.extend({ enc: 'utf8' }, this.options, options);
+  var opts = extend({}, { enc: 'utf8' }, this.options, options);
   if (opts.readFn) {
-    return opts.readFn(fp, _.omit(opts, 'readFn'));
+    return opts.readFn(fp, opts);
   }
 
   if (/\.json$/.test(fp)) {
-    var o = require(path.resolve(fp));
+    var o = JSON.parse(fs.readFileSync(path.resolve(fp), opts.enc));
     if (opts.normalize !== false) {
       o.path = relative(fp);
       var res = utils.pickRoot(o);
       var locals = utils.pickLocals(o);
-      res.locals = _.omit(_.extend({}, locals.locals, locals), ['locals']);
+      res.locals = _.omit(extend({}, locals.locals, locals), ['locals']);
       o = res;
     }
     return o;
@@ -116,15 +113,12 @@ Loader.prototype.mapFiles = function(patterns, locals, options) {
   debug('mapping files:', patterns);
   var self = this;
 
-  var opts = _.extend({}, this.options, locals, options);
+  var opts = extend({}, this.options, locals, options);
   if (opts.mapFiles) {
-    return opts.mapFiles(patterns, _.omit(opts, 'mapFiles'));
+    return opts.mapFiles(patterns, opts);
   }
 
-  return mapFiles(patterns, {
-    name: self.renameKey,
-    read: self.readFn
-  });
+  return mapFiles(patterns, {name: self.renameKey, read: self.readFn});
 };
 
 /**
@@ -140,16 +134,14 @@ Loader.prototype.mapFiles = function(patterns, locals, options) {
 
 Loader.prototype.parseFn = function(str, options) {
   debug('parsing:', str);
-
-  var opts = _.extend({ autodetect: true }, this.options, options);
+  var opts = extend({}, { autodetect: true }, this.options, options);
   if (opts.noparse === true) {
     return str;
   }
 
   if (opts.parseFn) {
-    return opts.parseFn(str, _.omit(opts, 'parseFn'));
+    return opts.parseFn(str, opts);
   }
-
   return matter(str, _.omit(options, ['delims']));
 };
 
@@ -163,23 +155,24 @@ Loader.prototype.parseFn = function(str, options) {
  */
 
 Loader.prototype.parseFiles = function(patterns, locals, options) {
-  debug('mapping files:', patterns);
+  debug('parsing files:', patterns);
 
   var files = this.mapFiles(patterns, locals, options);
+  var self = this;
+
   return _.reduce(files, function (acc, value, key) {
     debug('reducing file: %s', key, value);
 
     if (isString(value)) {
-      value = this.parseFn(value);
+      value = self.parseFn(value);
       value.path = relative(value.path || key);
     }
 
     value._parsed = true;
     value._mappedFile = true;
     acc[key] = value;
-
     return acc;
-  }.bind(this), {});
+  }, {});
 };
 
 /**
@@ -200,8 +193,8 @@ Loader.prototype.normalizeFiles = function(patterns, locals, options) {
   options = options || {};
   locals = locals || {};
 
-  _.extend(locals, locals.locals, options.locals);
-  _.extend(options, locals.options);
+  extend(locals, locals.locals, options.locals);
+  extend(options, locals.options);
 
   var files = this.parseFiles(patterns, locals, options);
   if (files && Object.keys(files).length === 0) {
@@ -211,8 +204,8 @@ Loader.prototype.normalizeFiles = function(patterns, locals, options) {
   return _.reduce(files, function (acc, value, key) {
     debug('reducing normalized file: %s', key);
 
-    value.options = _.extend({}, value.options, utils.flattenOptions(options));
-    value.locals = _.extend({}, value.locals, utils.flattenLocals(locals));
+    value.options = extend({}, value.options, utils.flattenOptions(options));
+    value.locals = extend({}, value.locals, utils.flattenLocals(locals));
 
     acc[key] = value;
     return acc;
@@ -253,10 +246,19 @@ Loader.prototype.normalizeArray = function(patterns, locals, options) {
 Loader.prototype.normalizeString = function(key, value, locals, options) {
   debug('normalizing string: %s', key, value);
 
-  var args = slice(arguments, 1);
-  var objects = _.filter(arguments, function (arg) {
-    return isObject(arg);
-  });
+  var len = arguments.length;
+  var args = new Array(len - 1);
+  for (var i = 0; i < len; i++) {
+    args[i] = arguments[i + 1];
+  }
+
+  var objects = [];
+  while (len--) {
+    var arg = args[len];
+    if (isObject(arg)) {
+      objects.push(arg);
+    }
+  }
 
   var props = utils.siftProps.apply(this, args);
   var opts = options || props.options;
@@ -301,16 +303,16 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
       var loc = {};
       opt = {};
 
-      _.extend(loc, utils.pickLocals(value));
-      _.extend(loc, locals);
+      extend(loc, utils.pickLocals(value));
+      extend(loc, locals);
 
-      _.extend(root, utils.pickRoot(loc));
+      extend(root, utils.pickRoot(loc));
 
-      _.extend(opt, loc.options);
-      _.extend(opt, value.options);
-      _.extend(opt, options);
+      extend(opt, loc.options);
+      extend(opt, value.options);
+      extend(opt, options);
 
-      _.extend(root, utils.pickRoot(opt));
+      extend(root, utils.pickRoot(opt));
 
       o[key] = root;
       o[key].locals = loc;
@@ -345,19 +347,19 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
 
   if (locals && isObject(locals)) {
     debug('[value] string: %s, %s', key, value);
-    _.extend(locs, locals.locals);
-    _.extend(opts, locals.options);
+    extend(locs, locals.locals);
+    extend(opts, locals.options);
     o[key]._s1s2o1 = true;
   }
 
   if (options && isObject(options)) {
     debug('[value] string: %s, %s', key, value);
-    _.extend(opts, options);
+    extend(opts, options);
     o[key]._s1s2o1o2 = true;
   }
 
   opt = utils.flattenOptions(opts);
-  _.extend(opt, o[key].options);
+  extend(opt, o[key].options);
   o[key].options = opt;
 
   locs = _.omit(locs, 'options');
@@ -384,8 +386,8 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
 Loader.prototype.normalizeShallowObject = function(value, locals, options) {
   debug('normalizing shallow object: %j', value);
   var o = utils.collectLocals(value);
-  o.options = _.extend({}, options, o.options);
-  o.locals = _.extend({}, locals, o.locals);
+  o.options = extend({}, options, o.options);
+  o.locals = extend({}, locals, o.locals);
   return o;
 };
 
@@ -401,11 +403,12 @@ Loader.prototype.normalizeShallowObject = function(value, locals, options) {
 
 Loader.prototype.normalizeDeepObject = function(obj, locals, options) {
   debug('normalizing deep object: %j', obj);
+  var self = this;
 
   return _.reduce(obj, function (acc, value, key) {
-    acc[key] = this.normalizeShallowObject(value, locals, options);
+    acc[key] = self.normalizeShallowObject(value, locals, options);
     return acc;
-  }.bind(this), {});
+  }, {});
 };
 
 /**
@@ -502,15 +505,17 @@ Loader.prototype.load = function() {
 
   var tmpl = this._format.apply(this, arguments);
   var opts = this.options;
+  var self = this;
 
   return _.reduce(tmpl, function (acc, value, key) {
     if (value && Object.keys(value).length === 0) {
       return acc;
     }
+
     // Normalize the template
-    this.normalize(opts, acc, value, key);
+    self.normalize(opts, acc, value, key);
     return acc;
-  }.bind(this), {});
+  }, {});
 };
 
 /**
@@ -538,7 +543,7 @@ Loader.prototype.normalize = function (options, acc, value, key) {
   }
 
   // Rename the object key
-  acc[relative(this.renameKey(key, options))] = value;
+  acc[this.renameKey(key, options)] = value;
   return acc;
 };
 
