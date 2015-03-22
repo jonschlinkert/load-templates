@@ -41,6 +41,7 @@
     "has-any": "^0.1.0",
     "has-any-deep": "^0.2.0",
     "kind-of": "^1.1.0",
+    "lodash": "^3.5.0",
     "map-files": "^0.6.2",
     "object.filter": "^0.3.0",
     "object.omit": "^0.2.1",
