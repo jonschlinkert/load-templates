@@ -1,7 +1,7 @@
 {
   "name": "load-templates",
   "description": "Load templates.",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "homepage": "https://github.com/jonschlinkert/load-templates",
   "author": {
     "name": "Jon Schlinkert",

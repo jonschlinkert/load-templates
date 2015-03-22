@@ -57,9 +57,8 @@ util.inherits(Loader, Options);
  * @return {Object}
  */
 
-Loader.prototype.renameKey = function(key, options) {
+Loader.prototype.renameKey = function(key, opts) {
   debug('renaming key:', key);
-  var opts = extend({}, this.options, options);
   if (opts.renameKey) {
     return opts.renameKey(key, opts);
   }
