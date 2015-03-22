@@ -45,7 +45,6 @@ function Loader(options) {
 
 util.inherits(Loader, Options);
 
-
 /**
  * Rename the `key` of a template object, often a file path. By
  * default the key is just passed through unchanged.
@@ -58,12 +57,13 @@ util.inherits(Loader, Options);
  * @return {Object}
  */
 
-Loader.prototype.renameKey = function(key, opts) {
+Loader.prototype.renameKey = function(key, options) {
   debug('renaming key:', key);
+  var opts = extend({}, this.options, options);
   if (opts.renameKey) {
     return opts.renameKey(key, opts);
   }
-  return relative(key);
+  return key;
 };
 
 /**
@@ -88,7 +88,7 @@ Loader.prototype.readFn = function(fp, options) {
   if (/\.json$/.test(fp)) {
     var o = JSON.parse(fs.readFileSync(path.resolve(fp), opts.enc));
     if (opts.normalize !== false) {
-      o.path = relative(fp);
+      o.path = fp;
       var res = utils.pickRoot(o);
       var locals = utils.pickLocals(o);
       res.locals = _.omit(extend({}, locals.locals, locals), ['locals']);
@@ -165,7 +165,7 @@ Loader.prototype.parseFiles = function(patterns, locals, options) {
 
     if (isString(value)) {
       value = self.parseFn(value);
-      value.path = relative(value.path || key);
+      value.path = value.path || key;
     }
 
     value._parsed = true;
@@ -537,10 +537,9 @@ Loader.prototype.normalize = function (options, acc, value, key) {
 
   value.ext = value.ext || path.extname(value.path);
   value = cleanupProps(value, options);
-  value.content = value.content || null;
-  if (value.content) {
-    value.content = value.content.trim();
-  }
+  value.content = value.content
+    ? value.content.trim()
+    : null;
 
   // Rename the object key
   acc[this.renameKey(key, options)] = value;
