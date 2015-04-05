@@ -23,10 +23,6 @@ var typeOf = require('kind-of');
 var utils = require('./lib/utils');
 var extend = _.extend;
 
-var debug = function () {
-  arguments[0] = chalk.green(arguments[0]) + '\n  ';
-  return debug_.apply(debug_, arguments);
-};
 
 /**
  * Initialize a new `Loader`
@@ -603,6 +599,11 @@ function createPathFromStringKey(o) {
     }
   }
   return o;
+}
+
+function debug() {
+  arguments[0] = chalk.green(arguments[0]) + '\n  ';
+  return debug_.apply(debug_, arguments);
 }
 
 /**
