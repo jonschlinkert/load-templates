@@ -32,36 +32,6 @@ describe(chalk.magenta('utils:'), function () {
   });
 
   describe('options:', function () {
-    describe('.flattenDeep():', function () {
-      it('should flatten `prop` to the root of the object:', function () {
-        var locals = utils.flattenDeep('a', {a: {b: 'b'}, b: {a: {c: 'c'}}, c: {a: {d: 'd'}}});
-        locals.should.eql({b: 'b', c: 'c', d: 'd'});
-      });
-
-      it('should deep flatten `prop` to the root of the object:', function () {
-        var locals = utils.flattenDeep('b', {a: {b: {a: 'b'}}, d: {e: {b: {c: 'd'}}}});
-        locals.should.eql({a: 'b', c: 'd'});
-      });
-
-      it('should return an empty object when no matching props are found:', function () {
-        var locals = utils.flattenDeep('b', 'd');
-        locals.should.eql({});
-      });
-
-      it('should flatten the same `prop` from multiple objects:', function () {
-        var one = {a: {b: 'b'}, b: {a: {c: 'c'}}, c: {a: {d: 'd'}}};
-        var two = {a: {g: 'g'}, k: {a: {e: 'e', a: {h: 'h'}}}, z: {a: {f: 'f'}}};
-
-        var locals = utils.flattenDeep('a', one, two);
-        locals.should.eql({b: 'b', c: 'c', d: 'd', e: 'e', f: 'f', g: 'g', h: 'h'});
-      });
-
-      it('should return an empty object when nothing is found:', function () {
-        utils.flattenDeep({content: 'This is content.'}).should.eql({});
-        utils.flattenDeep({}).should.eql({});
-      });
-    });
-
     describe('.flattenOptions():', function () {
       it('should flatten an options object', function () {
         var opts = utils.flattenOptions({options: {foo: true}, bar: false});
@@ -124,6 +94,11 @@ describe(chalk.magenta('utils:'), function () {
       it('should pick root properties from the given object:', function () {
         var root = utils.pickRoot({a: 'b', locals: {c: 'd'}, content: 'This is content.'});
         root.should.eql({content: 'This is content.', locals: {c: 'd'}});
+      });
+
+      it('should allow custom `root` keys to be defined:', function () {
+        var root = utils.pickRoot({a: 'b', locals: {c: 'd'}, content: 'This is content.'}, ['a']);
+        root.should.eql({a: 'b', content: 'This is content.', locals: {c: 'd'}});
       });
     });
 

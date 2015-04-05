@@ -24,8 +24,10 @@ describe('loader:', function () {
   });
 
   describe('_format', function () {
-    it('should return an object when an invalid format is passed.', function () {
-      loader._format(42).should.eql({});
+    it('should throw an error when an invalid format is passed.', function () {
+      (function() {
+        loader._format(42);
+      }).should.throw('loader#_format() expects an array, string, object or function.');
     });
   });
 
@@ -33,7 +35,7 @@ describe('loader:', function () {
     it('should throw an error if object is missing path and content properties.', function () {
       (function () {
         loader.normalizeObject({a: 'b', c: 'd'});
-      }).should.throw('Invalid template object. Must have a `path` or `content` property.');
+      }).should.throw('load-templates normalizeObject expects a `path` or `content` property.');
     });
   });
 

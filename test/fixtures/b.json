@@ -1,6 +1,5 @@
 {
-  "locals": {"whatever": "AAA"},
-  "title": "BBB",
+  "locals": {"whatever": "AAA", "title": "BBB"},
   "options": {"bar": true},
   "content": "this is the {{title}} page."
 }

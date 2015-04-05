@@ -24,11 +24,40 @@ function subhead(str) {
 }
 
 describe(heading('should normalize properties'), function () {
-  beforeEach(function () {
-    loader = new Loader();
+
+  describe('root properties', function () {
+    beforeEach(function () {
+      loader = new Loader();
+    });
+
+    var expected = { 'a/b/c.md': { path: 'a/b/c.md', ext: '.md', content: 'this is content.'}};
+
+    it('should move non-root properties to locals', function () {
+      var files = loader.load({path: 'a', content: 'b', a: 'b', c: 'd'});
+      files.should.eql({a: {path: 'a', content: 'b', locals: {a: 'b', c: 'd'}}});
+    });
+
+    it('should allow custom root keys to be defined with `.option`', function () {
+      loader = new Loader();
+      loader.option('rootKeys', ['a']);
+
+      var files = loader.load({path: 'a', content: 'b', a: 'b', c: 'd'});
+      files.should.eql({a: {path: 'a', content: 'b', a: 'b', locals: {c: 'd'}}});
+    });
+
+    it('should allow custom rootKeys to be passed on the constructor', function () {
+      loader = new Loader({rootKeys: ['a', 'c']});
+
+      var files = loader.load({path: 'a', content: 'b', a: 'b', c: 'd'});
+      files.should.eql({a: {path: 'a', content: 'b', a: 'b', c: 'd'}});
+    });
   });
 
   describe('path and content properties', function () {
+    beforeEach(function () {
+      loader = new Loader();
+    });
+
     var expected = { 'a/b/c.md': { path: 'a/b/c.md', ext: '.md', content: 'this is content.'}};
 
     it('should detect the key from an object with `path` and `content` properties', function () {
@@ -55,6 +84,10 @@ describe(heading('should normalize properties'), function () {
   });
 
   describe('sparse fields:', function () {
+    beforeEach(function () {
+      loader = new Loader();
+    });
+
     it('should normalize options', function () {
       var files = loader.load('a', {content: 'This is content.', options: {ext: '.foo'}});
       files.should.eql({a: {path: 'a', content: 'This is content.', ext: '.foo', options: {ext: '.foo'}}});
@@ -67,6 +100,10 @@ describe(heading('should normalize properties'), function () {
   });
 
   describe('locals', function () {
+    beforeEach(function () {
+      loader = new Loader();
+    });
+
     var expected = { 'a/b/c.md': { path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {a: 'b'}}};
 
     it('should detect the key from an object with `path` and `content` properties', function () {
@@ -75,7 +112,7 @@ describe(heading('should normalize properties'), function () {
     });
 
     it('should detect the key from an object with `path` and `content` properties', function () {
-      var files = loader.load({path: 'a/b/c.md', content: 'this is content.', a: 'b'});
+      var files = loader.load({path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b'}});
       files.should.eql(expected);
     });
 
@@ -85,7 +122,7 @@ describe(heading('should normalize properties'), function () {
     });
 
     it('should use the key to fill in a missing `path` property', function () {
-      var files = loader.load({ 'a/b/c.md': { content: 'this is content.', a: 'b'}});
+      var files = loader.load({ 'a/b/c.md': { content: 'this is content.', locals: {a: 'b'}}});
       files.should.eql(expected);
     });
     it('should detect the key from an object with `path` and `content` properties', function () {
@@ -94,13 +131,13 @@ describe(heading('should normalize properties'), function () {
     });
 
     it('should detect the key from an object with `path` and `content` properties', function () {
-      var files = loader.load('a/b/c.md', {content: 'this is content.', a: 'b'});
+      var files = loader.load('a/b/c.md', {content: 'this is content.', locals: {a: 'b'}});
       files.should.eql(expected);
     });
 
     describe('when the first two args are strings:', function () {
       it('should create an object with `path` and `content` properties', function () {
-        var files = loader.load('a/b/c.md', 'this is content.', {a: 'b'});
+        var files = loader.load('a/b/c.md', 'this is content.', {locals: {a: 'b'}});
         files.should.eql(expected);
       });
 
@@ -112,6 +149,10 @@ describe(heading('should normalize properties'), function () {
   });
 
   describe('options', function () {
+    beforeEach(function () {
+      loader = new Loader();
+    });
+
     var expected = { 'a/b/c.md': { path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {a: 'b'}, options: {y: 'z'}}};
 
     it('should detect the key from an object with `path` and `content` properties', function () {
@@ -120,7 +161,7 @@ describe(heading('should normalize properties'), function () {
     });
 
     it('should detect the key from an object with `path` and `content` properties', function () {
-      var files = loader.load({path: 'a/b/c.md', content: 'this is content.', a: 'b', options: {y: 'z'}});
+      var files = loader.load({path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b'}, options: {y: 'z'}});
       files.should.eql(expected);
     });
 
@@ -130,7 +171,7 @@ describe(heading('should normalize properties'), function () {
     });
 
     it('should use the key to fill in a missing `path` property', function () {
-      var files = loader.load({ 'a/b/c.md': { content: 'this is content.', a: 'b', options: {y: 'z'}}});
+      var files = loader.load({ 'a/b/c.md': { content: 'this is content.', locals: {a: 'b'}, options: {y: 'z'}}});
       files.should.eql(expected);
     });
 
@@ -140,7 +181,7 @@ describe(heading('should normalize properties'), function () {
     });
 
     it('should detect the key from an object with `path` and `content` properties', function () {
-      var files = loader.load('a/b/c.md', {content: 'this is content.', a: 'b'}, {y: 'z'});
+      var files = loader.load('a/b/c.md', {content: 'this is content.', locals: {a: 'b'}}, {y: 'z'});
       files.should.eql(expected);
     });
 
