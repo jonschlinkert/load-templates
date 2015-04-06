@@ -7,11 +7,10 @@
 
 'use strict';
 
+require('should');
 var path = require('path');
 var chalk = require('chalk');
-require('should');
 var matter = require('gray-matter');
-var utils = require('../lib/utils');
 var Loader = require('..');
 var loader = new Loader();
 
@@ -30,27 +29,21 @@ describe(chalk.magenta('arrays'), function () {
 
   var expected = {
     'test/fixtures/a.txt': {
-      data: { title: 'AAA' },
-      content: 'This is from a.txt.',
-      orig: '---\ntitle: AAA\n---\nThis is from a.txt.',
+      content: '---\ntitle: AAA\n---\nThis is from a.txt.',
       path: 'test/fixtures/a.txt',
       ext: '.txt',
       locals: {a: 'b'},
       options: {foo: true}
     },
    'test/fixtures/b.txt': {
-      data: { title: 'BBB' },
-      content: 'This is from b.txt.',
-      orig: '---\ntitle: BBB\n---\nThis is from b.txt.',
+      content: '---\ntitle: BBB\n---\nThis is from b.txt.',
       path: 'test/fixtures/b.txt',
       ext: '.txt',
       locals: {a: 'b'},
       options: {foo: true}
     },
    'test/fixtures/c.txt': {
-      data: { title: 'CCC' },
-      content: 'This is from c.txt.',
-      orig: '---\ntitle: CCC\n---\nThis is from c.txt.',
+      content: '---\ntitle: CCC\n---\nThis is from c.txt.',
       path: 'test/fixtures/c.txt',
       ext: '.txt',
       locals: {a: 'b'},
@@ -108,9 +101,9 @@ describe(chalk.magenta('arrays'), function () {
 
       it('should extend the objects with `content` from the file:', function () {
         var files = loader.load(['test/fixtures/*.txt']);
-        files['test/fixtures/a.txt'].should.have.property('content', 'This is from a.txt.');
-        files['test/fixtures/b.txt'].should.have.property('content', 'This is from b.txt.');
-        files['test/fixtures/c.txt'].should.have.property('content', 'This is from c.txt.');
+        files['test/fixtures/a.txt'].should.have.property('content', '---\ntitle: AAA\n---\nThis is from a.txt.');
+        files['test/fixtures/b.txt'].should.have.property('content', '---\ntitle: BBB\n---\nThis is from b.txt.');
+        files['test/fixtures/c.txt'].should.have.property('content', '---\ntitle: CCC\n---\nThis is from c.txt.');
       });
 
       it('should extend the objects with `options`:', function () {
@@ -132,24 +125,9 @@ describe(chalk.magenta('arrays'), function () {
         files['test/fixtures/c.txt'].should.have.property('locals', {a: 'b'});
       });
 
-      it('should parse front matter:', function () {
-        var files = loader.load(['test/fixtures/*.txt']);
-        files['test/fixtures/a.txt'].should.have.property('data', { title: 'AAA' });
-        files['test/fixtures/b.txt'].should.have.property('data', { title: 'BBB' });
-        files['test/fixtures/c.txt'].should.have.property('data', { title: 'CCC' });
-      });
-
-      it('should create `orig` from parsed file string:', function () {
-        var files = loader.load(['test/fixtures/*.txt']);
-        files['test/fixtures/a.txt'].should.have.property('orig', '---\ntitle: AAA\n---\nThis is from a.txt.');
-        files['test/fixtures/b.txt'].should.have.property('orig', '---\ntitle: BBB\n---\nThis is from b.txt.');
-        files['test/fixtures/c.txt'].should.have.property('orig', '---\ntitle: CCC\n---\nThis is from c.txt.');
-      });
-
       it('should keep `locals` and `data` from front matter separate:', function () {
         var files = loader.load(['test/fixtures/*.txt'], {a: 'b'});
         files['test/fixtures/a.txt'].should.have.property('locals', { a: 'b' });
-        files['test/fixtures/a.txt'].should.have.property('data', { title: 'AAA' });
       });
     });
   });

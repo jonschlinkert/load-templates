@@ -7,12 +7,11 @@
 
 'use strict';
 
+require('should');
 var fs = require('fs');
 var path = require('path');
-require('should');
 var Loader = require('..');
 var loader = new Loader();
-
 
 describe('.option()', function () {
   beforeEach(function () {
@@ -42,6 +41,7 @@ describe('.option()', function () {
       var actual = loader.load('test/fixtures/a.txt');
       actual.should.have.property('a.txt');
     });
+
     it('should use a custom `readFn` function to read templates:', function () {
       loader.option('readFn', function (filepath) {
         return filepath;
@@ -50,29 +50,18 @@ describe('.option()', function () {
       var actual = loader.load('test/fixtures/a.txt');
       actual.should.have.property('test/fixtures/a.txt');
     });
-    it('should use a custom `parseFn` function to parse templates:', function () {
-      loader.option('parseFn', function (str) {
-        return { foo: str };
-      });
-
-      var actual = loader.load('test/fixtures/a.txt');
-      actual.should.have.property('test/fixtures/a.txt');
-      actual['test/fixtures/a.txt'].should.have.property('foo');
-    });
 
     it('should use a custom normalization function to modify the template object.', function () {
       loader.option('normalize', function (acc, value, key) {
         key = path.basename(key);
-        if ('title' in value.data) {
-          value.data.title = value.data.title.toLowerCase();
-        }
+        value.key = key;
         acc[key] = value;
         return acc;
       });
 
       var actual = loader.load('test/fixtures/a.txt', {a: 'b'}, {foo: true});
       actual.should.have.property('a.txt');
-      actual['a.txt'].should.have.property('data', { title: 'aaa' });
+      actual['a.txt'].should.have.property('key', 'a.txt');
     });
 
     it('should use a custom normalization function to add a `name` property.', function () {

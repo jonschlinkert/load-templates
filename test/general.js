@@ -13,7 +13,6 @@ var fs = require('fs');
 var path = require('path');
 var relative = require('relative');
 var matter = require('gray-matter');
-var utils = require('../lib/utils');
 var Loader = require('..');
 var loader;
 
@@ -82,41 +81,6 @@ describe('loader:', function () {
         path: 'test/fixtures/a.txt',
         content: '---\ntitle: AAA\n---\nThis is from a.txt.'
       });
-    });
-  });
-
-  describe('parseFn', function () {
-    it('should use the default parse function to parse files.', function () {
-      var template = loader.parseFn('---\ntitle: AAA\n---\nThis is from a.txt.');
-      template.should.eql({
-        orig: '---\ntitle: AAA\n---\nThis is from a.txt.',
-        data: { title: 'AAA' },
-        content: '\nThis is from a.txt.'
-      });
-    });
-
-    it('should use a custom `parseFn` function to parse files.', function () {
-      var template = loader.parseFn('---\ntitle: AAA\n---\nThis is from a.txt.', {
-        parseFn: function (str) {
-          var o = matter(str);
-          o.data.title = 'BBB';
-          return o;
-        }
-      });
-
-      template.should.eql({
-        orig: '---\ntitle: AAA\n---\nThis is from a.txt.',
-        data: { title: 'BBB' },
-        content: '\nThis is from a.txt.'
-      });
-    });
-
-    it('should return the value un-parsed when `options.noparse` is defined:', function () {
-      var template = loader.parseFn('---\ntitle: AAA\n---\nThis is from a.txt.', {
-        noparse: true
-      });
-
-      template.should.equal('---\ntitle: AAA\n---\nThis is from a.txt.');
     });
   });
 

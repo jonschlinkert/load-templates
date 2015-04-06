@@ -7,11 +7,10 @@
 
 'use strict';
 
+require('should');
 var path = require('path');
 var chalk = require('chalk');
-require('should');
 var matter = require('gray-matter');
-var utils = require('../lib/utils');
 var Loader = require('..');
 var loader = new Loader();
 

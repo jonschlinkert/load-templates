@@ -96,7 +96,7 @@ module.exports = {
   // '94': [fn1] // invalid
 };
 
-var o = {};
+// var o = {};
 // var matter = require('gray-matter');
 // var tmpl = matter.read('test/fixtures/a.md');
 // var keys = Object.keys(tmpl);

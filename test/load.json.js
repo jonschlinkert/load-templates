@@ -7,11 +7,10 @@
 
 'use strict';
 
+require('should');
 var path = require('path');
 var chalk = require('chalk');
-require('should');
 var matter = require('gray-matter');
-var utils = require('../lib/utils');
 var Loader = require('..');
 var loader = new Loader();
 
@@ -36,6 +35,7 @@ describe(chalk.magenta('strings'), function () {
           path: 'test/fixtures/a.json',
           ext: '.json',
           content: 'this is the {{title}} page.',
+          orig: '{\n  \"locals\": {\"title\": \"Home\"},\n  \"options\": {\"foo\": true},\n  \"content\": \"this is the {{title}} page.\"\n}',
           locals: { title: 'Home' },
           options: { foo: true }
         }
@@ -49,6 +49,7 @@ describe(chalk.magenta('strings'), function () {
           path: 'test/fixtures/b.json',
           ext: '.json',
           content: 'this is the {{title}} page.',
+          orig: '{\n  \"locals\": {\"whatever\": \"AAA\", \"title\": \"BBB\"},\n  \"options\": {\"bar\": true},\n  \"content\": \"this is the {{title}} page.\"\n}',
           locals: { title: 'BBB', whatever: 'AAA' },
           options: { bar: true }
         }

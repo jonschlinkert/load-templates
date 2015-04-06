@@ -7,18 +7,17 @@
 
 'use strict';
 
+require('should');
+var _ = require('lodash');
 var path = require('path');
 var chalk = require('chalk');
-require('should');
 var matter = require('gray-matter');
-var utils = require('../lib/utils');
 var Loader = require('..');
 var loader = new Loader();
 
 function heading(str) {
   return chalk.magenta(str);
 }
-
 function subhead(str) {
   return chalk.cyan(str);
 }
@@ -89,13 +88,17 @@ describe(heading('should normalize properties'), function () {
     });
 
     it('should normalize options', function () {
-      var files = loader.load('a', {content: 'This is content.', options: {ext: '.foo'}});
-      files.should.eql({a: {path: 'a', content: 'This is content.', ext: '.foo', options: {ext: '.foo'}}});
+      var files = loader.load('a', {content: 'This is content.'}, {}, {ext: '.foo'});
+      files.should.eql({a: {path: 'a', content: 'This is content.', options: {ext: '.foo'}}});
     });
 
     it('should normalize locals', function () {
       var files = loader.load('a', {content: 'This is content.'}, {ext: '.foo'});
-      files.should.eql({a: {path: 'a', content: 'This is content.', ext: '.foo'}});
+      files.should.eql({a: {path: 'a', content: 'This is content.', options: {ext: '.foo'}}});
+    });
+    it('should normalize locals and options', function () {
+      var files = loader.load('a', {content: 'This is content.'}, {ext: '.foo'}, {ext: '.bar'});
+      files.should.eql({a: {path: 'a', content: 'This is content.', locals: {ext: '.foo'}, options: {ext: '.bar'}}});
     });
   });
 
@@ -148,17 +151,12 @@ describe(heading('should normalize properties'), function () {
     });
   });
 
-  describe('options', function () {
+  describe('third arg', function () {
     beforeEach(function () {
       loader = new Loader();
     });
 
     var expected = { 'a/b/c.md': { path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {a: 'b'}, options: {y: 'z'}}};
-
-    it('should detect the key from an object with `path` and `content` properties', function () {
-      var files = loader.load({path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b'}, options: {y: 'z'}});
-      files.should.eql(expected);
-    });
 
     it('should detect the key from an object with `path` and `content` properties', function () {
       var files = loader.load({path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b'}, options: {y: 'z'}});
@@ -181,13 +179,15 @@ describe(heading('should normalize properties'), function () {
     });
 
     it('should detect the key from an object with `path` and `content` properties', function () {
-      var files = loader.load('a/b/c.md', {content: 'this is content.', locals: {a: 'b'}}, {y: 'z'});
+      var files = loader.load({path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b'}, options: {y: 'z'}});
       files.should.eql(expected);
     });
 
     it('should detect the key from an object with `path` and `content` properties', function () {
-      var files = loader.load('a/b/c.md', {content: 'this is content.', a: 'b'}, {options: {y: 'z'}});
-      files.should.eql(expected);
+      var files = loader.load('a/b/c.md', {content: 'this is content.', locals: {a: 'b'}}, {y: 'z'});
+      files.should.eql({
+        'a/b/c.md': { path: 'a/b/c.md', content: 'this is content.', locals: { a: 'b'}, options: {y: 'z'}, ext: '.md'}
+      });
     });
 
     it('should detect the key from an object with `path` and `content` properties', function () {

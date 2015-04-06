@@ -1,9 +1,11 @@
 'use strict';
 
-var fn1 = function a() { return arguments; };
-var fn2 = function b() { return arguments; };
-var fn3 = function c() { return arguments; };
-var fn4 = function d() { return arguments; };
+var fn1 = function a() { return {path: 'a', content: 'b'}; };
+var fn2 = function b() { return {ext: '.foo'}; };
+var fn3 = function c() { return 'this is content'; };
+var fn4 = function d() { 
+  return {content: 'this is content'}; 
+};
 var fn5 = function e() { return arguments; };
 var fn6 = function f() { return arguments; };
 
@@ -11,17 +13,15 @@ module.exports = [
   ['a', 'b', fn6],
   ['a', 'b', {a: 'a'}, fn5],
   ['a', 'b', {a: 'a'}],
-  ['a', fn1, {a: 'b'}, 1, 'b', 2, fn2, {c: 'd'}, 'c'], // invalid
   ['a', fn4],
-  ['a', {a: 'a'}, fn1],
-  ['a', {a: 'a'}, fn3],
+  // ['a', {a: 'a'}, fn1],
+  // ['a', {a: 'a'}, fn3],
   ['a', {content: 'A above\n{{body}}\nA below', layout: 'b'}],
   ['a', {content: 'this is content', layout: 'b'}],
   ['a', {content: 'This is content.', options: {ext: '.foo'}}],
   ['a', {content: 'This is content.'}, {ext: '.foo'}],
   ['a.md', 'b'],
   ['a.md', {content: 'c'}],
-  ['a.md'],
   ['a/b/c.md', 'this is content.', {a: 'b', options: {y: 'z'}}],
   ['a/b/c.md', 'this is content.', {a: 'b'}, {options: {y: 'z'}}],
   ['a/b/c.md', 'this is content.', {a: 'b'}],
@@ -48,10 +48,10 @@ module.exports = [
   ['foo/bar/abc.md', 'This is content.', { a: 'b' }],
   ['foo/bar/abc.md', 'This is content.'],
   ['foo1.md', 'This is content', {name: 'Jon Schlinkert'}],
-  ['layouts/*.txt', 'flflflfl', {name: 'Brian Woodward'}],
+  // ['layouts/*.txt', 'flflflfl', {name: 'Brian Woodward'}],
   ['layouts/*.txt', {name: 'Brian Woodward'}],
   ['pages/a.md', 'This is content.', {name: 'Jon Schlinkert'}],
-  ['test/fixtures/*.md', 'flflflfl', {name: 'Brian Woodward'}],
+  // ['test/fixtures/*.md', 'flflflfl', {name: 'Brian Woodward'}],
   ['test/fixtures/*.md', {a: 'b'}, {engine: 'hbs'}],
   ['test/fixtures/*.txt', {a: 'b', options: {b: 'b'}}, {c: true}],
   ['test/fixtures/*.txt', {a: 'b'}, {c: true}],
@@ -67,7 +67,7 @@ module.exports = [
   ['test/fixtures/one/a.md', {name: 'Brian Woodward'}],
   ['test/fixtures/one/a.md'],
   ['test/fixtures/three/*.md', {name: 'Brian Woodward'}],
-  ['whatever', {name: 'Brian Woodward'}],
+  // ['whatever', {name: 'Brian Woodward'}],
   [['test/fixtures/*.md', 'test/fixtures/*.txt'], {a: 'b'},],
   [['test/fixtures/*.txt'], {a: 'b', options: {b: 'b'}}, {c: true}],
   [['test/fixtures/*.txt'], {a: 'b', options: {foo: true}}],
@@ -77,16 +77,15 @@ module.exports = [
   [['test/fixtures/*.txt'], {name: 'Brian Woodward'}],
   [['test/fixtures/*.txt']],
   [['test/fixtures/a.txt'], {name: 'Brian Woodward'}],
-  [fn1, 1, {a: 'b'}, 'a','b', 2, 3, 4, fn2, 'c', 5, {c: 'd'}], // invalid
-  [fn1],
-  [fn2, {a: 'a'}, {b: 'b'}],
+  // [fn1],
+  // [fn2, {a: 'a'}, {b: 'b'}],
   [{ 'a/b/c.md': { content: 'this is content.', a: 'b', options: {y: 'z'}}}],
   [{ 'a/b/c.md': { content: 'this is content.', a: 'b'}}],
   [{ 'a/b/c.md': { content: 'this is content.', locals: {a: 'b'}, options: {y: 'z'}}}],
   [{ 'a/b/c.md': { content: 'this is content.', locals: {a: 'b'}}}],
   [{ 'a/b/c.md': { content: 'this is content.'}}],
-  [{'bar1.md': {path: 'a/b/c.md', name: 'Jon Schlinkert'}}],
-  [{'baz.md': {path: 'a/b/c.md', name: 'Jon Schlinkert'}}, {go: true}],
+  // [{'bar1.md': {path: 'a/b/c.md', name: 'Jon Schlinkert'}}],
+  // [{'baz.md': {path: 'a/b/c.md', name: 'Jon Schlinkert'}}, {go: true}],
   [{'foo': {content: 'this is content.', a: 'b'}}, {fez: 'foo'}],
   [{'foo/bar.md': {content: 'this is content.', data: {a: 'a'}}}],
   [{'foo/bar.md': {content: 'this is content.'}}, {foo: 'bar'}],

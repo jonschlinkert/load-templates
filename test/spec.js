@@ -13,23 +13,24 @@ var util = require('util');
 var Loader = require('..');
 var loader = new Loader();
 
+loader.option('cwd',  __dirname + '/fixtures');
+loader.option('name', function (fp) {
+  return path.basename(fp);
+})
+
 var f1 = require('./fixtures/templates');
 var f2 = require('./fixtures/templates2');
-
-// convert templates from f1 to format of f2
-var o = {};
-f1.forEach(function (fixture, i) {
-  o[i] = fixture;
-});
-
-var res = {};
-Object.keys(f2).forEach(function (key, i) {
-  var fixture = f2[key];
-  var normalized = loader.load.apply(loader, fixture);
-  // console.log('template ' + key + ':', util.inspect(normalized, null, 10));
-  // wrapp in array for easier diffs, e.g. the originals are wrapped in arrays.
-  res[key] = normalized;
-});
+var n = 0;
+try {
+  // convert templates from f1 to format of f2
+  var res = {};
+  f1.forEach(function (fixture, i) {
+    n = i;
+    res[i] = loader.load.apply(loader, fixture);
+  });
+} catch(err) {
+  console.log(n, err)
+}
 
 // var str = JSON.stringify(res, null, 2)
 var str = util.inspect(res, null, 10)
