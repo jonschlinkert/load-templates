@@ -7,105 +7,74 @@
 
 'use strict';
 
+require('should');
+var _ = require('lodash');
 var path = require('path');
 var chalk = require('chalk');
-require('should');
-var utils = require('../lib/utils');
 var Loader = require('..');
 var loader;
-
 
 describe(chalk.magenta('utils:'), function () {
   beforeEach(function () {
     loader = new Loader();
   });
 
-
   describe('hasOwn():', function () {
     it('should return `true` if `object` hasOwnProperty `key`:', function () {
-      utils.hasOwn({a: 'b'}, 'a').should.be.true;
+      Loader.hasOwn({a: 'b'}, 'a').should.be.true;
     });
 
     it('should return `false` if the `object` does not:', function () {
-      utils.hasOwn({a: 'b'}, 'b').should.be.false;
+      Loader.hasOwn({a: 'b'}, 'b').should.be.false;
     });
-  });
-
-  describe('options:', function () {
-    describe('.flattenOptions():', function () {
-      it('should flatten an options object', function () {
-        var opts = utils.flattenOptions({options: {foo: true}, bar: false});
-        opts.should.eql({foo: true, bar: false});
-      });
-
-      it('should return an empty object when nothing is found:', function () {
-        utils.flattenOptions({content: 'This is content.'}).should.eql({});
-        utils.flattenOptions({}).should.eql({});
-      });
-    });
-
   });
 
   describe('locals:', function () {
-    describe('.collectLocals():', function () {
-      it('should collect locals from the given object:', function () {
-        var locals = utils.collectLocals({a: 'b', locals: {c: 'd'}, content: 'This is content.'});
-        locals.should.eql({content: 'This is content.', locals: {a: 'b', c: 'd'}});
-      });
-
-      it('should return an empty `locals` object when no relevant props are found:', function () {
-        utils.collectLocals({content: 'This is content.'}).should.eql({content: 'This is content.', locals: {}});
-        utils.collectLocals({}).should.eql({locals: {}});
-      });
-
-      it('should return an empty object when the value is undefined:', function () {
-        utils.collectLocals().should.eql({});
-      });
-    });
-
     describe('.pickLocals():', function () {
       it('should pick locals from the given object:', function () {
-        var locals = utils.pickLocals({a: 'b', locals: {c: 'd'}, content: 'This is content.'});
+        var locals = Loader.pickLocals({a: 'b', locals: {c: 'd'}, content: 'This is content.'});
         locals.should.eql({a: 'b', locals: {c: 'd'}});
       });
 
       it('should return an empty object when no relevant props are found:', function () {
-        utils.pickLocals({content: 'This is content.'}).should.eql({});
-        utils.pickLocals({}).should.eql({});
+        Loader.pickLocals({content: 'This is content.'}).should.eql({});
+        Loader.pickLocals({}).should.eql({});
       });
     });
 
-    describe('.flattenLocals():', function () {
-      it('should flatten a locals object', function () {
-        var locals = utils.flattenLocals({a: 'b', locals: {c: 'd'}, content: 'This is content.'});
-        locals.should.eql({a: 'b', c: 'd'});
+    describe('.flattenProp():', function () {
+      it('should throw an error when `prop` is not defined', function () {
+        (function () {
+          Loader.flattenProp({});
+        }).should.throw('flattenProp expects `prop` to be a string.');
       });
 
-      it('should return an empty object when no relevant props are found:', function () {
-        utils.flattenLocals({content: 'This is content.'}).should.eql({});
-        utils.flattenLocals({}).should.eql({});
+      it('should flatten the given prop to the root when one object is passed:', function () {
+        Loader.flattenProp('locals', {a: 'b'}).should.eql({a: 'b'});
+        Loader.flattenProp('locals', {a: 'b', locals: {c: 'd'}}).should.eql({a: 'b', c: 'd'});
+        Loader.flattenProp('locals', {locals: {c: 'd'}}).should.eql({c: 'd'});
+      });
+
+      it('should flatten the given prop to the root when two objects are passed:', function () {
+        var locs = {locals: {c: 'd'}};
+        var opts = {locals: {a: 'b'}};
+        Loader.flattenProp('locals', locs, opts).should.eql({a: 'b', c: 'd'});
+        locs.should.eql({a: 'b', c: 'd'});
+        opts.should.eql({});
       });
     });
-
   });
 
   describe('root:', function () {
     describe('.pickRoot():', function () {
       it('should pick root properties from the given object:', function () {
-        var root = utils.pickRoot({a: 'b', locals: {c: 'd'}, content: 'This is content.'});
+        var root = Loader.pickRoot({a: 'b', locals: {c: 'd'}, content: 'This is content.'});
         root.should.eql({content: 'This is content.', locals: {c: 'd'}});
       });
 
       it('should allow custom `root` keys to be defined:', function () {
-        var root = utils.pickRoot({a: 'b', locals: {c: 'd'}, content: 'This is content.'}, ['a']);
+        var root = Loader.pickRoot({a: 'b', locals: {c: 'd'}, content: 'This is content.'}, ['a']);
         root.should.eql({a: 'b', content: 'This is content.', locals: {c: 'd'}});
-      });
-    });
-
-    describe('.omitRoot():', function () {
-      it('should omit root properties', function () {
-        var root = utils.omitRoot({a: 'b', locals: {c: 'd'}, content: 'This is content.'});
-        root.should.eql({a: 'b'});
       });
     });
   });
