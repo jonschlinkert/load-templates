@@ -14,15 +14,32 @@ var util = require('util');
 var chalk = require('chalk');
 var debug_ = require('debug')('load-templates');
 var hasAny = require('has-any');
+var isGlob = require('is-glob');
 var Options = require('option-cache');
 var hasAnyDeep = require('has-any-deep');
 var mapFiles = require('map-files');
-var matter = require('gray-matter');
 var omitEmpty = require('omit-empty');
+var relative = require('relative');
 var typeOf = require('kind-of');
-var utils = require('./lib/utils');
+var has = Object.prototype.hasOwnProperty;
 var extend = _.extend;
+var merge = _.merge;
 
+
+/**
+ *  `keys` that might exist on the root of a template object.
+ */
+
+var rootKeys = [
+  'path',
+  'ext',
+  'content',
+  'data',
+  'locals',
+  'value',
+  'orig',
+  'options'
+];
 
 /**
  * Initialize a new `Loader`
@@ -63,7 +80,7 @@ Loader.prototype.renameKey = function(key, opts) {
   if (opts.renameKey) {
     return opts.renameKey(key, opts);
   }
-  return key;
+  return relative(key);
 };
 
 /**
@@ -79,18 +96,11 @@ Loader.prototype.renameKey = function(key, opts) {
 
 Loader.prototype.readFn = function(fp, options) {
   debug('readFn:', fp);
-  var opts = extend({}, { enc: 'utf8' }, this.options, options);
+  var opts = extend({}, this.options, options);
   if (opts.readFn) {
     return opts.readFn(fp, opts);
   }
-
-  var str = fs.readFileSync(path.resolve(fp), opts.enc);
-  if (/\.json$/.test(fp)) {
-    var o = JSON.parse(str);
-    o.path = fp;
-    return o;
-  }
-  return str;
+  return tryRead(fp);
 };
 
 /**
@@ -104,38 +114,16 @@ Loader.prototype.readFn = function(fp, options) {
 
 Loader.prototype.mapFiles = function(patterns, locals, options) {
   debug('mapFiles:', patterns);
-  var self = this;
 
   var opts = extend({}, this.options, locals, options);
   if (opts.mapFiles) {
     debug('mapFiles custom function:', patterns);
     return opts.mapFiles(patterns, opts);
   }
-  return mapFiles(patterns, {name: self.renameKey, read: self.readFn});
-};
 
-/**
- * Default function for parsing any files resolved.
- *
- * Pass a custom `parseFn` function on the options to change
- * how files are parsed.
- *
- * @param  {String} `filepath`
- * @param  {Object} `options`
- * @return {Object}
- */
-
-Loader.prototype.parseFn = function(str, options) {
-  debug('parsing:', str);
-  var opts = extend({}, { autodetect: true }, this.options, options);
-  if (opts.noparse === true) {
-    return str;
-  }
-
-  if (opts.parseFn) {
-    return opts.parseFn(str, opts);
-  }
-  return matter(str, _.omit(options, ['delims']));
+  opts.name = this.renameKey;
+  opts.read = this.readFn;
+  return mapFiles(patterns, opts);
 };
 
 /**
@@ -149,55 +137,28 @@ Loader.prototype.parseFn = function(str, options) {
 
 Loader.prototype.parseFiles = function(patterns, locals, options) {
   debug('parsing files:', patterns);
+  options = isObject(options) ? options : {};
+  locals = isObject(locals) ? locals : {};
+  var opts = extend({}, this.options, options);
 
-  var files = this.mapFiles(patterns, locals, options);
+  flattenProp('options', opts, locals);
+  flattenProp('locals', locals, opts);
+
+  var files = this.mapFiles(patterns, locals, opts);
   var self = this;
 
   return _.reduce(files, function (acc, value, key) {
-    debug('reducing file:', key, value);
+    debug('reducing value:', key, value);
+    var content = value;
+    value = {};
+    value.content = content;
 
-    if (typeof value === 'string') {
-      value = self.parseFn(value);
-      value.path = value.path || key;
+    // if the file has `.json` extension, parse it
+    if (key.slice(-5) === '.json') {
+      value.orig = value.content;
+      merge(value, JSON.parse(value.content));
     }
-    acc[key] = value;
-    return acc;
-  }, {});
-};
-
-/**
- * First arg is a file path or glob pattern.
- *
- * ```js
- * loader('a/b/c.md', ...);
- * loader('a/b/*.md', ...);
- * ```
- *
- * @param  {String} `key`
- * @param  {Object} `value`
- * @return {Object}
- */
-
-Loader.prototype.normalizeFiles = function(patterns, locals, options) {
-  debug('normalizing patterns:', patterns);
-  options = options || {};
-  locals = locals || {};
-
-  extend(locals, locals.locals, options.locals);
-  extend(options, locals.options);
-
-  var files = this.parseFiles(patterns, locals, options);
-  if (files && Object.keys(files).length === 0) {
-    return null;
-  }
-
-  var keys = this.options.rootKeys;
-  return _.reduce(files, function (acc, value, key) {
-    debug('reducing normalized file:', key);
-
-    value.options = extend({}, value.options, utils.flattenOptions(options, keys));
-    value.locals = extend({}, value.locals, utils.flattenLocals(locals, keys));
-    acc[key] = value;
+    merge(acc, self.normalizeString(key, value, locals, opts));
     return acc;
   }, {});
 };
@@ -218,7 +179,7 @@ Loader.prototype.normalizeFiles = function(patterns, locals, options) {
 
 Loader.prototype.normalizeArray = function(patterns, locals, options) {
   debug('normalizing array:', patterns);
-  return this.normalizeFiles(patterns, locals, options);
+  return this.parseFiles(patterns, locals, options);
 };
 
 /**
@@ -235,122 +196,63 @@ Loader.prototype.normalizeArray = function(patterns, locals, options) {
 
 Loader.prototype.normalizeString = function(key, value, locals, options) {
   debug('normalizing string:', key, value);
+  var len = arguments.length - 1;
+  var type = typeOf(value);
 
-  var len = arguments.length;
-  var args = new Array(len - 1);
-  for (var i = 0; i < len; i++) {
-    args[i] = arguments[i + 1];
+  var file = {};
+  file.path = key;
+  options = options || {};
+  locals = locals || {};
+
+  var str = this.readFn(key);
+  if (str && typeof str === 'string') {
+    file.content = str;
   }
 
-  var objects = [];
-  while (len--) {
-    var arg = args[len];
-    if (isObject(arg)) {
-      objects.push(arg);
+  if (isGlob(key)) {
+    if (type === 'string') {
+      console.log(chalk.red('load-templates cannot normalize: ' + JSON.stringify(arguments)));
+      throw new TypeError('load-templates `normalizeString`: second argument cannot be a string when the first argument is a glob pattern.');
     }
+    return this.parseFiles(key, value, locals);
   }
 
-  var props = utils.siftProps.apply(this, args);
-  var opts = options || props.options;
-  var locs = props.locals;
-  var files;
-  var root = {};
-  var opt = {};
-  var o = {};
-  o[key] = {};
-
-  // If only `value` is defined
-  if (value == null) {
-
-    // check if `key` is a file path
-    files = this.normalizeFiles(key);
-    if (files != null) {
-      return files;
-
-    // if not, add a heuristic
+  if (type === 'function') {
+    var res = this.normalizeFunction(value, locals, options);
+    if (isObject(res)) {
+      merge(file, res);
     } else {
-      // If it's a glob pattern, this means it didn't expand
-      // so return an empty object.
-      if (/[*{}()]/.test(key)) {
-        return {};
-      }
-
-      o[key]._hasPath = true;
-      o[key].path = o[key].path || key;
-      return o;
+      file.content = res;
     }
   }
 
-  var keys = this.options.rootKeys;
+  if (type === 'string') {
+    file.content = value;
+  }
 
-  if ((value && isObject(value)) || objects == null) {
-    debug('normalizeString s1o1:', key, value);
-    files = this.normalizeFiles(key, value, locals, options);
-
-    if (files != null) {
-      return files;
-    } else {
-      debug('normalizeString s1o2:', key, value);
-      root = utils.pickRoot(value, keys);
-      var loc = {};
-      opt = {};
-
-      extend(loc, utils.pickLocals(value, keys));
-      extend(loc, locals);
-      extend(root, utils.pickRoot(loc, keys));
-
-      extend(opt, loc.options);
-      extend(opt, value.options);
-      extend(opt, options);
-
-      extend(root, utils.pickRoot(opt, keys));
-
-      o[key] = root;
-      o[key].locals = loc;
-      o[key].options = opt;
-
-      var content = value && value.content;
-      if (o[key].content == null && content != null) {
-        o[key].content = content;
-      }
+  if (type === 'object') {
+    extend(file, value);
+    if (len === 2) {
+      options = locals;
+      locals = file.locals || {};
     }
   }
 
-  if (opt._hasPath && opt._hasPath === false) {
-    o[key].path = null;
-  } else {
-    o[key].path = value.path || key;
-  }
+  file.locals = file.locals || {};
+  extend(file.locals, locals);
 
-  if (value && isString(value)) {
-    debug('normalizeString string:', key, value);
-    o[key] = {};
-    o[key].locals = locals;
-    o[key].content = value;
-    o[key].path = o[key].path = key;
-    if (objects == null) {
-      return o;
-    }
-  }
+  file.options = file.options || {};
+  extend(file.options, options);
 
-  if (locals && isObject(locals)) {
-    debug('normalizeString string:', key, value);
-    extend(locs, locals.locals);
-    extend(opts, locals.options);
-  }
+  var root = pickRoot(file, this.options.rootKeys);
+  root = mergeDiff('locals', file, root);
 
-  if (options && isObject(options)) {
-    debug('normalizeString string:', key, value);
-    extend(opts, options);
-  }
+  flattenProp('options', root.options, root.locals);
+  flattenProp('locals', root.locals, root.options);
 
-  opt = utils.flattenOptions(opts);
-  extend(opt, o[key].options);
-  o[key].options = opt;
-
-  locs = _.omit(locs, 'options');
-  o[key].locals = utils.flattenLocals(locs);
-  return o;
+  var res = {};
+  res[key] = root;
+  return res;
 };
 
 /**
@@ -369,13 +271,17 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
  * @return {Object} Returns a normalized object.
  */
 
-Loader.prototype.normalizeShallowObject = function(value, locals, options) {
-  debug('normalizing shallow object:', value);
-  var o = utils.collectLocals(value, this.options.rootKeys);
+Loader.prototype.normalizeShallowObject = function(file, locals, options) {
+  debug('normalizing shallow object:', file);
+  file.options = extend({}, options, file.options);
+  file.locals = extend({}, locals, file.locals);
 
-  o.options = extend({}, options, o.options);
-  o.locals = extend({}, locals, o.locals);
-  return o;
+  var root = pickRoot(file, this.options.rootKeys);
+  root = mergeDiff('locals', file, root);
+
+  flattenProp('options', root.options, root.locals);
+  flattenProp('locals', root.locals, root.options);
+  return root;
 };
 
 /**
@@ -390,12 +296,11 @@ Loader.prototype.normalizeShallowObject = function(value, locals, options) {
 
 Loader.prototype.normalizeDeepObject = function(obj, locals, options) {
   debug('normalizing deep object:', obj);
-  var self = this;
 
   return _.reduce(obj, function (acc, value, key) {
-    acc[key] = self.normalizeShallowObject(value, locals, options);
+    acc[key] = this.normalizeShallowObject(value, locals, options);
     return acc;
-  }, {});
+  }.bind(this), {});
 };
 
 /**
@@ -418,8 +323,8 @@ Loader.prototype.normalizeDeepObject = function(obj, locals, options) {
 Loader.prototype.normalizeObject = function(o) {
   debug('normalizing object:', o);
 
-  var locals1 = utils.pickLocals(arguments[1], this.options.rootKeys);
-  var locals2 = utils.pickLocals(arguments[2], this.options.rootKeys);
+  var locals1 = pickLocals(arguments[1], this.options.rootKeys);
+  var locals2 = pickLocals(arguments[2], this.options.rootKeys);
   var val;
 
   var opts = arguments.length === 3 ? locals2 : {};
@@ -495,10 +400,6 @@ Loader.prototype.load = function() {
   var self = this;
 
   return _.reduce(tmpl, function (acc, value, key) {
-    if (value && Object.keys(value).length === 0) {
-      return acc;
-    }
-    // Normalize the template
     self.normalize(opts, acc, value, key);
     return acc;
   }, {});
@@ -522,34 +423,30 @@ Loader.prototype.normalize = function (options, acc, value, key) {
   }
 
   value.ext = value.ext || path.extname(value.path);
-  value = cleanupProps(value, options);
+  if (value.path) {
+    value.path = relative(value.path);
+  }
+
   value.content = value.content
     ? value.content.trim()
     : null;
+
+  value = omitEmpty(value);
+
+  if (!value.hasOwnProperty('content')) {
+    console.log(chalk.red('missing `content` property: ' + JSON.stringify(arguments)));
+    throw new Error('load-templates#normalize: expects templates to have a content property.');
+  }
+
+  if (!value.hasOwnProperty('path')) {
+    console.log(chalk.red('missing `path` property: ' + JSON.stringify(arguments)));
+    throw new Error('load-templates#normalize: expects templates to have a path property.');
+  }
 
   // Rename the object key
   acc[this.renameKey(key, options)] = value;
   return acc;
 };
-
-/**
- * Clean up some properties before return the final
- * normalized template object.
- *
- * @param  {Object} `template`
- * @param  {Object} `options`
- * @return {Object}
- */
-
-function cleanupProps(template, options) {
-  if (template.content === template.orig) {
-    template = _.omit(template, 'orig');
-  }
-  if (options.debug == null) {
-    template = _.omit(template, utils.heuristics);
-  }
-  return omitEmpty(template);
-}
 
 /**
  * Create a `path` property from the template object's key.
@@ -601,6 +498,94 @@ function createPathFromStringKey(o) {
   return o;
 }
 
+/**
+ * Try to read the given `str` as a file path,
+ * Returns `null` if the path is invalid.
+ *
+ * @param  {String} `str`
+ * @return {String|Null}
+ */
+
+function tryRead(str) {
+  try {
+    str = path.resolve(str);
+    return fs.readFileSync(str, 'utf8');
+  } catch(err) {}
+  return null;
+}
+
+/**
+ * Pick `rootKeys` from `object`.
+ *
+ * @param  {Object} `object`
+ * @return {Object}
+ */
+
+function pickRoot(o, keys) {
+  return _.pick(o, rootKeys.concat(keys || []));
+}
+
+/**
+ * Pick `locals` from `object`
+ *
+ * @param  {Object} `object`
+ * @return {Object}
+ */
+
+function pickLocals(o, keys) {
+  var root = _.omit(o, rootKeys.concat(keys || []));
+  return _.extend({}, root, _.pick(o, 'locals'));
+}
+
+/**
+ * Flatten the given `property` from all objects onto the target object.
+ *
+ * ```js
+ * flattenProp('locals', {locals: {a: 'b'}}, {locals: {c: 'd'}});
+ * //=> {a: 'b', c: 'd'}
+ * ```
+ *
+ * @param  {String} `property`
+ * @param  {Object} `target` The target object
+ * @return {Object}
+ */
+
+function flattenProp(prop, target/*, objects */) {
+  if (typeof prop !== 'string') {
+    throw new TypeError ('flattenProp expects `prop` to be a string.');
+  }
+
+  var len = arguments.length - 1;
+  for (var i = 0; i < len; i++) {
+    var obj = arguments[i + 1];
+    if (obj.hasOwnProperty(prop)) {
+      _.merge(target, obj[prop]);
+      delete obj[prop];
+    }
+  }
+  return target;
+}
+
+/**
+ * Merge the difference between two objects onto
+ * the given property on the first object.
+ */
+
+function mergeDiff(prop, a, b) {
+  var akeys = Object.keys(a);
+  var bkeys = Object.keys(b);
+  var diff = _.difference(akeys, bkeys);
+  var obj = _.pick(a, diff);
+
+  b[prop] = b[prop] || {};
+  _.merge(b[prop], obj);
+  return b;
+}
+
+/**
+ *  Make debug messages easier to read
+ */
+
 function debug() {
   arguments[0] = chalk.green(arguments[0]) + '\n  ';
   return debug_.apply(debug_, arguments);
@@ -612,16 +597,12 @@ function debug() {
  * @api private
  */
 
-function isString(val) {
-  return typeOf(val) === 'string';
-}
-
 function isObject(val) {
   return typeOf(val) === 'object';
 }
 
 function hasOwn(o, prop) {
-  return {}.hasOwnProperty.call(o, prop);
+  return o && has.call(o, prop);
 }
 
 /**
@@ -631,3 +612,14 @@ function hasOwn(o, prop) {
  */
 
 module.exports = Loader;
+
+/**
+ * Expose utils so they can be tested
+ */
+
+module.exports.hasOwn = hasOwn;
+module.exports.isObject = isObject;
+module.exports.pickLocals = pickLocals;
+module.exports.pickRoot = pickRoot;
+module.exports.mergeDiff = mergeDiff;
+module.exports.flattenProp = flattenProp;
