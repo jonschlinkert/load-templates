@@ -218,11 +218,11 @@ Loader.prototype.normalizeString = function(key, value, locals, options) {
   }
 
   if (type === 'function') {
-    var res = this.normalizeFunction(value, locals, options);
-    if (isObject(res)) {
-      merge(file, res);
+    var fnRes = this.normalizeFunction(value, locals, options);
+    if (isObject(fnRes)) {
+      merge(file, fnRes);
     } else {
-      file.content = res;
+      file.content = fnRes;
     }
   }
 
