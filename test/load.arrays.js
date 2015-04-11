@@ -74,6 +74,19 @@ describe(chalk.magenta('arrays'), function () {
         files['test/fixtures/c.txt'].should.have.property('path', 'test/fixtures/c.txt');
       });
 
+      it('should make the `path` relative to the cwd.', function () {
+        var files = loader.load([path.join(process.cwd(), 'test/fixtures/*.txt')]);
+        files['test/fixtures/a.txt'].should.have.property('path', 'test/fixtures/a.txt');
+        files['test/fixtures/b.txt'].should.have.property('path', 'test/fixtures/b.txt');
+        files['test/fixtures/c.txt'].should.have.property('path', 'test/fixtures/c.txt');
+      });
+
+      it('should not make the `path` relative when the first character is a slash.', function () {
+        var loader = new Loader({relative: false});
+        var files = loader.load('/a/b/c/d', {content: 'this is content...'});
+        files['/a/b/c/d'].should.have.property('path', '/a/b/c/d');
+      });
+
       it('should extend the objects with locals:', function () {
         var files = loader.load(['test/fixtures/*.txt'], {name: 'Brian Woodward'});
         files['test/fixtures/a.txt'].should.have.property('locals', {name: 'Brian Woodward'});

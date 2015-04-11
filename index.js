@@ -77,10 +77,16 @@ util.inherits(Loader, Options);
 
 Loader.prototype.renameKey = function(key, opts) {
   debug('renameKey:', key);
+  opts = opts || {};
+
   if (opts.renameKey) {
     return opts.renameKey(key, opts);
   }
-  return relative(key);
+
+  if (opts.relative !== false) {
+    return relative(key);
+  }
+  return key;
 };
 
 /**
@@ -416,14 +422,18 @@ Loader.prototype.load = function() {
  * @return {Object} Normalized template object.
  */
 
-Loader.prototype.normalize = function (options, acc, value, key) {
+Loader.prototype.normalize = function (opts, acc, value, key) {
   debug('normalize', key);
-  if (options && options.normalize) {
-    return options.normalize(acc, value, key);
+  if (opts && opts.normalize) {
+    return opts.normalize(acc, value, key);
   }
 
-  value.ext = value.ext || path.extname(value.path);
-  if (value.path) {
+  if (!value.ext) {
+    var ext = path.extname(value.path);
+    if (ext) value.ext = ext;
+  }
+
+  if (value.path && opts && opts.relative !== false) {
     value.path = relative(value.path);
   }
 
@@ -444,7 +454,7 @@ Loader.prototype.normalize = function (options, acc, value, key) {
   }
 
   // Rename the object key
-  acc[this.renameKey(key, options)] = value;
+  acc[this.renameKey(key, opts)] = value;
   return acc;
 };
 
@@ -569,6 +579,8 @@ function flattenProp(prop, target/*, objects */) {
 /**
  * Merge the difference between two objects onto
  * the given property on the first object.
+ *
+ * mergeDiff('locals', file.locals, file.options);
  */
 
 function mergeDiff(prop, a, b) {
