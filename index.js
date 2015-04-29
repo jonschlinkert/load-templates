@@ -443,7 +443,7 @@ Loader.prototype.normalize = function (opts, acc, value, key) {
 
   value = omitEmpty(value);
 
-  if (!value.hasOwnProperty('content')) {
+  if (!value.hasOwnProperty('content') && opts.read !== false) {
     console.log(chalk.red('missing `content` property: ' + JSON.stringify(arguments)));
     throw new Error('load-templates#normalize: expects templates to have a content property.');
   }
