@@ -4,7 +4,12 @@ var verb = require('verb');
 var istanbul = require('gulp-istanbul');
 var mocha = require('gulp-mocha');
 
-verb.task('default', function(cb) {
+verb.task('readme', function(cb) {
+  verb.src('.verb.md')
+    .pipe(verb.dest('.'))
+});
+
+verb.task('test', function(cb) {
   verb.src(['index.js', 'lib/*.js'])
     .pipe(istanbul())
     .pipe(istanbul.hookRequire())
@@ -18,3 +23,5 @@ verb.task('default', function(cb) {
         .on('end', cb);
     });
 });
+
+verb.task('default', ['test', 'readme']);
