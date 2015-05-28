@@ -406,6 +406,9 @@ Loader.prototype.load = function() {
   var self = this;
 
   return _.reduce(tmpl, function (acc, value, key) {
+    if (opts.strict && value.path && !fs.existsSync(value.path)) {
+      throw new Error(value.path + ' does not exist.');
+    }
     self.normalize(opts, acc, value, key);
     return acc;
   }, {});
