@@ -2,6 +2,8 @@
 
 > Load templates.
 
+## Install
+
 Install with [npm](https://www.npmjs.com/)
 
 ```sh
@@ -15,7 +17,7 @@ var Loader = require('load-templates');
 var loader = new Loader();
 ```
 
-Throw some disorganized templates into the load method:
+Pass a string or array of globs or file paths, or an object to the load method:
 
 ```js
 loader.load('a.md', {a: 'b'});
@@ -53,10 +55,10 @@ See [the docs](./docs/conventions.md) and [tests](./tests) for valid formats. WI
 -------------------|-----------|-----------|-----------|-----------|
 File               |   % Stmts |% Branches |   % Funcs |   % Lines |
 -------------------|-----------|-----------|-----------|-----------|
-   load-templates/ |     98.54 |     93.94 |       100 |     98.51 |
-      index.js     |     98.54 |     93.94 |       100 |     98.51 |
+   load-templates/ |     98.52 |     93.94 |       100 |     98.48 |
+      index.js     |     98.52 |     93.94 |       100 |     98.48 |
 -------------------|-----------|-----------|-----------|-----------|
-All files          |     98.54 |     93.94 |       100 |     98.51 |
+All files          |     98.52 |     93.94 |       100 |     98.48 |
 -------------------|-----------|-----------|-----------|-----------|
 ```
 
