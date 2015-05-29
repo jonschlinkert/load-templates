@@ -55,14 +55,14 @@ Loader.prototype.loadString = function(key, value/*, locals, options*/) {
     files.forEach(function (fp) {
       var file = this.normalize.apply(this, args);
       file.content = this.readFn(fp, opts);
-      file.path = this.resolve(fp, opts);
+      file.path = this.resolve((file.path || fp), opts);
       this.cache[this.renameKey(fp, opts)] = file;
     }.bind(this));
 
   } else {
     var fp = args.shift();
     var file = this.normalize.apply(this, args);
-    file.path = this.resolve(fp, opts);
+    file.path = this.resolve((file.path || fp), opts);
     this.cache[this.renameKey(fp, opts)] = file;
   }
   return this.cache;
@@ -86,7 +86,7 @@ Loader.prototype.loadArray = function(key/*, value, locals, options*/) {
     }
     file = defaults({}, file, rest);
     opts = extend({}, this.options, file.options);
-    file.path = this.resolve(fp, opts);
+    file.path = this.resolve((file.path || fp), opts);
     this.cache[this.renameKey(fp, opts)] = this.sift(file, 'locals');
   }.bind(this));
   return this.cache;
@@ -106,7 +106,7 @@ Loader.prototype.loadObject = function(template/*, value, locals, options*/) {
         var file = defaults({}, template[key], rest);
         var opts = extend({}, this.options, file.options);
         // normalize file.path
-        file.path = this.resolve(key, opts);
+        file.path = this.resolve((file.path || key), opts);
         // cache the template and normalize the template key
         this.cache[this.renameKey(key, opts)] = this.sift(file, 'locals');
       }
@@ -120,8 +120,9 @@ Loader.prototype.normalize = function(value, locals, options) {
   if (args.length === 0) return {};
   var file = {};
 
-  if (value && typeof value === 'object' && value.hasOwnProperty('content')) {
+  if (value && typeof value === 'object' && value.content || value.path) {
     file = args.shift();
+    file = extend({content: null, path: null}, file);
   } else if (typeof value === 'string') {
     file.content = args.shift();
   }

@@ -91,6 +91,13 @@ describe(chalk.green('strings'), function () {
   describe(heading('[ string | object ]'), function () {
     describe(subhead('valid filepath:'), function () {
       it('should detect when the string is a filepath:', function () {
+        var files = loader.load('foo', {path: 'abc.md'});
+        files['foo'].should.have.property('path', 'abc.md');
+      });
+    });
+
+    describe(subhead('valid filepath:'), function () {
+      it('should detect when the string is a filepath:', function () {
         var files = loader.load('test/fixtures/one/a.md');
         files['test/fixtures/one/a.md'].should.have.property('path', 'test/fixtures/one/a.md');
       });
