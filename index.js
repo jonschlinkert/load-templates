@@ -1,11 +1,11 @@
 
 var fs = require('fs');
-var union = require('array-union');
-var extend = require('extend-shallow');
 var typeOf = require('kind-of');
 var isGlob = require('is-glob');
 var relative = require('relative');
 var defaults = require('defaults-deep');
+var extend = require('extend-shallow');
+var union = require('array-union');
 var glob = require('globby');
 var pick = require('object.pick');
 var omit = require('object.omit');
@@ -25,6 +25,10 @@ function Loader(opts) {
   this.options = opts;
   this.cache = {};
 }
+
+/**
+ * Load templates.
+ */
 
 Loader.prototype.load = function(key/*, value, locals, options*/) {
   switch(typeOf(key)) {
@@ -125,22 +129,11 @@ Loader.prototype.normalize = function(value, locals, options) {
   locals = args.shift() || {};
   options = args.shift() || {};
 
-  if (options.hasOwnProperty('locals')) {
-     extend(locals, options.locals);
-     delete options.locals;
-  }
-  if (locals.hasOwnProperty('locals')) {
-     extend(locals, locals.locals);
-     delete locals.locals;
-  }
-  if (locals.hasOwnProperty('options')) {
-     extend(options, locals.options);
-     delete locals.options;
-  }
-  if (options.hasOwnProperty('options')) {
-     extend(options, options.options);
-     delete options.options;
-  }
+  extendOmit('locals', options, locals);
+  extendOmit('options', locals, options);
+
+  extendOmit('locals', locals, locals);
+  extendOmit('options', options, options);
 
   if (Object.keys(options).length) {
     file.options = extend({}, file.options, options);
@@ -201,5 +194,13 @@ Loader.prototype.resolve = function(fp, options) {
   if (opts.relative === false) return fp;
   return relative(fp);
 };
+
+function extendOmit(prop, o, target) {
+  if (typeof target !== 'object') target = o;
+  if (o.hasOwnProperty(prop)) {
+    extend(target, o[prop]);
+    delete o[prop];
+  }
+}
 
 module.exports = Loader;
