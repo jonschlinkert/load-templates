@@ -31,21 +31,18 @@ describe(chalk.magenta('arrays'), function () {
     'test/fixtures/a.txt': {
       content: '---\ntitle: AAA\n---\nThis is from a.txt.',
       path: 'test/fixtures/a.txt',
-      ext: '.txt',
       locals: {a: 'b'},
       options: {foo: true}
     },
    'test/fixtures/b.txt': {
       content: '---\ntitle: BBB\n---\nThis is from b.txt.',
       path: 'test/fixtures/b.txt',
-      ext: '.txt',
       locals: {a: 'b'},
       options: {foo: true}
     },
    'test/fixtures/c.txt': {
       content: '---\ntitle: CCC\n---\nThis is from c.txt.',
       path: 'test/fixtures/c.txt',
-      ext: '.txt',
       locals: {a: 'b'},
       options: {foo: true}
     }
@@ -171,7 +168,8 @@ describe(chalk.magenta('arrays'), function () {
     });
 
     it('should assume the third object is options:', function () {
-      loader.load(['test/fixtures/*.txt'], {a: 'b'}, {foo: true}).should.eql(expected);
+      var files = loader.load(['test/fixtures/*.txt'], {a: 'b'}, {foo: true});
+      files.should.eql(expected);
     });
 
     it('should merge locals from the second and third objects:', function () {

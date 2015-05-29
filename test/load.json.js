@@ -33,7 +33,6 @@ describe(chalk.magenta('strings'), function () {
       files.should.eql({
         'test/fixtures/a.json': {
           path: 'test/fixtures/a.json',
-          ext: '.json',
           content: 'this is the {{title}} page.',
           orig: '{\n  \"locals\": {\"title\": \"Home\"},\n  \"options\": {\"foo\": true},\n  \"content\": \"this is the {{title}} page.\"\n}',
           locals: { title: 'Home' },
@@ -47,7 +46,6 @@ describe(chalk.magenta('strings'), function () {
       files.should.eql({
         'test/fixtures/b.json': {
           path: 'test/fixtures/b.json',
-          ext: '.json',
           content: 'this is the {{title}} page.',
           orig: '{\n  \"locals\": {\"whatever\": \"AAA\", \"title\": \"BBB\"},\n  \"options\": {\"bar\": true},\n  \"content\": \"this is the {{title}} page.\"\n}',
           locals: { title: 'BBB', whatever: 'AAA' },

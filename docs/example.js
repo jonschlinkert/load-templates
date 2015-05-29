@@ -13,7 +13,7 @@ var utils = require('../lib/utils');
  * var engine = new Engine();
  * ```
  *
- * @param {[type]} options
+ * @param {Object} options
  */
 
 function Engine(options) {

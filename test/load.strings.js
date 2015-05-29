@@ -8,6 +8,7 @@
 'use strict';
 
 require('should');
+var assert = require('assert');
 var path = require('path');
 var chalk = require('chalk');
 var matter = require('gray-matter');
@@ -15,14 +16,14 @@ var Loader = require('..');
 var loader = new Loader();
 
 function heading(str) {
-  return chalk.magenta(str) + chalk.bold(' pattern:');
+  return chalk.green(str) + chalk.bold(' pattern:');
 }
 
 function subhead(str) {
-  return chalk.cyan(str);
+  return chalk.green(str);
 }
 
-describe(chalk.magenta('strings'), function () {
+describe(chalk.green('strings'), function () {
   beforeEach(function () {
     loader = new Loader();
   });
@@ -32,7 +33,7 @@ describe(chalk.magenta('strings'), function () {
       it('should load a template from the file:', function () {
         var files = loader.load('test/fixtures/a.md');
         files.should.have.properties('test/fixtures/a.md');
-        files['test/fixtures/a.md'].should.have.properties('content', 'path', 'ext');
+        files['test/fixtures/a.md'].should.have.properties('content', 'path');
       });
       it('should read the file:', function () {
         var files = loader.load('test/fixtures/a.md');
@@ -46,9 +47,9 @@ describe(chalk.magenta('strings'), function () {
         files.should.have.properties('test/fixtures/a.md');
         files.should.have.properties('test/fixtures/b.md');
         files.should.have.properties('test/fixtures/c.md');
-        files['test/fixtures/a.md'].should.have.properties('content', 'path', 'ext');
-        files['test/fixtures/b.md'].should.have.properties('content', 'path', 'ext');
-        files['test/fixtures/c.md'].should.have.properties('content', 'path', 'ext');
+        files['test/fixtures/a.md'].should.have.properties('content', 'path');
+        files['test/fixtures/b.md'].should.have.properties('content', 'path');
+        files['test/fixtures/c.md'].should.have.properties('content', 'path');
       });
       it('should read each file:', function () {
         var files = loader.load('test/fixtures/*.md');
@@ -96,12 +97,12 @@ describe(chalk.magenta('strings'), function () {
 
       it('should read the file and return an object:', function () {
         var files = loader.load('test/fixtures/a.md');
-        (typeof files['test/fixtures/a.md']).should.equal('object');
+        assert.equal(typeof files['test/fixtures/a.md'], 'object');
       });
 
       it('should extend the object with `content` from the file:', function () {
         var files = loader.load('test/fixtures/one/a.md');
-        files['test/fixtures/one/a.md'].should.have.property('content', '---\ntitle: A\n---\n\nThis is {{title}}');
+        files['test/fixtures/one/a.md'].should.have.property('content', '---\ntitle: A\n---\n\nThis is {{title}}\n');
       });
 
       it('should extend the object with the `path` for the file:', function () {
@@ -154,29 +155,28 @@ describe(chalk.magenta('strings'), function () {
     });
 
     describe(heading('[ string | object | object ]'), function () {
-      it('should detect the last object as options:', function () {
+      it('should detect the last object as locals:', function () {
         var tmpl = loader.load('a.md', {content: 'abc'}, {c: 'c'});
-        tmpl['a.md'].should.have.properties('path', 'ext', 'content', 'options');
-        tmpl['a.md'].should.have.property('options', {c: 'c'});
-        tmpl.should.eql({'a.md': {path: 'a.md', ext: '.md', content: 'abc', options: {c: 'c'}}});
+        tmpl['a.md'].should.have.properties('path', 'content', 'locals');
+        tmpl['a.md'].should.have.property('locals', {c: 'c'});
+        tmpl.should.eql({'a.md': {path: 'a.md', content: 'abc', locals: {c: 'c'}}});
       });
 
-      it('should merge options from the second object and last object:', function () {
-        var tmpl = loader.load('a.md', {content: 'abc', options: {b: 'b'}}, {c: 'c'});
-        tmpl.should.eql({'a.md': {path: 'a.md', ext: '.md', content: 'abc', options: {b: 'b', c: 'c'}}});
+      it('should merge locals from the second object and last object:', function () {
+        var tmpl = loader.load('a.md', {content: 'abc', locals: {b: 'b'}}, {c: 'c'});
+        tmpl.should.eql({'a.md': {path: 'a.md', content: 'abc', locals: {b: 'b', c: 'c'}}});
       });
 
       it('should detect locals on the second object:', function () {
         var tmpl = loader.load('a.md', {content: 'abc', a: 'a'});
         tmpl['a.md'].should.have.property('locals', {a: 'a'});
-        tmpl.should.eql({'a.md': {path: 'a.md', ext: '.md', content: 'abc', locals: {a: 'a'}}});
+        tmpl.should.eql({'a.md': {path: 'a.md', content: 'abc', locals: {a: 'a'}}});
       });
 
       it('should sift locals and options correctly:', function () {
         var tmpl = loader.load('a.md', {content: 'abc', a: 'a', options: {b: 'b'}}, {c: 'c'});
-        tmpl['a.md'].should.have.property('locals', {a: 'a'});
-        tmpl['a.md'].should.have.property('options', {b: 'b', c: 'c'});
-        tmpl.should.eql({'a.md': {path: 'a.md', ext: '.md', content: 'abc', locals: {a: 'a'}, options: {b: 'b', c: 'c'}}});
+        tmpl['a.md'].should.have.property('locals', {a: 'a', c: 'c'});
+        tmpl['a.md'].should.have.property('options', {b: 'b'});
       });
 
       it('should assume the second object is locals:', function () {
@@ -296,7 +296,7 @@ describe(chalk.magenta('strings'), function () {
       it('should throw an error when first arg is a glob and second arg is a string:', function () {
         (function () {
           loader.load('test/fixtures/*.md', 'flflflfl', {name: 'Brian Woodward'});
-        }).should.throw('load-templates `normalizeString`: second argument cannot be a string when the first argument is a glob pattern.');
+        }).should.throw('load-templates#loadString: invalid second argument: flflflfl');
       });
     });
 
@@ -311,30 +311,6 @@ describe(chalk.magenta('strings'), function () {
         files['foo1.md'].should.have.property('content');
       });
 
-      describe('required properties', function () {
-        it('should throw an error when `content` is missing:', function () {
-          (function () {
-            loader.load({'bar1.md': {path: 'a/b/c.md', name: 'Jon Schlinkert'}})
-          }).should.throw('load-templates#normalize: expects templates to have a content property.');
-        });
-
-        it('should throw an error when `path` is missing:', function () {
-          (function () {
-            loader.load({name: 'Jon Schlinkert', content: 'foo'})
-          }).should.throw('load-templates#normalize: expects templates to have a path property.');
-        });
-
-        it('should not load if no content prop and key is an invalid filepath', function () {
-          (function () {
-            loader.load('a.md');
-          }).should.throw('load-templates#normalize: expects templates to have a content property.');
-
-          (function () {
-            loader.load('whatever', {name: 'Brian Woodward'});
-          }).should.throw('load-templates#normalize: expects templates to have a content property.');
-        });
-      });
-
       it('should load when content is a property on an object.', function () {
         var files = loader.load('a.md', {content: 'c'});
         files['a.md'].should.have.property('content', 'c');
@@ -344,7 +320,6 @@ describe(chalk.magenta('strings'), function () {
         var files = loader.load('a.md', 'b');
         files['a.md'].should.have.property('content', 'b');
         files['a.md'].should.have.property('path', 'a.md');
-        files['a.md'].should.have.property('ext', '.md');
       });
 
       it('should detect content passed as a second arg', function () {
@@ -378,21 +353,18 @@ describe(chalk.magenta('strings'), function () {
       'test/fixtures/a.txt': {
         content: '---\ntitle: AAA\n---\nThis is from a.txt.',
         path: 'test/fixtures/a.txt',
-        ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
       },
      'test/fixtures/b.txt': {
         content: '---\ntitle: BBB\n---\nThis is from b.txt.',
         path: 'test/fixtures/b.txt',
-        ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
       },
      'test/fixtures/c.txt': {
         content: '---\ntitle: CCC\n---\nThis is from c.txt.',
         path: 'test/fixtures/c.txt',
-        ext: '.txt',
         locals: {a: 'b'},
         options: {foo: true}
       }

@@ -16,6 +16,13 @@ var loader = new Loader();
 describe('.option()', function () {
   beforeEach(function () {
     loader = new Loader();
+    loader.option = function (key, value) {
+      if (arguments.length === 1) {
+        return loader.options[key];
+      }
+      loader.options[key] = value;
+      return loader;
+    };
   });
 
   describe('when a key/value pair is passed to `.option()`', function () {
@@ -49,32 +56,6 @@ describe('.option()', function () {
 
       var actual = loader.load('test/fixtures/a.txt');
       actual.should.have.property('test/fixtures/a.txt');
-    });
-
-    it('should use a custom normalization function to modify the template object.', function () {
-      loader.option('normalize', function (acc, value, key) {
-        key = path.basename(key);
-        value.key = key;
-        acc[key] = value;
-        return acc;
-      });
-
-      var actual = loader.load('test/fixtures/a.txt', {a: 'b'}, {foo: true});
-      actual.should.have.property('a.txt');
-      actual['a.txt'].should.have.property('key', 'a.txt');
-    });
-
-    it('should use a custom normalization function to add a `name` property.', function () {
-      loader.option('normalize', function (acc, value, key) {
-        key = path.basename(key);
-        value.name = key;
-        acc[key] = value;
-        return acc;
-      });
-
-      var actual = loader.load('test/fixtures/a.txt', {a: 'b'}, {foo: true});
-      actual.should.have.property('a.txt');
-      actual['a.txt'].should.have.property('name', 'a.txt');
     });
   });
 });

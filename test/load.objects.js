@@ -39,14 +39,33 @@ describe(chalk.magenta('objects'), function () {
         files.should.have.property('b');
         files.b.locals.should.have.property('layout');
       });
-      it('should load multiple templates from objects:', function () {
-        var files = loader.load({c: {layout: 'd', content: 'C above\n{{body}}\nC below' }});
-        files.should.have.property('c');
-        files.c.locals.should.have.property('layout');
+
+      it('should load multiple templates:', function () {
+        var files = loader.load({
+          'a/b/a.md': {content: 'this is content'},
+          'a/b/b.md': {content: 'this is content'},
+          'a/b/c.md': {content: 'this is content'}
+        }, {a: 'b'}, {c: true});
+
+        files['a/b/a.md'].should.have.property('path', 'a/b/a.md');
+        files['a/b/b.md'].should.have.property('path', 'a/b/b.md');
+        files['a/b/c.md'].should.have.property('path', 'a/b/c.md');
+
+        files['a/b/a.md'].should.have.property('content', 'this is content');
+        files['a/b/b.md'].should.have.property('content', 'this is content');
+        files['a/b/c.md'].should.have.property('content', 'this is content');
+
+        files['a/b/a.md'].should.have.property('locals', { a: 'b' });
+        files['a/b/b.md'].should.have.property('locals', { a: 'b' });
+        files['a/b/c.md'].should.have.property('locals', { a: 'b' });
+
+        files['a/b/a.md'].should.have.property('options', { c: true } );
+        files['a/b/b.md'].should.have.property('options', { c: true } );
+        files['a/b/c.md'].should.have.property('options', { c: true } );
       });
     });
 
-    it('should load loader from an object', function () {
+    it('should load templates from an object', function () {
       var files = loader.load({'foo/bar.md': {content: 'this is content.'}});
       files['foo/bar.md'].should.have.property('path', 'foo/bar.md');
       files['foo/bar.md'].should.not.have.property('locals');
@@ -73,12 +92,12 @@ describe(chalk.magenta('objects'), function () {
   describe(heading('[ object | object ]'), function () {
     it('should make the second object locals when two objects are passed', function () {
       var files = loader.load({path: 'a.md', content: 'abc'}, {a: 'a'});
-      files.should.eql({'a.md': {path: 'a.md', ext: '.md', content: 'abc', locals: {a: 'a'}}});
+      files.should.eql({'a.md': {path: 'a.md', content: 'abc', locals: {a: 'a'}}});
     });
 
     it('should detect options and locals on a complex template.', function () {
       var files = loader.load({path: 'a/b/c.md', content: 'this is content.', a: 'b', options: {y: 'z'}}, {c: 'd'}, {e: 'f'});
-      files.should.eql({'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {a: 'b', c: 'd'}, options: {y: 'z', e: 'f'}}});
+      files.should.eql({'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b', c: 'd'}, options: {y: 'z', e: 'f'}}});
     });
   });
 
@@ -86,9 +105,9 @@ describe(chalk.magenta('objects'), function () {
     describe('objects:', function () {
       it('should use `path` and/or `content` properties as indicators:', function () {
         var expected = {
-          'a/b/a.md': {path: 'a/b/a.md', ext: '.md', content: 'this is content.'},
-          'a/b/b.md': {path: 'a/b/b.md', ext: '.md', content: 'this is content.'},
-          'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is content.'}
+          'a/b/a.md': {path: 'a/b/a.md', content: 'this is content.'},
+          'a/b/b.md': {path: 'a/b/b.md', content: 'this is content.'},
+          'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.'}
         };
 
         var files = loader.load({
@@ -102,9 +121,9 @@ describe(chalk.magenta('objects'), function () {
 
       it('should normalize locals:', function () {
         var expected = {
-          'a/b/a.md': {path: 'a/b/a.md', ext: '.md', content: 'this is content.', locals: {a: {b: 'c'}}},
-          'a/b/b.md': {path: 'a/b/b.md', ext: '.md', content: 'this is content.', locals: {a: {c: 'd'}}},
-          'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is content.'}
+          'a/b/a.md': {path: 'a/b/a.md', content: 'this is content.', locals: {a: {b: 'c'}}},
+          'a/b/b.md': {path: 'a/b/b.md', content: 'this is content.', locals: {a: {c: 'd'}}},
+          'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.'}
         };
 
         var files = loader.load({
@@ -118,9 +137,9 @@ describe(chalk.magenta('objects'), function () {
 
       it('should normalize "method-locals":', function () {
         var expected = {
-          'a/b/a.md': {path: 'a/b/a.md', ext: '.md', content: 'this is content.', locals: {a: {b: 'c'}, foo: 'bar'}},
-          'a/b/b.md': {path: 'a/b/b.md', ext: '.md', content: 'this is content.', locals: {a: {c: 'd'}, foo: 'bar'}},
-          'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {foo: 'bar'}}
+          'a/b/a.md': {path: 'a/b/a.md', content: 'this is content.', locals: {a: {b: 'c'}, foo: 'bar'}},
+          'a/b/b.md': {path: 'a/b/b.md', content: 'this is content.', locals: {a: {c: 'd'}, foo: 'bar'}},
+          'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.', locals: {foo: 'bar'}}
         };
 
         var files = loader.load({
@@ -134,9 +153,9 @@ describe(chalk.magenta('objects'), function () {
 
       it('should normalize "method" locals:', function () {
         var expected = {
-          'a/b/a.md': {path: 'a/b/a.md', ext: '.md', content: 'this is content.', locals: {a: {b: 'c'}, bar: 'bar'}},
-          'a/b/b.md': {path: 'a/b/b.md', ext: '.md', content: 'this is content.', locals: {a: {c: 'd'}, bar: 'bar'}},
-          'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {bar: 'baz'}}
+          'a/b/a.md': {path: 'a/b/a.md', content: 'this is content.', locals: {a: {b: 'c'}, bar: 'bar'}},
+          'a/b/b.md': {path: 'a/b/b.md', content: 'this is content.', locals: {a: {c: 'd'}, bar: 'bar'}},
+          'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.', locals: {bar: 'baz'}}
         };
 
         var files = loader.load({
@@ -151,9 +170,9 @@ describe(chalk.magenta('objects'), function () {
 
       it('should normalize options:', function () {
         var expected = {
-          'a/b/a.md': {path: 'a/b/a.md', ext: '.md', content: 'this is content.', locals: {a: {b: 'c'}, bar: 'baz'}, options: {foo: true}},
-          'a/b/b.md': {path: 'a/b/b.md', ext: '.md', content: 'this is content.', locals: {a: {c: 'd'}, bar: 'baz'}, options: {foo: true}},
-          'a/b/c.md': {path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {bar: 'baz'}, options: {foo: true}}
+          'a/b/a.md': {path: 'a/b/a.md', content: 'this is content.', locals: {a: {b: 'c'}, bar: 'baz'}, options: {foo: true}},
+          'a/b/b.md': {path: 'a/b/b.md', content: 'this is content.', locals: {a: {c: 'd'}, bar: 'baz'}, options: {foo: true}},
+          'a/b/c.md': {path: 'a/b/c.md', content: 'this is content.', locals: {bar: 'baz'}, options: {foo: true}}
         };
 
         var files = loader.load({
@@ -162,7 +181,9 @@ describe(chalk.magenta('objects'), function () {
           'a/b/c.md': {content: 'this is content.'}
         }, {bar: 'baz'}, {foo: true});
 
-        files.should.eql(expected);
+        files['a/b/a.md'].should.eql({path: 'a/b/a.md', content: 'this is content.', locals: {a: {b: 'c'}, bar: 'baz'}, options: {foo: true}});
+        files['a/b/b.md'].should.eql({path: 'a/b/b.md', content: 'this is content.', locals: {a: {c: 'd'}, bar: 'baz'}, options: {foo: true}});
+        files['a/b/c.md'].should.eql({path: 'a/b/c.md', content: 'this is content.', locals: {bar: 'baz'}, options: {foo: true}});
       });
     });
   });

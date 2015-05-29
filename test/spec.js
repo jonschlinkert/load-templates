@@ -12,7 +12,13 @@ var path = require('path');
 var util = require('util');
 var Loader = require('..');
 var loader = new Loader();
-
+loader.option = function (key, value) {
+  if (arguments.length === 1) {
+    return this.options[key];
+  }
+  this.options[key] = value;
+  return this;
+};
 loader.option('cwd',  __dirname + '/fixtures');
 loader.option('name', function (fp) {
   return path.basename(fp);

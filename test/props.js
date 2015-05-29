@@ -22,6 +22,14 @@ function subhead(str) {
   return chalk.cyan(str);
 }
 
+function option(key, value) {
+  if (arguments.length === 1) {
+    return this.options[key];
+  }
+  this.options[key] = value;
+  return this;
+}
+
 describe(heading('should normalize properties'), function () {
 
   describe('root properties', function () {
@@ -29,24 +37,15 @@ describe(heading('should normalize properties'), function () {
       loader = new Loader();
     });
 
-    var expected = { 'a/b/c.md': { path: 'a/b/c.md', ext: '.md', content: 'this is content.'}};
+    var expected = { 'a/b/c.md': { path: 'a/b/c.md', content: 'this is content.'}};
 
     it('should move non-root properties to locals', function () {
       var files = loader.load({path: 'a', content: 'b', a: 'b', c: 'd'});
       files.should.eql({a: {path: 'a', content: 'b', locals: {a: 'b', c: 'd'}}});
     });
 
-    it('should allow custom root keys to be defined with `.option`', function () {
-      loader = new Loader();
-      loader.option('rootKeys', ['a']);
-
-      var files = loader.load({path: 'a', content: 'b', a: 'b', c: 'd'});
-      files.should.eql({a: {path: 'a', content: 'b', a: 'b', locals: {c: 'd'}}});
-    });
-
     it('should allow custom rootKeys to be passed on the constructor', function () {
       loader = new Loader({rootKeys: ['a', 'c']});
-
       var files = loader.load({path: 'a', content: 'b', a: 'b', c: 'd'});
       files.should.eql({a: {path: 'a', content: 'b', a: 'b', c: 'd'}});
     });
@@ -57,8 +56,7 @@ describe(heading('should normalize properties'), function () {
       loader = new Loader();
     });
 
-    var expected = { 'a/b/c.md': { path: 'a/b/c.md', ext: '.md', content: 'this is content.'}};
-
+    var expected = { 'a/b/c.md': { path: 'a/b/c.md', content: 'this is content.'}};
     it('should detect the key from an object with `path` and `content` properties', function () {
       var files = loader.load({path: 'a/b/c.md', content: 'this is content.'});
       files.should.eql(expected);
@@ -94,7 +92,7 @@ describe(heading('should normalize properties'), function () {
 
     it('should normalize locals', function () {
       var files = loader.load('a', {content: 'This is content.'}, {ext: '.foo'});
-      files.should.eql({a: {path: 'a', content: 'This is content.', options: {ext: '.foo'}}});
+      files.should.eql({a: {path: 'a', content: 'This is content.', locals: {ext: '.foo'}}});
     });
     it('should normalize locals and options', function () {
       var files = loader.load('a', {content: 'This is content.'}, {ext: '.foo'}, {ext: '.bar'});
@@ -107,7 +105,7 @@ describe(heading('should normalize properties'), function () {
       loader = new Loader();
     });
 
-    var expected = { 'a/b/c.md': { path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {a: 'b'}}};
+    var expected = { 'a/b/c.md': { path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b'}}};
 
     it('should detect the key from an object with `path` and `content` properties', function () {
       var files = loader.load({path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b'}});
@@ -156,7 +154,7 @@ describe(heading('should normalize properties'), function () {
       loader = new Loader();
     });
 
-    var expected = { 'a/b/c.md': { path: 'a/b/c.md', ext: '.md', content: 'this is content.', locals: {a: 'b'}, options: {y: 'z'}}};
+    var expected = { 'a/b/c.md': { path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b'}, options: {y: 'z'}}};
 
     it('should detect the key from an object with `path` and `content` properties', function () {
       var files = loader.load({path: 'a/b/c.md', content: 'this is content.', locals: {a: 'b'}, options: {y: 'z'}});
@@ -186,7 +184,7 @@ describe(heading('should normalize properties'), function () {
     it('should detect the key from an object with `path` and `content` properties', function () {
       var files = loader.load('a/b/c.md', {content: 'this is content.', locals: {a: 'b'}}, {y: 'z'});
       files.should.eql({
-        'a/b/c.md': { path: 'a/b/c.md', content: 'this is content.', locals: { a: 'b'}, options: {y: 'z'}, ext: '.md'}
+        'a/b/c.md': { path: 'a/b/c.md', content: 'this is content.', locals: { a: 'b', y: 'z'}}
       });
     });
 

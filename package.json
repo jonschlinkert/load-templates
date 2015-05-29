@@ -3,21 +3,12 @@
   "description": "Load templates.",
   "version": "0.7.3",
   "homepage": "https://github.com/jonschlinkert/load-templates",
-  "author": {
-    "name": "Jon Schlinkert",
-    "url": "https://github.com/jonschlinkert"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/jonschlinkert/load-templates.git"
-  },
+  "author": "Jon Schlinkert (https://github.com/jonschlinkert)",
+  "repository": "jonschlinkert/load-templates",
   "bugs": {
     "url": "https://github.com/jonschlinkert/load-templates/issues"
   },
-  "license": {
-    "type": "MIT",
-    "url": "https://github.com/jonschlinkert/load-templates/blob/master/LICENSE"
-  },
+  "license": "MIT",
   "files": [
     "index.js",
     "lib/"
@@ -30,26 +21,29 @@
     "test": "mocha"
   },
   "dependencies": {
-    "debug": "^2.1.3",
-    "has-any": "^0.1.1",
-    "has-any-deep": "^0.3.2",
-    "is-glob": "^1.1.3",
+    "array-union": "^1.0.1",
+    "clone-deep": "^0.1.1",
+    "defaults-deep": "^0.2.2",
+    "extend-shallow": "^1.1.4",
+    "globby": "^2.0.0",
+    "is-absolute": "^0.1.7",
+    "is-glob": "^2.0.0",
     "kind-of": "^1.1.0",
-    "lodash": "^3.7.0",
-    "map-files": "^0.7.4",
-    "omit-empty": "^0.3.1",
-    "option-cache": "^1.3.0",
+    "merge-deep": "^1.0.2",
+    "mixin-deep": "^1.1.1",
+    "object.omit": "^1.1.0",
+    "object.pick": "^1.1.1",
     "relative": "^3.0.0"
   },
   "devDependencies": {
     "chalk": "^1.0.0",
     "gray-matter": "^2.0.0",
-    "gulp": "^3.8.11",
-    "gulp-istanbul": "^0.8.1",
-    "gulp-mocha": "^2.0.1",
-    "mocha": "^2.2.1",
-    "should": "^5.2.0",
-    "verb": "^0.7.4"
+    "gulp-istanbul": "^0.9.0",
+    "gulp-mocha": "^2.1.0",
+    "lodash": "^3.9.3",
+    "mocha": "^2.2.5",
+    "should": "^6.0.3",
+    "verb": "^0.8.6"
   },
   "keywords": [
     "array",
