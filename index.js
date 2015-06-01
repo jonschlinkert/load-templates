@@ -1,3 +1,4 @@
+'use strict';
 
 var fs = require('fs');
 var typeOf = require('kind-of');
@@ -6,7 +7,7 @@ var relative = require('relative');
 var defaults = require('defaults-deep');
 var extend = require('extend-shallow');
 var union = require('array-union');
-var glob = require('globby');
+var glob = require('lazy-globby');
 var pick = require('object.pick');
 var omit = require('object.omit');
 
@@ -49,7 +50,7 @@ Loader.prototype.loadString = function(key, value/*, locals, options*/) {
     throw new Error('load-templates#loadString: invalid second argument: ' + value);
   }
 
-  var files = glob.sync(key, opts);
+  var files = glob().sync(key, opts);
   if (files.length) {
     args.shift();
     files.forEach(function (fp) {
@@ -70,7 +71,7 @@ Loader.prototype.loadString = function(key, value/*, locals, options*/) {
 
 Loader.prototype.loadArray = function(key/*, value, locals, options*/) {
   var opts = extend({nonull: true}, this.options);
-  var files = glob.sync(key, opts);
+  var files = glob().sync(key, opts);
   if (!files.length && opts.strict) {
     throw new Error('Loader#loadArray cannot find glob pattern: ' + key);
   }
