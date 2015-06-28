@@ -51,9 +51,14 @@ Loader.prototype.loadString = function(key, value/*, locals, options*/) {
   }
 
   var files = glob().sync(key, opts);
+
+
   if (files.length) {
     args.shift();
     files.forEach(function (fp) {
+      if (typeof opts.cwd === 'string') {
+        fp = path.join(opts.cwd, fp);
+      }
       var file = this.normalize.apply(this, args);
       file.content = this.readFn(fp, opts);
       file.path = this.resolve((file.path || fp), opts);
@@ -62,6 +67,9 @@ Loader.prototype.loadString = function(key, value/*, locals, options*/) {
 
   } else {
     var fp = args.shift();
+    if (typeof opts.cwd === 'string') {
+      fp = path.join(opts.cwd, fp);
+    }
     var file = this.normalize.apply(this, args);
     file.path = this.resolve((file.path || fp), opts);
     this.cache[this.renameKey(fp, opts)] = file;
@@ -75,9 +83,14 @@ Loader.prototype.loadArray = function(key/*, value, locals, options*/) {
   if (!files.length && opts.strict) {
     throw new Error('Loader#loadArray cannot find glob pattern: ' + key);
   }
+
+
   var args = [].slice.call(arguments, 1);
   var rest = this.normalize.apply(this, args);
   files.forEach(function (fp) {
+    if (typeof opts.cwd === 'string') {
+      fp = path.join(opts.cwd, fp);
+    }
     var content = this.readFn(fp, opts);
     var file = {};
     if (fp.slice(-5) === '.json') {
@@ -106,6 +119,10 @@ Loader.prototype.loadObject = function(template/*, value, locals, options*/) {
       if (template.hasOwnProperty(key)) {
         var file = defaults({}, template[key], rest);
         var opts = extend({}, this.options, file.options);
+        if (typeof opts.cwd === 'string') {
+          file.path = path.join(opts.cwd, file.path);
+        }
+
         // normalize file.path
         file.path = this.resolve((file.path || key), opts);
         // cache the template and normalize the template key
@@ -123,7 +140,7 @@ Loader.prototype.normalize = function(value, locals, options) {
 
   if (value && typeof value === 'object' && value.content || value.path) {
     file = args.shift();
-    file = extend({content: null, path: null}, file);
+    file = extend({content: '', path: ''}, file);
   } else if (typeof value === 'string') {
     file.content = args.shift();
   }
