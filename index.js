@@ -4,6 +4,7 @@ var fs = require('fs');
 var typeOf = require('kind-of');
 var isGlob = require('is-glob');
 var relative = require('relative');
+var isObject = require('is-extendable');
 var defaults = require('defaults-deep');
 var extend = require('extend-shallow');
 var union = require('array-union');
@@ -44,14 +45,19 @@ Loader.prototype.load = function(key/*, value, locals, options*/) {
 
 Loader.prototype.loadString = function(key, value/*, locals, options*/) {
   var args = [].slice.call(arguments);
+  var len = args.length;
+  var last = args[len - 1];
   var opts = this.options;
+
+  if (isObject(last)) {
+    opts = extend({}, this.options, last);
+  }
 
   if (isGlob(key) && typeof value === 'string') {
     throw new Error('load-templates#loadString: invalid second argument: ' + value);
   }
 
   var files = glob().sync(key, opts);
-
 
   if (files.length) {
     args.shift();
