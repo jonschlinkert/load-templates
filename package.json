@@ -1,7 +1,7 @@
 {
   "name": "load-templates",
   "description": "Load templates.",
-  "version": "0.8.6",
+  "version": "0.8.7",
   "homepage": "https://github.com/jonschlinkert/load-templates",
   "author": "Jon Schlinkert (https://github.com/jonschlinkert)",
   "repository": "jonschlinkert/load-templates",
@@ -22,8 +22,8 @@
   "dependencies": {
     "array-union": "^1.0.1",
     "defaults-deep": "^0.2.2",
-    "extend-shallow": "^1.1.4",
-    "is-extendable": "^0.1.0",
+    "extend-shallow": "^2.0.0",
+    "is-extendable": "^0.1.1",
     "is-glob": "^2.0.0",
     "kind-of": "^2.0.0",
     "lazy-globby": "^0.1.1",

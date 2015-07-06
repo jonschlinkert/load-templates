@@ -1,6 +1,7 @@
 'use strict';
 
 var fs = require('fs');
+var path = require('path');
 var typeOf = require('kind-of');
 var isGlob = require('is-glob');
 var relative = require('relative');
