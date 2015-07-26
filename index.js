@@ -126,12 +126,13 @@ Loader.prototype.loadObject = function(template/*, value, locals, options*/) {
       if (template.hasOwnProperty(key)) {
         var file = defaults({}, template[key], rest);
         var opts = extend({}, this.options, file.options);
+
+        // normalize file.path
+        file.path = this.resolve((file.path || key), opts);
         if (typeof opts.cwd === 'string') {
           file.path = path.join(opts.cwd, file.path);
         }
 
-        // normalize file.path
-        file.path = this.resolve((file.path || key), opts);
         // cache the template and normalize the template key
         this.cache[this.renameKey(key, opts)] = this.sift(file, 'locals');
       }
