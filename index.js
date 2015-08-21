@@ -2,16 +2,22 @@
 
 var fs = require('fs');
 var path = require('path');
-var typeOf = require('kind-of');
-var isGlob = require('is-glob');
-var relative = require('relative');
-var isObject = require('is-extendable');
-var defaults = require('defaults-deep');
-var extend = require('extend-shallow');
-var union = require('array-union');
-var glob = require('lazy-globby');
-var pick = require('object.pick');
-var omit = require('object.omit');
+
+/**
+ * Lazily required module dependencies
+ */
+
+var lazy = require('lazy-cache')(require);
+lazy('is-extendable', 'isObject');
+lazy('defaults-deep', 'defaults');
+lazy('extend-shallow', 'extend');
+lazy('array-union', 'union');
+lazy('object.pick', 'pick');
+lazy('object.omit', 'omit');
+lazy('kind-of', 'typeOf');
+lazy('globby', 'glob');
+lazy('relative');
+lazy('is-glob');
 
 var rootKeys = [
   'path',
@@ -24,7 +30,7 @@ var rootKeys = [
 
 function Loader(opts) {
   opts = opts || {};
-  opts.rootKeys = union(opts.rootKeys || [], rootKeys);
+  opts.rootKeys = lazy.union(opts.rootKeys || [], rootKeys);
   this.options = opts;
   this.cache = {};
 }
@@ -34,7 +40,7 @@ function Loader(opts) {
  */
 
 Loader.prototype.load = function(key/*, value, locals, options*/) {
-  switch(typeOf(key)) {
+  switch(lazy.typeOf(key)) {
     case 'string':
       return this.loadString.apply(this, arguments);
     case 'object':
@@ -50,15 +56,15 @@ Loader.prototype.loadString = function(key, value/*, locals, options*/) {
   var last = args[len - 1];
   var opts = this.options;
 
-  if (isObject(last)) {
-    opts = extend({}, this.options, last);
+  if (lazy.isObject(last)) {
+    opts = lazy.extend({}, this.options, last);
   }
 
-  if (isGlob(key) && typeof value === 'string') {
+  if (lazy.isGlob(key) && typeof value === 'string') {
     throw new Error('load-templates#loadString: invalid second argument: ' + value);
   }
 
-  var files = glob().sync(key, opts);
+  var files = lazy.glob.sync(key, opts);
 
   if (files.length) {
     args.shift();
@@ -85,8 +91,8 @@ Loader.prototype.loadString = function(key, value/*, locals, options*/) {
 };
 
 Loader.prototype.loadArray = function(key/*, value, locals, options*/) {
-  var opts = extend({nonull: true}, this.options);
-  var files = glob().sync(key, opts);
+  var opts = lazy.extend({nonull: true}, this.options);
+  var files = lazy.glob.sync(key, opts);
   if (!files.length && opts.strict) {
     throw new Error('Loader#loadArray cannot find glob pattern: ' + key);
   }
@@ -105,8 +111,8 @@ Loader.prototype.loadArray = function(key/*, value, locals, options*/) {
     } else {
       file.content = content;
     }
-    file = defaults({}, file, rest);
-    opts = extend({}, this.options, file.options);
+    file = lazy.defaults({}, file, rest);
+    opts = lazy.extend({}, this.options, file.options);
     file.path = this.resolve((file.path || fp), opts);
     this.cache[this.renameKey(fp, opts)] = this.sift(file, 'locals');
   }.bind(this));
@@ -124,8 +130,8 @@ Loader.prototype.loadObject = function(template/*, value, locals, options*/) {
 
     for (var key in template) {
       if (template.hasOwnProperty(key)) {
-        var file = defaults({}, template[key], rest);
-        var opts = extend({}, this.options, file.options);
+        var file = lazy.defaults({}, template[key], rest);
+        var opts = lazy.extend({}, this.options, file.options);
 
         // normalize file.path
         file.path = this.resolve((file.path || key), opts);
@@ -148,7 +154,7 @@ Loader.prototype.normalize = function(value, locals, options) {
 
   if (value && typeof value === 'object' && value.content || value.path) {
     file = args.shift();
-    file = extend({content: '', path: ''}, file);
+    file = lazy.extend({content: '', path: ''}, file);
   } else if (typeof value === 'string') {
     file.content = args.shift();
   }
@@ -163,10 +169,10 @@ Loader.prototype.normalize = function(value, locals, options) {
   extendOmit('options', options, options);
 
   if (Object.keys(options).length) {
-    file.options = extend({}, file.options, options);
+    file.options = lazy.extend({}, file.options, options);
   }
   if (Object.keys(locals).length) {
-    file.locals = extend({}, file.locals, locals);
+    file.locals = lazy.extend({}, file.locals, locals);
   }
 
   file = this.sift(file, 'locals');
@@ -174,12 +180,12 @@ Loader.prototype.normalize = function(value, locals, options) {
 };
 
 Loader.prototype.sift = function(val, key) {
-  var file = pick(val, this.options.rootKeys);
+  var file = lazy.pick(val, this.options.rootKeys);
   var keys = Object.keys(file);
   if (keys.length) {
     file[key] = file[key] || {};
-    var prop = omit(val, keys);
-    file[key] = extend({}, file[key], prop);
+    var prop = lazy.omit(val, keys);
+    file[key] = lazy.extend({}, file[key], prop);
     if (!Object.keys(file[key]).length) {
       delete file[key];
     }
@@ -188,7 +194,7 @@ Loader.prototype.sift = function(val, key) {
 };
 
 Loader.prototype.readFn = function(fp, options) {
-  var opts = extend({}, this.options, options);
+  var opts = lazy.extend({}, this.options, options);
   try {
     if (typeof opts.readFn === 'function') {
       return opts.readFn(fp);
@@ -205,27 +211,27 @@ Loader.prototype.readFn = function(fp, options) {
 };
 
 Loader.prototype.renameKey = function(fp, options) {
-  var opts = extend({}, this.options, options);
+  var opts = lazy.extend({}, this.options, options);
   if (typeof opts.renameKey === 'function') {
     return opts.renameKey(fp);
   }
   if (opts.relative === false) return fp;
-  return relative(fp);
+  return lazy.relative(fp);
 };
 
 Loader.prototype.resolve = function(fp, options) {
-  var opts = extend({}, this.options, options);
+  var opts = lazy.extend({}, this.options, options);
   if (typeof opts.resolve === 'function') {
     return opts.resolve(fp);
   }
   if (opts.relative === false) return fp;
-  return relative(fp);
+  return lazy.relative(fp);
 };
 
 function extendOmit(prop, o, target) {
   if (typeof target !== 'object') target = o;
   if (o.hasOwnProperty(prop)) {
-    extend(target, o[prop]);
+    lazy.extend(target, o[prop]);
     delete o[prop];
   }
 }
