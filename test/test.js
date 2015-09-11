@@ -31,27 +31,6 @@ describe('string', function () {
     assert(typeof cache['test/fixtures/a.md'].stat === 'object');
   });
 
-  it('should add locals when the second arg is not a view object:', function () {
-    var cache = {};
-    var views = loader(cache);
-    views('test/fixtures/a.md', {foo: 'bar'});
-    assert.deepEqual(cache['test/fixtures/a.md'].locals, {foo: 'bar'});
-  });
-
-  it('should add locals when the second arg is a view object:', function () {
-    var cache = {};
-    var views = loader(cache);
-    views('test/fixtures/a.md', {contents: '...'}, {foo: 'bar'});
-    assert.deepEqual(cache['test/fixtures/a.md'].locals, {foo: 'bar'});
-  });
-
-  it('should add locals when the second arg is an options object:', function () {
-    var cache = {};
-    var views = loader(cache);
-    views('a.md', {cwd: 'test/fixtures'}, {foo: 'bar'});
-    assert.deepEqual(cache['test/fixtures/a.md'].locals, {foo: 'bar'});
-  });
-
   it('should fail gracefully:', function () {
     var cache = {};
     var views = loader(cache);
@@ -64,6 +43,23 @@ describe('string', function () {
     var views = loader(cache);
     views(null);
     assert.deepEqual(cache, {});
+  });
+
+  it('should take a sync callback on the loader function:', function () {
+    var views = loader(function (file) {
+      file.locals = {foo: 'bar'};
+    });
+    var cache = views('test/fixtures/a.txt');
+    assert(cache['test/fixtures/a.txt'].locals.foo = 'bar');
+  });
+
+  it('should take a sync callback and custom cache object:', function () {
+    var cache = {};
+    var views = loader(cache, function (file) {
+      file.locals = {foo: 'bar'};
+    });
+    views('test/fixtures/a.txt');
+    assert(cache['test/fixtures/a.txt'].locals.foo = 'bar');
   });
 
   it('should load templates from a glob:', function () {

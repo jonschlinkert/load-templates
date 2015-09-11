@@ -41,17 +41,6 @@ utils.isView = function isView(val) {
     || has(val, 'path');
 };
 
-utils.isOptions = function isOptions(val) {
-  if (!val || typeof val !== 'object') return null;
-  return has(val, 'cwd')
-    || has(val, 'ignore')
-    || has(val, 'renameKey')
-    || has(val, 'nonull')
-    || has(val, 'nobrace')
-    || has(val, 'nocase')
-    || has(val, 'dot')
-};
-
 utils.getProps = function getProps(file) {
   var view = {};
   for (var key in file) {

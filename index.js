@@ -20,52 +20,46 @@ module.exports = function (cache, fn) {
 
   cache = cache || {};
 
-  function loadViews(key, val, locals) {
+  function loadViews(key, val) {
     if (key == null) return {};
 
     if (utils.isView(val)) {
-      return addView(key, val, locals);
-    }
-
-    if (!locals && !utils.isOptions(val)) {
-      locals = val;
+      return addView(key, val);
     }
 
     if (utils.isObject(key)) {
-      return addViews(key, val, locals);
+      return addViews(key, val);
     }
 
     val = val || {};
     key = utils.arrayify(key);
 
     if (!utils.isGlob(key)) {
-      return addViews(key, val, locals);
+      return addViews(key, val);
     }
-
-    loader(key, val, locals);
+    loader(key, val);
     return cache;
   }
 
-  function addView(name, view, locals) {
-    if (locals) view.locals = locals;
+  function addView(name, view) {
     cache[name] = view;
     return cache;
   }
 
-  function addViews(views, locals) {
+  function addViews(views) {
     if (Array.isArray(views)) {
       views.forEach(function (view) {
-        loadViews(view, locals);
+        loadViews(view);
       });
     } else {
       for (var name in views) {
-        addView(name, views[name], locals);
+        addView(name, views[name]);
       }
     }
     return cache;
   }
 
-  function loader(patterns, opts, locals) {
+  function loader(patterns, opts) {
     var files = utils.glob.sync(patterns, opts);
     var len = files.length, i = -1;
     while (++i < len) {
@@ -77,9 +71,9 @@ module.exports = function (cache, fn) {
         file.path = opts.cwd ? path.join(opts.cwd, name) : name;
         file.key = utils.renameKey(file.path, opts);
         if (typeof fn === 'function') {
-          file = fn(file, locals);
+          fn(file);
         }
-        loadViews(file.key, file, locals);
+        loadViews(file.key, file);
       }
     }
     return cache;
