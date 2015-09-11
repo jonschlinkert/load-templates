@@ -7,10 +7,8 @@
 
 'use strict';
 
-var fs = require('fs');
 var path = require('path');
 var utils = require('./utils');
-var cache = {};
 
 module.exports = function (cache, fn) {
   if (typeof cache === 'function') {

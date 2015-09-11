@@ -8,9 +8,11 @@ var keys = ['contents', 'content', 'base', 'cwd', 'path', 'stat', 'history'];
  * Lazily required module dependencies
  */
 
-var utils = require('lazy-cache')(require);
-utils('globby', 'glob');
-utils('is-valid-glob', 'isGlob');
+var lazy = require('lazy-cache')(require);
+lazy('globby', 'glob');
+lazy('is-valid-glob', 'isGlob');
+
+var utils = lazy;
 
 utils.isObject = function isObject(val) {
   return val && typeof val === 'object'
