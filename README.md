@@ -83,7 +83,7 @@ $ npm i -d && npm test
 
 ## Coverage summary
 
-As of version 0.9.0
+As of version 0.9.1
 
 ```
 Statements   : 100% (81/81)
