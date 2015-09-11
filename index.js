@@ -32,7 +32,7 @@ module.exports = function (cache, fn) {
     val = val || {};
     key = utils.arrayify(key);
 
-    if (!utils.isGlob(key)) {
+    if (!utils.isValidGlob(key)) {
       return addViews(key, val);
     }
     loader(key, val);

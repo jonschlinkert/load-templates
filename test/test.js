@@ -78,6 +78,34 @@ describe('string', function () {
   });
 });
 
+describe('array', function () {
+  it('should load templates from an array of file paths:', function () {
+    var cache = {};
+    var views = loader(cache);
+    views(['test/fixtures/a.md', 'test/fixtures/b.md']);
+    assert(typeof cache['test/fixtures/a.md'] === 'object');
+    assert(typeof cache['test/fixtures/a.md'].path === 'string');
+    assert(typeof cache['test/fixtures/a.md'].stat === 'object');
+
+    assert(typeof cache['test/fixtures/b.md'] === 'object');
+    assert(typeof cache['test/fixtures/b.md'].path === 'string');
+    assert(typeof cache['test/fixtures/b.md'].stat === 'object');
+  });
+
+  it('should use options with an array of file paths:', function () {
+    var cache = {};
+    var views = loader(cache);
+    views(['a.md', 'b.md'], {cwd: 'test/fixtures'});
+    assert(typeof cache['test/fixtures/a.md'] === 'object');
+    assert(typeof cache['test/fixtures/a.md'].path === 'string');
+    assert(typeof cache['test/fixtures/a.md'].stat === 'object');
+
+    assert(typeof cache['test/fixtures/b.md'] === 'object');
+    assert(typeof cache['test/fixtures/b.md'].path === 'string');
+    assert(typeof cache['test/fixtures/b.md'].stat === 'object');
+  });
+});
+
 describe('object', function () {
   it('should load a template from a key-value pair:', function () {
     var cache = {};

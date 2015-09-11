@@ -30,6 +30,7 @@ views(['*.txt'], opts);
 views('b.md', opts, {name: 'Halle'});
 views('c.md', opts);
 views('test/fixtures/[a-b].hbs');
+views('test/fixtures/c*.hbs');
 views(['test/fixtures/c*.hbs']);
 views({
   foo: {contents: '...'},

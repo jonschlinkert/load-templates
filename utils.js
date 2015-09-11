@@ -10,7 +10,7 @@ var keys = ['contents', 'content', 'base', 'cwd', 'path', 'stat', 'history'];
 
 var lazy = require('lazy-cache')(require);
 lazy('globby', 'glob');
-lazy('is-valid-glob', 'isGlob');
+lazy('is-valid-glob', 'isValidGlob');
 
 var utils = lazy;
 
