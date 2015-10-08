@@ -21,6 +21,15 @@ describe('cache', function () {
   });
 });
 
+describe('config', function () {
+  it('should support passing a config object as the second arg:', function () {
+    var cache = {};
+    var views = loader(cache, {cwd: 'test/fixtures'});
+    views('*.txt');
+    assert(Object.keys(cache).length === 3);
+  });
+});
+
 describe('string', function () {
   it('should load a template from a file path:', function () {
     var cache = {};
