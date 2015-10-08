@@ -10,10 +10,16 @@
 var path = require('path');
 var utils = require('./utils');
 
-module.exports = function (cache, fn) {
+module.exports = function (cache, config, fn) {
   if (typeof cache === 'function') {
     fn = cache;
+    config = {};
     cache = undefined;
+  }
+
+  if (typeof config === 'function') {
+    fn = config;
+    config = {};
   }
 
   cache = cache || {};
@@ -58,6 +64,7 @@ module.exports = function (cache, fn) {
   }
 
   function loader(patterns, opts) {
+    opts = utils.extend({}, config, opts);
     var files = utils.glob.sync(patterns, opts);
     var len = files.length, i = -1;
     while (++i < len) {

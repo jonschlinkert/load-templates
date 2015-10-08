@@ -2,17 +2,23 @@
 
 var fs = require('fs');
 var path = require('path');
+var utils = require('lazy-cache')(require);
 var keys = ['contents', 'content', 'base', 'cwd', 'path', 'stat', 'history'];
 
 /**
  * Lazily required module dependencies
  */
 
-var lazy = require('lazy-cache')(require);
-lazy('globby', 'glob');
-lazy('is-valid-glob', 'isValidGlob');
+var fn = require;
+require = utils;
+require('matched', 'glob');
+require('extend-shallow', 'extend');
+require('is-valid-glob', 'isValidGlob');
+require = fn;
 
-var utils = lazy;
+/**
+ * utils
+ */
 
 utils.isObject = function isObject(val) {
   return val && typeof val === 'object'
