@@ -65,7 +65,8 @@ module.exports = function (cache, config, fn) {
 
   function loader(patterns, opts) {
     opts = utils.extend({}, config, opts);
-    var files = utils.glob.sync(patterns, opts);
+    var glob = opts.glob || utils.glob;
+    var files = glob.sync(patterns, opts);
     var len = files.length, i = -1;
     while (++i < len) {
       var name = files[i];
@@ -78,7 +79,7 @@ module.exports = function (cache, config, fn) {
         if (typeof fn === 'function') {
           fn(file);
         }
-        loadViews(file.key, file);
+        addView(file.key, file);
       }
     }
     return cache;

@@ -2,6 +2,7 @@ require('mocha');
 require('should');
 var path = require('path');
 var assert = require('assert');
+var glob = require('matched');
 var loader = require('../');
 
 describe('cache', function () {
@@ -189,7 +190,7 @@ describe('options', function () {
   });
 
   describe('options.cwd', function () {
-    it('should pass cwd option to globby:', function () {
+    it('should pass cwd option to matched:', function () {
       var cache = {};
       var views = loader(cache);
       views('*.md', {
@@ -200,7 +201,16 @@ describe('options', function () {
       assert(typeof cache['test/fixtures/a.md'].stat === 'object');
     });
 
-    it('should pass nonull option to globby:', function () {
+    it('should allow a custom glob function to be passed:', function () {
+      var cache = {};
+      var views = loader(cache, {glob: glob});
+      views('*.md', {cwd: 'test/fixtures'});
+      assert(typeof cache['test/fixtures/a.md'] === 'object');
+      assert(typeof cache['test/fixtures/a.md'].path === 'string');
+      assert(typeof cache['test/fixtures/a.md'].stat === 'object');
+    });
+
+    it('should pass nonull option to matched:', function () {
       var cache = {};
       var views = loader(cache);
       views('*.foo', {
