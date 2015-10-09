@@ -64,17 +64,23 @@ module.exports = function (cache, config, fn) {
   }
 
   function loader(patterns, opts) {
-    opts = utils.extend({}, config, opts);
+    opts = utils.extend({cwd: ''}, config, opts);
     var glob = opts.glob || utils.glob;
     var files = glob.sync(patterns, opts);
+
     var len = files.length, i = -1;
     while (++i < len) {
       var name = files[i];
+
+      // needed in case `options.nonull` is passed
       var stat = utils.tryStat(name, opts);
       if (stat && stat.isFile()) {
-        var file = utils.getProps(opts);
+        var file = new utils.File({
+          cwd: opts.cwd,
+          path: path.join(opts.cwd, name),
+          contents: null
+        });
         file.stat = stat;
-        file.path = opts.cwd ? path.join(opts.cwd, name) : name;
         file.key = utils.renameKey(file.path, opts);
         if (typeof fn === 'function') {
           fn(file);

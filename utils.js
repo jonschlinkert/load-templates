@@ -3,7 +3,6 @@
 var fs = require('fs');
 var path = require('path');
 var utils = require('lazy-cache')(require);
-var keys = ['contents', 'content', 'base', 'cwd', 'path', 'stat', 'history'];
 
 /**
  * Lazily required module dependencies
@@ -14,6 +13,8 @@ require = utils;
 require('matched', 'glob');
 require('extend-shallow', 'extend');
 require('is-valid-glob', 'isValidGlob');
+require('glob-parent', 'parent');
+require('vinyl', 'File');
 require = fn;
 
 /**
@@ -35,7 +36,7 @@ utils.tryStat = function tryStat(fp, opts) {
   } catch(err) {
     try {
       fp = path.resolve(opts.cwd, fp);
-      return fs.statSync(fp);
+      return fs.lstatSync(fp);
     } catch(err) {}
   }
   // only reached when `nonull` is passed to glob
@@ -49,16 +50,6 @@ utils.isView = function isView(val) {
     || has(val, 'path');
 };
 
-utils.getProps = function getProps(file) {
-  var view = {};
-  for (var key in file) {
-    if (file.hasOwnProperty(key) && keys.indexOf(key) > -1) {
-      view[key] = file[key];
-    }
-  }
-  return view;
-};
-
 utils.renameKey = function renameKey(name, opts) {
   if (opts && typeof opts.renameKey === 'function') {
     return opts.renameKey(name);
@@ -69,6 +60,35 @@ utils.renameKey = function renameKey(name, opts) {
 function has(val, key) {
   return val.hasOwnProperty(key);
 }
+
+utils.toFile = function(fp, pattern, options) {
+  options = options || {};
+
+  var file = { contents: null };
+  file.cwd = options.cwd || process.cwd();
+  file.path = path.resolve(file.cwd, fp);
+  file.base = options.base;
+
+  if (!file.base) {
+    if (Array.isArray(pattern)) {
+      pattern = pattern[0];
+    }
+
+    if (typeof pattern !== 'string') {
+      throw new TypeError('expected pattern to be a string or array');
+    }
+
+    var base = utils.parent(pattern);
+    if (base !== '.') {
+      file.base = base;
+    }
+  }
+
+  file = new utils.File(file);
+  file.options = options;
+  file.options.orig = fp;
+  return file;
+};
 
 /**
  * Expose `utils`
