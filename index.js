@@ -78,7 +78,8 @@ module.exports = function (cache, config, fn) {
 
       if (stat && stat.isFile()) {
         var file = utils.toFile(name, patterns, opts);
-        file.key = utils.renameKey(file.path, opts);
+        file.key = utils.renameKey(file, opts);
+
         if (typeof fn === 'function') {
           var res = fn(file);
           if (typeof res !== 'undefined') {

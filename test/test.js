@@ -1,3 +1,5 @@
+'use strict';
+
 require('mocha');
 require('should');
 var path = require('path');
@@ -169,7 +171,7 @@ describe('options', function () {
       var views = loader(cache);
       views('test/fixtures/*.md', {
         renameKey: function (key) {
-          return key;
+          return path.relative(process.cwd(), key);
         }
       });
 

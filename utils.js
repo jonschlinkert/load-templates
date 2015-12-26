@@ -15,6 +15,7 @@ require('extend-shallow', 'extend');
 require('is-valid-glob', 'isValidGlob');
 require('glob-parent', 'parent');
 require('vinyl', 'File');
+require('relative');
 require('to-file');
 require = fn;
 
@@ -33,29 +34,34 @@ utils.arrayify = function arrayify(val) {
 
 utils.tryStat = function tryStat(fp, opts) {
   try {
-    return fs.statSync(fp);
-  } catch(err) {
-    try {
-      fp = path.resolve(opts.cwd, fp);
-      return fs.lstatSync(fp);
-    } catch(err) {}
-  }
+    return fs.lstatSync(fp);
+  } catch(err) {}
+
+  try {
+    fp = path.resolve(opts.cwd, fp);
+    return fs.lstatSync(fp);
+  } catch(err) {}
   // only reached when `nonull` is passed to glob
   return null;
 };
 
 utils.isView = function isView(val) {
-  if (!val || typeof val !== 'object') return null;
+  if (!val || typeof val !== 'object') {
+    return null;
+  }
+  if (val.isView || val.isItem) {
+    return true;
+  }
   return has(val, 'contents')
     || has(val, 'content')
     || has(val, 'path');
 };
 
-utils.renameKey = function renameKey(name, opts) {
+utils.renameKey = function renameKey(file, opts) {
   if (opts && typeof opts.renameKey === 'function') {
-    return opts.renameKey(name);
+    return opts.renameKey(file.path);
   }
-  return name;
+  return utils.relative(file.path);
 };
 
 function has(val, key) {
