@@ -80,7 +80,10 @@ module.exports = function (cache, config, fn) {
         var file = utils.toFile(name, patterns, opts);
         file.key = utils.renameKey(file.path, opts);
         if (typeof fn === 'function') {
-          fn(file);
+          var res = fn(file);
+          if (typeof res !== 'undefined') {
+            file = res;
+          }
         }
         addView(file.key, file);
       }
