@@ -74,13 +74,10 @@ module.exports = function (cache, config, fn) {
 
       // needed in case `options.nonull` is passed
       var stat = utils.tryStat(name, opts);
+      opts.stat = stat;
+
       if (stat && stat.isFile()) {
-        var file = new utils.File({
-          cwd: opts.cwd,
-          path: path.join(opts.cwd, name),
-          contents: null
-        });
-        file.stat = stat;
+        var file = utils.toFile(name, patterns, opts);
         file.key = utils.renameKey(file.path, opts);
         if (typeof fn === 'function') {
           fn(file);

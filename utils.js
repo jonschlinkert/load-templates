@@ -15,6 +15,7 @@ require('extend-shallow', 'extend');
 require('is-valid-glob', 'isValidGlob');
 require('glob-parent', 'parent');
 require('vinyl', 'File');
+require('to-file');
 require = fn;
 
 /**
@@ -60,35 +61,6 @@ utils.renameKey = function renameKey(name, opts) {
 function has(val, key) {
   return val.hasOwnProperty(key);
 }
-
-utils.toFile = function(fp, pattern, options) {
-  options = options || {};
-
-  var file = { contents: null };
-  file.cwd = options.cwd || process.cwd();
-  file.path = path.resolve(file.cwd, fp);
-  file.base = options.base;
-
-  if (!file.base) {
-    if (Array.isArray(pattern)) {
-      pattern = pattern[0];
-    }
-
-    if (typeof pattern !== 'string') {
-      throw new TypeError('expected pattern to be a string or array');
-    }
-
-    var base = utils.parent(pattern);
-    if (base !== '.') {
-      file.base = base;
-    }
-  }
-
-  file = new utils.File(file);
-  file.options = options;
-  file.options.orig = fp;
-  return file;
-};
 
 /**
  * Expose `utils`
