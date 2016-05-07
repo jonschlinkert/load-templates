@@ -10,12 +10,11 @@ var utils = require('lazy-cache')(require);
 
 var fn = require;
 require = utils;
+require('define-property', 'define');
 require('matched', 'glob');
 require('extend-shallow', 'extend');
 require('is-valid-glob', 'isValidGlob');
-require('glob-parent', 'parent');
-require('vinyl', 'File');
-require('relative');
+require('has-glob');
 require('to-file');
 require = fn;
 
@@ -23,50 +22,80 @@ require = fn;
  * utils
  */
 
-utils.isObject = function isObject(val) {
-  return val && typeof val === 'object'
-    && !Array.isArray(val);
+utils.isObject = function(val) {
+  return val && typeof val === 'object' && !Array.isArray(val);
 };
 
-utils.arrayify = function arrayify(val) {
-  return Array.isArray(val) ? val : [val];
+utils.arrayify = function(val) {
+  return val ? (Array.isArray(val) ? val : [val]) : [];
 };
 
-utils.tryStat = function tryStat(fp, opts) {
-  try {
-    return fs.lstatSync(fp);
-  } catch(err) {}
-
-  try {
-    fp = path.resolve(opts.cwd, fp);
-    return fs.lstatSync(fp);
-  } catch(err) {}
-  // only reached when `nonull` is passed to glob
-  return null;
-};
-
-utils.isView = function isView(val) {
-  if (!val || typeof val !== 'object') {
-    return null;
+utils.isView = function(view) {
+  if (!utils.isObject(view)) {
+    return false;
   }
-  if (val.isView || val.isItem) {
+  if (view.isView || view.isItem) {
     return true;
   }
-  return has(val, 'contents')
-    || has(val, 'content')
-    || has(val, 'path');
+  return view.hasOwnProperty('contents')
+    || view.hasOwnProperty('path')
+    || view.isView;
 };
 
-utils.renameKey = function renameKey(file, opts) {
+utils.tryStat = function(filepath) {
+  try {
+    return fs.statSync(filepath);
+  } catch(err) {}
+};
+
+utils.renameKey = function(file, opts) {
   if (opts && typeof opts.renameKey === 'function') {
     return opts.renameKey(file.path);
   }
-  return utils.relative(file.path);
+  return file.relative || path.relative(file.cwd, file.path);
 };
 
-function has(val, key) {
-  return val.hasOwnProperty(key);
-}
+/**
+ * Return true if the given value is a buffer
+ */
+
+utils.isBuffer = function(val) {
+  if (val && val.constructor && typeof val.constructor.isBuffer === 'function') {
+    return val.constructor.isBuffer(val);
+  }
+  return false;
+};
+
+/**
+ * Return true if the given value is a stream.
+ */
+
+utils.isStream = function(val) {
+  return utils.isObject(val)
+    && (typeof val.pipe === 'function')
+    && (typeof val.on === 'function');
+};
+
+utils.syncContents = function(view, contents) {
+  if (contents === null
+    || typeof view._contents === 'undefined'
+    || typeof view._content === 'undefined') {
+    utils.define(view, '_contents', null);
+    utils.define(view, '_content', null);
+  }
+  if (typeof contents === 'string') {
+    view._contents = new Buffer(contents);
+    view._content = contents;
+  }
+  if (utils.isBuffer(contents)) {
+    view._contents = contents;
+    view._content = contents.toString();
+  }
+  if (utils.isStream(contents)) {
+    view._contents = contents;
+    view._content = contents;
+  }
+};
 
 /**
  * Expose `utils`

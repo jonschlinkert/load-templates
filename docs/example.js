@@ -3,7 +3,7 @@
 var util = require('util');
 var path = require('path');
 var Loader = require('..');
-var utils = require('../lib/utils');
+var utils = require('../utils');
 
 /**
  * Example application using load-templates
