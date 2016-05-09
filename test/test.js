@@ -109,13 +109,14 @@ describe('array', function () {
     var cache = {};
     var views = loader(cache);
     views(['a.md', 'b.md'], {cwd: 'test/fixtures'});
-    assert.equal(typeof cache['test/fixtures/a.md'], 'object');
-    assert.equal(typeof cache['test/fixtures/a.md'].path, 'string');
-    assert.equal(typeof cache['test/fixtures/a.md'].stat, 'object');
 
-    assert.equal(typeof cache['test/fixtures/b.md'], 'object');
-    assert.equal(typeof cache['test/fixtures/b.md'].path, 'string');
-    assert.equal(typeof cache['test/fixtures/b.md'].stat, 'object');
+    assert.equal(typeof cache['a.md'], 'object');
+    assert.equal(typeof cache['a.md'].path, 'string');
+    assert.equal(typeof cache['a.md'].stat, 'object');
+
+    assert.equal(typeof cache['b.md'], 'object');
+    assert.equal(typeof cache['b.md'].path, 'string');
+    assert.equal(typeof cache['b.md'].stat, 'object');
   });
 });
 
@@ -199,18 +200,18 @@ describe('options', function () {
       views('*.md', {
         cwd: 'test/fixtures'
       });
-      assert.equal(typeof cache['test/fixtures/a.md'], 'object');
-      assert.equal(typeof cache['test/fixtures/a.md'].path, 'string');
-      assert.equal(typeof cache['test/fixtures/a.md'].stat, 'object');
+      assert.equal(typeof cache['a.md'], 'object');
+      assert.equal(typeof cache['a.md'].path, 'string');
+      assert.equal(typeof cache['a.md'].stat, 'object');
     });
 
     it('should allow a custom glob function to be passed:', function () {
       var cache = {};
       var views = loader(cache, {glob: glob});
       views('*.md', {cwd: 'test/fixtures'});
-      assert.equal(typeof cache['test/fixtures/a.md'], 'object');
-      assert.equal(typeof cache['test/fixtures/a.md'].path, 'string');
-      assert.equal(typeof cache['test/fixtures/a.md'].stat, 'object');
+      assert.equal(typeof cache['a.md'], 'object');
+      assert.equal(typeof cache['a.md'].path, 'string');
+      assert.equal(typeof cache['a.md'].stat, 'object');
     });
 
     it('should pass nonull option to matched:', function () {

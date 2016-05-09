@@ -85,6 +85,7 @@ module.exports = function(cache, config, loaderFn) {
 
       var file = {path: filepath, cwd: opts.cwd, base: process.cwd()};
       file.stat = utils.tryStat(file.path);
+      file.base = file.cwd;
 
       if (!file.stat) {
         continue;
