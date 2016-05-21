@@ -91,6 +91,10 @@ module.exports = function(cache, config, loaderFn) {
         continue;
       }
 
+      if (file.stat.isDirectory && file.stat.isDirectory()) {
+        continue;
+      }
+
       utils.syncContents(file, file.contents || file.content);
       file.options = file.options || {};
       file.locals = file.locals || {};
