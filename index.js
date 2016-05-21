@@ -123,15 +123,11 @@ module.exports = function(cache, config, loaderFn) {
         file = utils.toFile(file.path, patterns, opts);
       }
 
-      if (!file.key) {
-        file.key = utils.renameKey(file, opts);
-      }
-
+      file.key = utils.renameKey(file, opts);
       addView(file.key, file);
     }
     return cache;
   }
-
   return loadViews;
 };
 
