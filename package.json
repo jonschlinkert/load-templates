@@ -1,7 +1,7 @@
 {
   "name": "load-templates",
   "description": "Load templates/views using globs, file paths, objects, arrays, or key-value pairs.",
-  "version": "0.11.3",
+  "version": "0.11.4",
   "homepage": "https://github.com/jonschlinkert/load-templates",
   "author": "Jon Schlinkert (https://github.com/jonschlinkert)",
   "repository": "jonschlinkert/load-templates",
@@ -23,6 +23,7 @@
   "dependencies": {
     "define-property": "^0.2.5",
     "extend-shallow": "^2.0.1",
+    "glob-parent": "^2.0.0",
     "has-glob": "^0.1.1",
     "is-valid-glob": "^0.3.0",
     "lazy-cache": "^2.0.1",
