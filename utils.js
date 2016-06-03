@@ -3,18 +3,19 @@
 var fs = require('fs');
 var path = require('path');
 var utils = require('lazy-cache')(require);
+var fn = require;
+require = utils;
 
 /**
  * Lazily required module dependencies
  */
 
-var fn = require;
-require = utils;
 require('define-property', 'define');
-require('matched', 'glob');
 require('extend-shallow', 'extend');
-require('is-valid-glob', 'isValidGlob');
+require('glob-parent', 'parent');
 require('has-glob');
+require('is-valid-glob', 'isValidGlob');
+require('matched', 'glob');
 require('to-file');
 require = fn;
 
@@ -52,7 +53,7 @@ utils.renameKey = function(file, opts) {
   if (opts && typeof opts.renameKey === 'function') {
     return opts.renameKey(file.path);
   }
-  return file.relative || path.relative(file.cwd, file.path);
+  return (file.base && file.path) ? file.relative : file.path;
 };
 
 /**

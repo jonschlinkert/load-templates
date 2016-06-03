@@ -69,7 +69,10 @@ module.exports = function(cache, config, loaderFn) {
     opts.cwd = path.resolve(opts.cwd);
 
     var files = utils.arrayify(patterns);
+    var parent = '';
+
     if (utils.hasGlob(patterns)) {
+      parent = utils.parent(files[0]);
       files = utils.glob.sync(patterns, opts);
 
       // if `opts.nonull` is defined and no files are found, return
@@ -80,12 +83,12 @@ module.exports = function(cache, config, loaderFn) {
 
     var len = files.length;
     var idx = -1;
+
     while (++idx < len) {
       var filepath = path.resolve(opts.cwd, files[idx]);
-
-      var file = {path: filepath, cwd: opts.cwd, base: process.cwd()};
+      var file = {path: filepath, cwd: opts.cwd};
       file.stat = utils.tryStat(file.path);
-      file.base = file.cwd;
+      file.base = path.resolve((parent && parent !== '.') ? parent : file.cwd);
 
       if (!file.stat) {
         continue;
@@ -117,8 +120,7 @@ module.exports = function(cache, config, loaderFn) {
           file = res;
         }
       }
-
-      if (!file._isVinyl && !file._isView) {
+      if (!file._isVinyl && !file.isView) {
         opts.file = file;
         file = utils.toFile(file.path, patterns, opts);
       }

@@ -78,15 +78,15 @@ describe('string', function () {
     var cache = {};
     var views = loader(cache);
     views('test/fixtures/*.md');
-    assert.equal(typeof cache['test/fixtures/a.md'], 'object');
-    assert.equal(typeof cache['test/fixtures/a.md'].path, 'string');
-    assert.equal(typeof cache['test/fixtures/a.md'].stat, 'object');
-    assert.equal(typeof cache['test/fixtures/b.md'], 'object');
-    assert.equal(typeof cache['test/fixtures/b.md'].path, 'string');
-    assert.equal(typeof cache['test/fixtures/b.md'].stat, 'object');
-    assert.equal(typeof cache['test/fixtures/c.md'], 'object');
-    assert.equal(typeof cache['test/fixtures/c.md'].path, 'string');
-    assert.equal(typeof cache['test/fixtures/c.md'].stat, 'object');
+    assert.equal(typeof cache['a.md'], 'object');
+    assert.equal(typeof cache['a.md'].path, 'string');
+    assert.equal(typeof cache['a.md'].stat, 'object');
+    assert.equal(typeof cache['b.md'], 'object');
+    assert.equal(typeof cache['b.md'].path, 'string');
+    assert.equal(typeof cache['b.md'].stat, 'object');
+    assert.equal(typeof cache['c.md'], 'object');
+    assert.equal(typeof cache['c.md'].path, 'string');
+    assert.equal(typeof cache['c.md'].stat, 'object');
   });
 });
 
@@ -197,9 +197,7 @@ describe('options', function () {
     it('should pass cwd option to matched:', function () {
       var cache = {};
       var views = loader(cache);
-      views('*.md', {
-        cwd: 'test/fixtures'
-      });
+      views('*.md', {cwd: 'test/fixtures'});
       assert.equal(typeof cache['a.md'], 'object');
       assert.equal(typeof cache['a.md'].path, 'string');
       assert.equal(typeof cache['a.md'].stat, 'object');
