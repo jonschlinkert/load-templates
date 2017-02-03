@@ -13,6 +13,17 @@ var glob = require('matched');
 var extend = require('extend-shallow');
 var utils = require('./utils');
 
+/**
+ * Create an instance of `Loader` with the given `options`.
+ *
+ * ```js
+ * var Loader = require('load-templates');
+ * var loader = new Loader();
+ * ```
+ * @param {Object} `options`
+ * @api public
+ */
+
 function Loader(options) {
   if (!(this instanceof Loader)) {
     return new Loader(options);
@@ -30,8 +41,8 @@ function Loader(options) {
  * ```js
  * var loader = new Loader();
  * console.log(loader.load(['foo/*.hbs', 'bar/*.hbs']));
- * console.log(loader.load({path: 'a/b/c.md'});
- * console.log(loader.load('index', {path: 'a/b/c.md'});
+ * console.log(loader.load({path: 'a/b/c.md'}));
+ * console.log(loader.load('index', {path: 'a/b/c.md'}));
  * ```
  * @param {Object} `templates`
  * @param {Object} `options`
@@ -136,17 +147,17 @@ Loader.prototype.addView = function(template, options) {
  *
  * ```js
  * var loader = new Loader();
- * loader.load([
+ * loader.addViews([
  *   {path: 'test/fixtures/a.md'},
  *   {path: 'test/fixtures/b.md'},
  *   {path: 'test/fixtures/c.md'},
  * ]);
- * loader.load({
+ * loader.addViews({
  *   d: {path: 'test/fixtures/d.md'},
  *   e: {path: 'test/fixtures/e.md'},
  *   f: {path: 'test/fixtures/f.md'},
  * });
- * loader.load([{
+ * loader.addViews([{
  *   g: {path: 'test/fixtures/g.md'},
  *   h: {path: 'test/fixtures/h.md'},
  *   i: {path: 'test/fixtures/i.md'},
@@ -192,6 +203,20 @@ Loader.prototype.addViews = function(templates, options) {
   return this;
 };
 
+/**
+ * Load templates from one or more glob `patterns` with the given `options`,
+ * then cache them on `loader.cache`.
+ *
+ * ```js
+ * var loader = new Loader();
+ * var views = loader.globViews('*.hbs', {cwd: 'templates'});
+ * ```
+ * @param {String|Array} `patterns`
+ * @param {Object} `options`
+ * @return {Object} Returns `loader.cache`
+ * @api public
+ */
+
 Loader.prototype.globViews = function(patterns, options) {
   let opts = extend({cwd: process.cwd()}, this.options, options);
   // don't support nonull, it doesn't make sense here
@@ -215,7 +240,7 @@ Loader.prototype.globViews = function(patterns, options) {
     // create a view
     this.addViews(files, extend({}, opts, {parent: parent}));
   }
-  return this;
+  return this.cache;
 };
 
 module.exports = Loader;

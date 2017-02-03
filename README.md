@@ -98,6 +98,125 @@ Function to modify `file.key`, which is the property used for setting views on `
 loader.cache[file.key] = file;
 ```
 
+## API
+
+### [Loader](index.js#L27)
+
+Create an instance of `Loader` with the given `options`.
+
+**Params**
+
+* `options` **{Object}**
+
+**Example**
+
+```js
+var Loader = require('load-templates');
+var loader = new Loader();
+```
+
+### [.load](index.js#L53)
+
+Load one or more templates from a filepath, glob pattern, object, or array of filepaths, glob patterns or objects. This method detects the type of value to be handled then calls one of the other methods to do the actual loading.
+
+**Params**
+
+* `templates` **{Object}**
+* `options` **{Object}**
+* `returns` **{Object}**: Returns the views from `loader.cache`
+
+**Example**
+
+```js
+var loader = new Loader();
+console.log(loader.load(['foo/*.hbs', 'bar/*.hbs']));
+console.log(loader.load({path: 'a/b/c.md'}));
+console.log(loader.load('index', {path: 'a/b/c.md'}));
+```
+
+### [.createView](index.js#L92)
+
+Create a `view` object from the given `template`. View objects are instances of [vinyl](https://github.com/gulpjs/vinyl).
+
+**Params**
+
+* `template` **{Object|String}**: Filepath or object with `path` or `contents` properties.
+* `options` **{Object}**
+* `returns` **{Object}**: Returns the view.
+
+**Example**
+
+```js
+console.log(loader.createView('test/fixtures/foo/bar.hbs'));
+console.log(loader.createView('foo/bar.hbs', {cwd: 'test/fixtures'}));
+```
+
+### [.addView](index.js#L138)
+
+Create a view from the given `template` and cache it on `loader.cache`.
+
+**Params**
+
+* `template` **{String|Object}**
+* `options` **{Object}**
+* `returns` **{Object}**: Returns the `Loader` instance for chaining
+
+**Example**
+
+```js
+var loader = new Loader();
+loader.addView('foo.hbs');
+console.log(loader.cache);
+```
+
+### [.addViews](index.js#L173)
+
+Create from an array or object of `templates` and cache them on `loader.cache`.
+
+**Params**
+
+* `templates` **{Object}**
+* `options` **{Object}**
+
+**Example**
+
+```js
+var loader = new Loader();
+loader.addViews([
+  {path: 'test/fixtures/a.md'},
+  {path: 'test/fixtures/b.md'},
+  {path: 'test/fixtures/c.md'},
+]);
+loader.addViews({
+  d: {path: 'test/fixtures/d.md'},
+  e: {path: 'test/fixtures/e.md'},
+  f: {path: 'test/fixtures/f.md'},
+});
+loader.addViews([{
+  g: {path: 'test/fixtures/g.md'},
+  h: {path: 'test/fixtures/h.md'},
+  i: {path: 'test/fixtures/i.md'},
+}]);
+console.log(loader.cache);
+```
+
+### [.globViews](index.js#L220)
+
+Load templates from one or more glob `patterns` with the given `options`, then cache them on `loader.cache`.
+
+**Params**
+
+* `patterns` **{String|Array}**
+* `options` **{Object}**
+* `returns` **{Object}**: Returns `loader.cache`
+
+**Example**
+
+```js
+var loader = new Loader();
+var views = loader.globViews('*.hbs', {cwd: 'templates'});
+```
+
 ## About
 
 ### Related projects
