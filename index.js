@@ -1,8 +1,8 @@
 /*!
  * load-templates <https://github.com/jonschlinkert/load-templates>
  *
- * Copyright (c) 2015, Jon Schlinkert.
- * Licensed under the MIT License.
+ * Copyright (c) 2015, 2017, Jon Schlinkert.
+ * Released under the MIT License.
  */
 
 'use strict';
@@ -242,5 +242,9 @@ Loader.prototype.globViews = function(patterns, options) {
   }
   return this.cache;
 };
+
+/**
+ * Expose `Loader`
+ */
 
 module.exports = Loader;

@@ -1,4 +1,3 @@
-var path = require('path');
 var Loader = require('./');
 
 var loader = new Loader({
@@ -34,4 +33,4 @@ loader.load({
 });
 loader.load('*.json', opts);
 
-console.log(loader.cache)
+console.log(loader.cache);
