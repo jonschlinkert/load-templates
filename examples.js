@@ -1,42 +1,37 @@
 var path = require('path');
-var loader = require('./');
-var cache = {};
+var Loader = require('./');
 
-var views = loader(cache, function (file) {
-  if (file.path.slice(-4) === 'json') {
-    var obj = require(path.resolve(file.path));
-    for (var key in obj) {
-      file[key] = obj[key];
-    }
+var loader = new Loader({
+  renameKey: function(file) {
+    return file.basename;
   }
-  return file;
 });
 
 var opts = {
   cwd: 'test/fixtures',
-  renameKey: function (key) {
-    return key;
+  renameKey: function(file) {
+    return file.basename;
   }
 };
 
-views('home', {contents: '...'});
-views('test/fixtures/a.md', {
-  renameKey: function (key) {
-    return key;
+loader.load('home', {contents: '...'});
+loader.load('test/fixtures/a.md', {
+  renameKey: function(file) {
+    return file.key;
   }
 });
 
-views(['*.txt'], opts);
-views('b.md', opts, {name: 'Halle'});
-views('c.md', opts);
-views('test/fixtures/[a-b].hbs');
-views('test/fixtures/c*.hbs');
-views(['test/fixtures/c*.hbs']);
-views({
+loader.load(['*.txt'], opts);
+loader.load('b.md', opts, {name: 'Halle'});
+loader.load('c.md', opts);
+loader.load('test/fixtures/[a-b].hbs');
+loader.load('test/fixtures/c*.hbs');
+loader.load(['test/fixtures/c*.hbs']);
+loader.load({
   foo: {contents: '...'},
   bar: {contents: '...'},
   baz: {contents: '...'}
 });
-views('*.json', opts);
+loader.load('*.json', opts);
 
-console.log(cache)
+console.log(loader.cache)
