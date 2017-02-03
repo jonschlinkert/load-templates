@@ -111,7 +111,11 @@ Loader.prototype.createView = function(template, options) {
 
   // temporarily set `key` before calling `renameKey`
   view.key = view.key || view.path;
-  view.key = utils.renameKey(view, opts);
+  var key = utils.renameKey(view, opts);
+  if (typeof key === 'string') {
+    view.key = key;
+  }
+
   utils.contents.sync(view, opts);
 
   if (typeof this.options.loaderFn === 'function') {

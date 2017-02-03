@@ -23,7 +23,7 @@ require = fn;
 
 utils.renameKey = function(file, opts) {
   if (opts && typeof opts.renameKey === 'function') {
-    return opts.renameKey(file);
+    return opts.renameKey(file.key, file);
   }
   return file.key || file.path;
 };

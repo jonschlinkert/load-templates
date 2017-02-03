@@ -225,7 +225,7 @@ describe('load-templates', function() {
     describe('options.renameKey', function() {
       it('should support custom renameKey functions on global options:', function() {
         loader = new Loader({
-          renameKey: function(file) {
+          renameKey: function(key, file) {
             return file.relative;
           }
         });
@@ -239,7 +239,7 @@ describe('load-templates', function() {
 
       it('should support custom renameKey functions:', function() {
         loader.load('test/fixtures/a.md', {
-          renameKey: function(file) {
+          renameKey: function(key, file) {
             return file.relative;
           }
         });
@@ -249,7 +249,7 @@ describe('load-templates', function() {
         assert.equal(typeof loader.cache['test/fixtures/a.md'].stat, 'object');
 
         loader.load('test/fixtures/*.txt', {
-          renameKey: function(file) {
+          renameKey: function(key, file) {
             return file.stem;
           }
         });
