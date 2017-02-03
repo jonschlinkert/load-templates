@@ -1,13 +1,13 @@
-# load-templates [![NPM version](https://img.shields.io/npm/v/load-templates.svg?style=flat)](https://www.npmjs.com/package/load-templates) [![NPM downloads](https://img.shields.io/npm/dm/load-templates.svg?style=flat)](https://npmjs.org/package/load-templates) [![Build Status](https://img.shields.io/travis/jonschlinkert/load-templates.svg?style=flat)](https://travis-ci.org/jonschlinkert/load-templates)
+# load-templates [![NPM version](https://img.shields.io/npm/v/load-templates.svg?style=flat)](https://www.npmjs.com/package/load-templates) [![NPM monthly downloads](https://img.shields.io/npm/dm/load-templates.svg?style=flat)](https://npmjs.org/package/load-templates)  [![NPM total downloads](https://img.shields.io/npm/dt/load-templates.svg?style=flat)](https://npmjs.org/package/load-templates) [![Linux Build Status](https://img.shields.io/travis/jonschlinkert/load-templates.svg?style=flat&label=Travis)](https://travis-ci.org/jonschlinkert/load-templates)
 
-Load templates/views using globs, file paths, objects, arrays, or key-value pairs.
+> Load templates/views using globs, file paths, objects, arrays, or key-value pairs.
 
 ## Install
 
 Install with [npm](https://www.npmjs.com/):
 
 ```sh
-$ npm install load-templates --save
+$ npm install --save load-templates
 ```
 
 ## Usage
@@ -15,122 +15,138 @@ $ npm install load-templates --save
 In addition to what's shown in the below examples, if a glob pattern or valid filepath is passed, a `stat` object will be added to the `file` object as well.
 
 ```js
-var loader = require('load-templates');
-// optionally pass an object to use for caching the views
-var cache = {};
-var views = loader(cache);
+var Loader = require('load-templates');
+var loader = new Loader([options]);
+var views = loader.load('*.hbs');
+console.log(views);
 ```
 
-**load views from objects**
+## Supported formats
 
 ```js
-views({
+// filepath
+loader.load('a/b/c/some-template.hbs'); 
+
+// array of filepaths
+loader.load([
+  'a/b/c/some-template.hbs',
+  'a/b/c/other-template.hbs'
+]); 
+
+// glob pattern
+loader.load('*.hbs'); 
+
+// array of globs
+loader.load(['*.hbs', '*.tmpl']); 
+
+// object
+loader.load({path: 'foo'});
+
+// key-value 
+loader.load('d', {path: 'd'});
+loader.load('e', {path: 'e'});
+loader.load('f', {path: 'f'});
+
+// object of objects
+loader.load({
   a: {path: 'a'},
   b: {path: 'b'},
   c: {path: 'c'}
 });
-```
 
-**from key-value pairs**
+// array of objects
+loader.load([
+  {path: 'a'},
+  {path: 'b'},
+  {path: 'c'}
+]);
 
-```js
-views('d', {path: 'd'});
-views('e', {path: 'e'});
-views('f', {path: 'f'});
-```
-
-**from globs or file paths**
-
-```js
-views(['views/*.js']); 
-```
-
-**Results**
-
-All of the above examples combined result in:
-
-```js
-{
-  a: {path: 'a'},
-  b: {path: 'b'},
-  c: {path: 'c'},
-  d: {path: 'd'},
-  e: {path: 'e'},
-  f: {path: 'f'},
-  g: {path: 'g'},
-  h: {path: 'h'},
-  i: {path: 'i'},
-  j: {path: 'j'}
-}
+// array of nested objects
+loader.load([
+  {
+    a: {path: 'test/fixtures/a.md'},
+    b: {path: 'test/fixtures/b.md'},
+    c: {path: 'test/fixtures/c.md'},
+  },
+  {
+    d: {path: 'test/fixtures/d.md'},
+    e: {path: 'test/fixtures/e.md'},
+    f: {path: 'test/fixtures/f.md'},
+  }
+]);
 ```
 
 ## Options
 
 ### options.cwd
 
-Special (leading) characters are expanded on `options.cwd`
+Type: `String`
 
-* `~` expands to user home. example: `{cwd: '~/foo'}`
-* `@` expands to global npm modules. example: `{cwd: '@/bar'}`
+Default: `process.cwd()`
+
+Pass the current working directory to use for resolving paths.
 
 ### options.renameKey
 
-Rename the key of each `file` object.
-
 Type: `Function`
 
-Default: `noop` Full filepath or whatever key is passed.
+Default: `file.path` Absolute filepath
 
-### glob options
+Function to modify `file.key`, which is the property used for setting views on `loader.cache`. It works something like this:
 
-All options are also passed to [matched](https://github.com/jonschlinkert/matched).
-
-## Related projects
-
-You might also be interested in these projects:
-
-* [assemble](https://www.npmjs.com/package/assemble): Assemble is a powerful, extendable and easy to use static site generator for node.js. Used… [more](https://www.npmjs.com/package/assemble) | [homepage](https://github.com/assemble/assemble)
-* [templates](https://www.npmjs.com/package/templates): System for creating and managing template collections, and rendering templates with any node.js template engine.… [more](https://www.npmjs.com/package/templates) | [homepage](https://github.com/jonschlinkert/templates)
-* [verb](https://www.npmjs.com/package/verb): Documentation generator for GitHub projects. Verb is extremely powerful, easy to use, and is used… [more](https://www.npmjs.com/package/verb) | [homepage](https://github.com/verbose/verb)
-
-## Contributing
-
-Pull requests and stars are always welcome. For bugs and feature requests, [please create an issue](https://github.com/jonschlinkert/load-templates/issues/new).
-
-## Building docs
-
-Generate readme and API documentation with [verb][]:
-
-```sh
-$ npm install verb && npm run docs
+```js
+loader.cache[file.key] = file;
 ```
 
-Or, if [verb][] is installed globally:
+## About
+
+### Related projects
+
+* [assemble](https://www.npmjs.com/package/assemble): Get the rocks out of your socks! Assemble makes you fast at creating web projects… [more](https://github.com/assemble/assemble) | [homepage](https://github.com/assemble/assemble "Get the rocks out of your socks! Assemble makes you fast at creating web projects. Assemble is used by thousands of projects for rapid prototyping, creating themes, scaffolds, boilerplates, e-books, UI components, API documentation, blogs, building websit")
+* [templates](https://www.npmjs.com/package/templates): System for creating and managing template collections, and rendering templates with any node.js template engine… [more](https://github.com/jonschlinkert/templates) | [homepage](https://github.com/jonschlinkert/templates "System for creating and managing template collections, and rendering templates with any node.js template engine. Can be used as the basis for creating a static site generator or blog framework.")
+* [verb](https://www.npmjs.com/package/verb): Documentation generator for GitHub projects. Verb is extremely powerful, easy to use, and is used… [more](https://github.com/verbose/verb) | [homepage](https://github.com/verbose/verb "Documentation generator for GitHub projects. Verb is extremely powerful, easy to use, and is used on hundreds of projects of all sizes to generate everything from API docs to readmes.")
+
+### Contributing
+
+Pull requests and stars are always welcome. For bugs and feature requests, [please create an issue](../../issues/new).
+
+### Contributors
+
+| **Commits** | **Contributor** | 
+| --- | --- |
+| 207 | [jonschlinkert](https://github.com/jonschlinkert) |
+| 2 | [doowb](https://github.com/doowb) |
+
+### Building docs
+
+_(This project's readme.md is generated by [verb](https://github.com/verbose/verb-generate-readme), please don't edit the readme directly. Any changes to the readme must be made in the [.verb.md](.verb.md) readme template.)_
+
+To generate the readme, run the following command:
 
 ```sh
-$ verb
+$ npm install -g verbose/verb#dev verb-generate-readme && verb
 ```
 
-## Running tests
+### Running tests
 
-Install dev dependencies:
+Running and reviewing unit tests is a great way to get familiarized with a library and its API. You can install dependencies and run tests with the following command:
 
 ```sh
-$ npm install -d && npm test
+$ npm install && npm test
 ```
 
-## Author
+### Author
 
 **Jon Schlinkert**
 
 * [github/jonschlinkert](https://github.com/jonschlinkert)
-* [twitter/jonschlinkert](http://twitter.com/jonschlinkert)
+* [twitter/jonschlinkert](https://twitter.com/jonschlinkert)
 
-## License
+### License
 
-Copyright © 2016, [Jon Schlinkert](https://github.com/jonschlinkert).
-Released under the [MIT license](https://github.com/jonschlinkert/load-templates/blob/master/LICENSE).
+Copyright © 2017, [Jon Schlinkert](https://github.com/jonschlinkert).
+MIT
 
 ***
 
-_This file was generated by [verb](https://github.com/verbose/verb), v0.9.0, on May 07, 2016._
+_This file was generated by [verb-generate-readme](https://github.com/verbose/verb-generate-readme), v0.4.2, on February 03, 2017._
