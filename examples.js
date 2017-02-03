@@ -1,15 +1,10 @@
 var path = require('path');
-var loader = require('./');
-var cache = {};
+var Loader = require('./');
 
-var views = loader(cache, function (file) {
-  if (file.path.slice(-4) === 'json') {
-    var obj = require(path.resolve(file.path));
-    for (var key in obj) {
-      file[key] = obj[key];
-    }
+var loader = new Loader({
+  renameKey: function(file) {
+    return file.basename;
   }
-  return file;
 });
 
 var opts = {

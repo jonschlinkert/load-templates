@@ -7,144 +7,130 @@
 
 'use strict';
 
-var fs = require('fs');
 var path = require('path');
+var File = require('vinyl');
+var glob = require('matched');
+var extend = require('extend-shallow');
 var utils = require('./utils');
 
-module.exports = function(cache, config, loaderFn) {
-  if (typeof cache === 'function') {
-    loaderFn = cache;
-    config = {};
-    cache = undefined;
+function Loader(options) {
+  if (!(this instanceof Loader)) {
+    return new Loader(options);
+  }
+  this.options = extend({}, options);
+  this.cache = this.options.cache || {};
+}
+
+Loader.prototype.createView = function(file, options) {
+  var opts = utils.extend({cwd: process.cwd()}, this.options, options);
+  var view;
+
+  if (utils.isObject(file)) {
+    view = new File(file);
+  } else {
+    view = new File({path: path.resolve(opts.cwd, file)});
   }
 
-  if (typeof config === 'function') {
-    loaderFn = config;
-    config = {};
+  view.base = opts.base || path.resolve(opts.cwd, opts.parent || '');
+  view.cwd = opts.cwd;
+  view.options = {};
+  view.locals = {};
+  view.data = {};
+
+  view.key = utils.renameKey(view, opts);
+  utils.contents.sync(view, opts);
+
+  if (typeof this.options.loaderFn === 'function') {
+    view = this.options.loaderFn(view) || view;
   }
 
-  cache = cache || {};
-
-  function loadViews(key, val) {
-    if (!key) return {};
-
-    if (utils.isView(val)) {
-      return addView(key, val);
-    }
-
-    if (utils.isObject(key) || !utils.isValidGlob(key)) {
-      return addViews(key, val);
-    }
-
-    if (typeof key === 'string' && !val) {
-      return loader(key);
-    }
-
-    loader(key, val);
-    return cache;
-  }
-
-  function addView(name, view) {
-    cache[name] = view;
-    return cache;
-  }
-
-  function addViews(views) {
-    if (Array.isArray(views)) {
-      views.forEach(function(view) {
-        loadViews(view);
-      });
-    } else {
-      for (var name in views) {
-        if (views.hasOwnProperty(name)) {
-          addView(name, views[name]);
-        }
-      }
-    }
-    return cache;
-  }
-
-  function loader(patterns, options) {
-    var opts = utils.extend({cwd: process.cwd()}, config, options);
-    opts.cwd = path.resolve(opts.cwd);
-
-    var files = utils.arrayify(patterns);
-    var parent = '';
-
-    if (utils.hasGlob(patterns)) {
-      parent = utils.parent(files[0]);
-      files = utils.glob.sync(patterns, opts);
-
-      // if `opts.nonull` is defined and no files are found, return
-      if (isPatterns(patterns, files)) {
-        return cache;
-      }
-    }
-
-    var len = files.length;
-    var idx = -1;
-
-    while (++idx < len) {
-      var filepath = path.resolve(opts.cwd, files[idx]);
-      var file = {path: filepath, cwd: opts.cwd};
-      file.stat = utils.tryStat(file.path);
-      file.base = path.resolve((parent && parent !== '.') ? parent : file.cwd);
-
-      if (!file.stat) {
-        continue;
-      }
-
-      if (file.stat.isDirectory && file.stat.isDirectory()) {
-        continue;
-      }
-
-      utils.syncContents(file, file.contents || file.content);
-      file.options = file.options || {};
-      file.locals = file.locals || {};
-      file.data = file.data || {};
-
-      utils.define(file, 'contents', {
-        configurable: true,
-        enumerable: true,
-        set: function(val) {
-          utils.syncContents(file, val);
-        },
-        get: function() {
-          return file._contents || (file._contents = fs.readFileSync(this.path));
-        }
-      });
-
-      if (typeof loaderFn === 'function') {
-        var res = loaderFn(file);
-        if (typeof res !== 'undefined') {
-          file = res;
-        }
-      }
-      if (!file._isVinyl && !file.isView) {
-        opts.file = file;
-        file = utils.toFile(file.path, patterns, opts);
-      }
-
-      file.key = utils.renameKey(file, opts);
-      addView(file.key, file);
-    }
-    return cache;
-  }
-  return loadViews;
+  return view;
 };
 
-function isPatterns(patterns, files) {
-  patterns = utils.arrayify(patterns);
-  files = utils.arrayify(files);
+Loader.prototype.addView = function(file, options) {
+  var view = this.createView(file, options);
+  this.cache[view.key] = view;
+  return this;
+};
 
-  if (files.length !== patterns.length) {
-    return false;
+Loader.prototype.addViews = function(views, options) {
+  if (typeof views === 'string' && utils.isView(options)) {
+    let view = options;
+    let key = views;
+    view.path = view.path || key;
+    view.key = key;
+    return this.addView(view);
   }
 
-  for (var i = 0; i < patterns.length; i++) {
-    if (files.indexOf(patterns[i]) !== -1) {
-      return true;
+  if (Array.isArray(views)) {
+    for (let i = 0; i < views.length; i++) {
+      this.addView(views[i], options);
+    }
+
+  } else if (utils.isObject(views)) {
+    for (let key in views) {
+      let view = views[key];
+
+      if (views.hasOwnProperty(key)) {
+        if (utils.isView(view)) {
+          view.path = view.path || key;
+          view.key = key;
+
+        } else if (typeof view === 'string') {
+          view = { content: view, path: key };
+        }
+      }
+
+      this.addView(view, options);
     }
   }
-  return false;
-}
+  return this;
+};
+
+Loader.prototype.globViews = function(patterns, options) {
+  let opts = extend({cwd: process.cwd()}, this.options, options);
+  // don't support nonull, it doesn't make sense here
+  delete opts.nonull;
+
+  opts.cwd = path.resolve(opts.cwd);
+  patterns = utils.arrayify(patterns);
+  let len = patterns.length;
+  let idx = -1;
+
+  // iterate over all patterns, so we can get the actual glob parent
+  while (++idx < len) {
+    let pattern = patterns[idx];
+    let isGlob = utils.isGlob(pattern);
+    let files = isGlob ? glob.sync(pattern, opts) : [pattern];
+    if (!files.length) continue;
+
+    // get the glob parent to use as `file.base`
+    let parent = isGlob ? utils.parent(pattern) : '';
+
+    // create a view
+    this.addViews(files, extend({}, opts, {parent: parent}));
+  }
+  return this;
+};
+
+Loader.prototype.load = function(views, options) {
+  switch (utils.typeOf(views)) {
+    case 'object':
+      return this.addViews(views, options);
+    case 'array':
+      for (var i = 0; i < views.length; i++) {
+        this.load(views[i], options);
+      }
+      break;
+    case 'string':
+    default: {
+      if (utils.isView(options)) {
+        return this.addViews(views, options);
+      }
+      return this.globViews(views, options);
+    }
+  }
+  return this;
+};
+
+module.exports = Loader;
