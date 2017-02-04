@@ -134,7 +134,7 @@ console.log(loader.load({path: 'a/b/c.md'}));
 console.log(loader.load('index', {path: 'a/b/c.md'}));
 ```
 
-### [.createView](index.js#L92)
+### [.createView](index.js#L94)
 
 Create a `view` object from the given `template`. View objects are instances of [vinyl](https://github.com/gulpjs/vinyl).
 
@@ -151,7 +151,7 @@ console.log(loader.createView('test/fixtures/foo/bar.hbs'));
 console.log(loader.createView('foo/bar.hbs', {cwd: 'test/fixtures'}));
 ```
 
-### [.addView](index.js#L142)
+### [.addView](index.js#L144)
 
 Create a view from the given `template` and cache it on `loader.cache`.
 
@@ -169,7 +169,7 @@ loader.addView('foo.hbs');
 console.log(loader.cache);
 ```
 
-### [.addViews](index.js#L177)
+### [.addViews](index.js#L179)
 
 Create from an array or object of `templates` and cache them on `loader.cache`.
 
@@ -200,7 +200,7 @@ loader.addViews([{
 console.log(loader.cache);
 ```
 
-### [.globViews](index.js#L224)
+### [.globViews](index.js#L226)
 
 Load templates from one or more glob `patterns` with the given `options`, then cache them on `loader.cache`.
 
@@ -233,7 +233,7 @@ Pull requests and stars are always welcome. For bugs and feature requests, [plea
 
 | **Commits** | **Contributor** | 
 | --- | --- |
-| 214 | [jonschlinkert](https://github.com/jonschlinkert) |
+| 217 | [jonschlinkert](https://github.com/jonschlinkert) |
 | 2 | [doowb](https://github.com/doowb) |
 
 ### Building docs
