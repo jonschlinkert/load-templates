@@ -67,7 +67,9 @@ Loader.prototype.load = function(templates, options) {
     case 'string':
     default: {
       if (utils.isView(options)) {
-        return this.addViews(templates, options);
+        options.path = templates;
+        utils.normalizeContent(options);
+        return this.addView(options);
       }
       return this.globViews(templates, options);
     }
@@ -94,9 +96,7 @@ Loader.prototype.createView = function(template, options) {
   var view;
 
   if (utils.isObject(template)) {
-    if (typeof template.contents === 'string') {
-      template.contents = new Buffer(template.contents);
-    }
+    utils.normalizeContent(template);
     view = new File(template);
   } else {
     view = new File({path: path.resolve(opts.cwd, template)});
@@ -105,9 +105,11 @@ Loader.prototype.createView = function(template, options) {
   // set base with the glob parent, if available
   view.base = opts.base || path.resolve(opts.cwd, opts.parent || '');
   view.cwd = opts.cwd;
-  view.options = {};
-  view.locals = {};
-  view.data = {};
+
+  // prime the view's metadata objects
+  view.options = view.options || {};
+  view.locals = view.locals || {};
+  view.data = view.data || {};
 
   // temporarily set `key` before calling `renameKey`
   view.key = view.key || view.path;

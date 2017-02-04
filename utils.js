@@ -29,6 +29,24 @@ utils.renameKey = function(file, opts) {
 };
 
 /**
+ * Normalize the content/contents properties before passing
+ * to syncContents, the initial value is correct
+ */
+
+utils.normalizeContent = function(view) {
+  if (typeof view.contents === 'string') {
+    view.content = view.contents;
+    view.contents = new Buffer(view.contents);
+
+  } else if (typeof view.content === 'string') {
+    view.contents = new Buffer(view.content);
+
+  } else if (utils.isBuffer(view.contents)) {
+    view.content = view.contents.toString();
+  }
+};
+
+/**
  * Cast val to an array
  */
 
@@ -41,7 +59,14 @@ utils.arrayify = function(val) {
  */
 
 utils.isView = function(val) {
-  return utils.isObject(val) && (val.isView || val.isItem || val.path || val.contents);
+  if (!utils.isObject(val)) {
+    return false;
+  }
+  return val.isView
+    || val.isItem
+    || val.path
+    || val.contents
+    || val.content;
 };
 
 /**
@@ -50,6 +75,14 @@ utils.isView = function(val) {
 
 utils.isObject = function(val) {
   return utils.typeOf(val) === 'object';
+};
+
+/**
+ * Return true if `val` is a buffer
+ */
+
+utils.isBuffer = function(val) {
+  return utils.typeOf(val) === 'buffer';
 };
 
 /**
