@@ -13,6 +13,7 @@ const globParent = require('glob-parent');
 const isGlob = require('is-glob');
 const typeOf = require('kind-of');
 const glob = require('matched');
+const isView = require('is-view');
 const File = require('vinyl');
 const utils = require('./utils');
 
@@ -56,7 +57,7 @@ class Loader {
   load(value, options) {
     switch (typeOf(value)) {
       case 'object':
-        if (utils.isView(value)) {
+        if (isView(value)) {
           this.addView(value, options);
           break;
         }
@@ -66,7 +67,7 @@ class Loader {
         value.forEach(val => this.load(val, options));
         break;
       case 'string':
-        if (utils.isView(options)) {
+        if (isView(options)) {
           this.addView(value, options);
           break;
         }
@@ -145,7 +146,7 @@ class Loader {
       throw new TypeError('expected a string, object or array');
     }
 
-    if (utils.isView(views)) {
+    if (isView(views)) {
       this.addView(views, options);
       return this;
     }
@@ -153,7 +154,7 @@ class Loader {
     for (const key of Object.keys(views)) {
       let view = views[key];
 
-      if (utils.isView(view)) {
+      if (isView(view)) {
         view.key = key;
       } else if (typeof view === 'string') {
         view = { key, path: key, content: view };

@@ -4,22 +4,6 @@ const File = require('vinyl');
 const typeOf = require('kind-of');
 
 /**
- * Return true if `val` is a valid view
- */
-
-exports.isView = function(view) {
-  if (typeOf(view) === 'object') {
-    if (File.isVinyl(view) || view.isView) {
-      return true;
-    }
-    if (view.path || view.contents || view.content) {
-      return true;
-    }
-  }
-  return false;
-};
-
-/**
  * Set the `file.key` used for caching views
  */
 
