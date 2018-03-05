@@ -41,7 +41,7 @@ class Loader {
    * to do the actual loading.
    *
    * ```js
-   * var loader = new Loader();
+   * const loader = new Loader();
    * console.log(loader.load(['foo/*.hbs', 'bar/*.hbs']));
    * console.log(loader.load({path: 'a/b/c.md'}));
    * console.log(loader.load('index', {path: 'a/b/c.md'}));
@@ -83,7 +83,7 @@ class Loader {
    * Create a view from the given `template` and cache it on `loader.cache`.
    *
    * ```js
-   * var loader = new Loader();
+   * const loader = new Loader();
    * loader.addView('foo.hbs');
    * console.log(loader.cache);
    * ```
@@ -105,7 +105,7 @@ class Loader {
    * `loader.cache`.
    *
    * ```js
-   * var loader = new Loader();
+   * const loader = new Loader();
    * loader.addViews([
    *   {path: 'test/fixtures/a.md'},
    *   {path: 'test/fixtures/b.md'},
@@ -233,8 +233,8 @@ class Loader {
    * then cache them on `loader.cache`.
    *
    * ```js
-   * var loader = new Loader();
-   * var views = loader.globViews('*.hbs', {cwd: 'templates'});
+   * const loader = new Loader();
+   * const views = loader.globViews('*.hbs', {cwd: 'templates'});
    * ```
    * @name .globViews
    * @param {String|Array} `patterns`
