@@ -4,7 +4,6 @@ var gulp = require('gulp');
 var mocha = require('gulp-mocha');
 var istanbul = require('gulp-istanbul');
 var eslint = require('gulp-eslint');
-var unused = require('gulp-unused');
 
 gulp.task('coverage', function() {
   return gulp.src(['index.js', 'utils.js'])
@@ -22,12 +21,6 @@ gulp.task('eslint', function() {
   return gulp.src('*.js')
     .pipe(eslint())
     .pipe(eslint.format());
-});
-
-gulp.task('unused', function() {
-  var keys = Object.keys(require('./utils.js'));
-  return gulp.src(['index.js', 'utils.js'])
-    .pipe(unused({keys: keys}));
 });
 
 gulp.task('default', ['mocha', 'eslint']);

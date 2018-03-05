@@ -2,85 +2,93 @@
 
 require('mocha');
 require('should');
-var path = require('path');
-var assert = require('assert');
-var glob = require('matched');
-var Loader = require('..');
-var loader;
-var cache;
+const File = require('vinyl');
+const path = require('path');
+const assert = require('assert');
+const Loader = require('..');
+const utils = require('../utils');
+let loader;
+let cache;
 
 describe('load-templates', function() {
-  describe('cache', function() {
-    it('should allow a custom cache to be used:', function() {
-      cache = {};
-      loader = new Loader({cache: cache});
-      loader.addView('foo', {path: 'bar'});
-      assert.equal(typeof cache[path.resolve('foo')], 'object');
-      assert.equal(typeof cache[path.resolve('foo')].path, 'string');
-    });
+  beforeEach(function() {
+    loader = new Loader();
+  });
 
-    it('should cache views on the default cache:', function() {
-      loader = new Loader();
-      loader.addView('foo', {path: 'bar'});
-
-      assert.equal(typeof loader.cache[path.resolve('foo')], 'object');
-      assert.equal(typeof loader.cache[path.resolve('foo')].path, 'string');
+  describe('invalid', function() {
+    it('should throw an error when view type is invalid', function() {
+      assert.throws(() => loader.createView(), TypeError);
+      assert.throws(() => loader.createView(null), TypeError);
     });
   });
 
-  describe('config', function() {
-    it('should support cwd on options', function() {
-      loader = new Loader({cwd: 'test/fixtures'});
-      loader.load('*.txt');
-      assert.equal(Object.keys(loader.cache).length, 3);
+  describe('static .load method', function() {
+    it('should load an object of vinyl files', function() {
+      const views = Loader.load({
+        a: new File({ path: 'test/fixtures/a.md', content: '...' }),
+        b: new File({ path: 'test/fixtures/b.md', content: '...' }),
+        c: new File({ path: 'test/fixtures/c.md', content: '...' })
+      });
+
+      const keys = Object.keys(views);
+      assert.equal(keys.join(','), 'a,b,c');
+
+      assert.equal(keys.length, 3);
+      keys.forEach(function(key) {
+        assert.equal(typeof views[key], 'object');
+        assert.equal(typeof views[key].path, 'string');
+        assert.equal(typeof views[key].stat, 'object');
+      });
     });
   });
 
   describe('string', function() {
-    beforeEach(function() {
-      loader = new Loader();
-    });
-
-    it('should load a template from a file path:', function() {
+    it('should load a template from a view path', function() {
       loader.load('test/fixtures/a.md');
 
-      var keys = Object.keys(loader.cache);
-      var key = keys[0];
+      const keys = Object.keys(loader.cache);
+      const key = keys[0];
 
       assert.equal(typeof loader.cache[key], 'object');
       assert.equal(typeof loader.cache[key].path, 'string');
       assert.equal(typeof loader.cache[key].stat, 'object');
     });
 
-    it('should still load files when they do not exist:', function() {
-      var fixture = 'test/fixtures/flfofofofo.md';
+    it('should still load files when they do not exist', function() {
+      const fixture = 'test/fixtures/flfofofofo.md';
       loader.load(fixture);
-      var keys = Object.keys(loader.cache);
+      const keys = Object.keys(loader.cache);
       assert.equal(keys.length, 1);
-      var key = keys[0];
+      const key = keys[0];
 
-      assert.equal(loader.cache[key].path, path.resolve(fixture));
+      assert.equal(loader.cache[key].path, fixture);
     });
 
-    it('should not choke on invalid args:', function() {
-      loader.load(null);
-      assert.deepEqual(loader.cache, {});
+    it('should throw an error on invalid args', function() {
+      assert.throws(() => loader.load(null), TypeError);
     });
 
-    it('should take a loader function on the options', function() {
-      loader.options.loaderFn = function(file) {
-        file.locals = {foo: 'bar'};
-      };
-
-      var fixture = 'test/fixtures/a.txt';
-      loader.load(fixture);
-      var file = loader.cache[path.resolve(fixture)];
-      assert.equal(file.locals.foo, 'bar');
+    it('should do nothing when glob does not find files', function() {
+      loader.load('sdfsjflsl/*.md');
+      const keys = Object.keys(loader.cache);
+      assert.equal(keys.length, 0);
     });
 
-    it('should load templates from a glob:', function() {
+    it('should load templates from a glob', function() {
       loader.load('test/fixtures/*.md');
-      var keys = Object.keys(loader.cache);
+      const keys = Object.keys(loader.cache);
+      assert(keys.length >= 3);
+
+      keys.forEach(function(key) {
+        assert.equal(typeof loader.cache[key], 'object');
+        assert.equal(typeof loader.cache[key].path, 'string');
+        assert.equal(typeof loader.cache[key].stat, 'object');
+      });
+    });
+
+    it('should load templates from an array of globs', function() {
+      const views = loader.globViews(['test/fixtures/*.md']);
+      const keys = Object.keys(loader.cache);
       assert(keys.length >= 3);
 
       keys.forEach(function(key) {
@@ -92,13 +100,9 @@ describe('load-templates', function() {
   });
 
   describe('array', function() {
-    beforeEach(function() {
-      loader = new Loader();
-    });
-
-    it('should load templates from an array of file paths:', function() {
+    it('should load templates from an array of view paths', function() {
       loader.load(['test/fixtures/a.md', 'test/fixtures/b.md']);
-      var keys = Object.keys(loader.cache);
+      const keys = Object.keys(loader.cache);
       assert.equal(keys.length, 2);
 
       keys.forEach(function(key) {
@@ -108,11 +112,66 @@ describe('load-templates', function() {
       });
     });
 
-    it('should use options with an array of file paths:', function() {
-      loader.load(['a.md', 'b.md'], {cwd: 'test/fixtures'});
-      var keys = Object.keys(loader.cache);
+    it('should use options with an array of view paths', function() {
+      loader.load(['a.md', 'b.md'], { cwd: 'test/fixtures' });
+      const keys = Object.keys(loader.cache);
       assert.equal(keys.length, 2);
 
+      keys.forEach(function(key) {
+        assert.equal(typeof loader.cache[key], 'object');
+        assert.equal(typeof loader.cache[key].path, 'string');
+        assert.equal(typeof loader.cache[key].stat, 'object');
+      });
+    });
+
+    it('should load an array of key-value view objects', function() {
+      loader.load([{
+        a: {path: 'test/fixtures/a.md'},
+        b: {path: 'test/fixtures/b.md'},
+        c: {path: 'test/fixtures/c.md'}
+      }]);
+
+      const keys = Object.keys(loader.cache);
+      assert.equal(keys.length, 3);
+      keys.forEach(function(key) {
+        assert.equal(typeof loader.cache[key], 'object');
+        assert.equal(typeof loader.cache[key].path, 'string');
+        assert.equal(typeof loader.cache[key].stat, 'object');
+      });
+    });
+
+    it('should load an array with multiple key-value view objects', function() {
+      loader.load([
+        {
+          a: {path: 'test/fixtures/a.md'},
+          b: {path: 'test/fixtures/b.md'},
+          c: {path: 'test/fixtures/c.md'}
+        },
+        {
+          d: {path: 'test/fixtures/d.md'},
+          e: {path: 'test/fixtures/e.md'},
+          f: {path: 'test/fixtures/f.md'}
+        }
+      ]);
+
+      const keys = Object.keys(loader.cache);
+      assert.equal(keys.length, 6);
+      keys.forEach(function(key) {
+        assert.equal(typeof loader.cache[key], 'object');
+        assert.equal(typeof loader.cache[key].path, 'string');
+        assert.equal(typeof loader.cache[key].stat, 'object');
+      });
+    });
+
+    it('should load an array of view objects', function() {
+      loader.load([
+        {path: 'test/fixtures/a.md'},
+        {path: 'test/fixtures/b.md'},
+        {path: 'test/fixtures/c.md'}
+      ]);
+
+      const keys = Object.keys(loader.cache);
+      assert.equal(keys.length, 3);
       keys.forEach(function(key) {
         assert.equal(typeof loader.cache[key], 'object');
         assert.equal(typeof loader.cache[key].path, 'string');
@@ -126,9 +185,21 @@ describe('load-templates', function() {
       loader = new Loader();
     });
 
-    it('should load a template from a key-value pair:', function() {
-      loader.load('foo', {path: 'test/fixtures/a.md'});
-      var keys = Object.keys(loader.cache);
+    it('should create a view from a vinyl view', function() {
+      const view = loader.createView('foo', new File({ path: 'test/fixtures/a.md' }));
+      assert(File.isVinyl(view));
+      assert.equal(view.path, 'test/fixtures/a.md');
+    });
+
+    it('should use path from first argument', function() {
+      const view = loader.createView('foo', { content: '...' });
+      assert(File.isVinyl(view));
+      assert.equal(view.path, 'foo');
+    });
+
+    it('should load a view from a key-value pair', function() {
+      loader.load('foo', { path: 'test/fixtures/a.md' });
+      const keys = Object.keys(loader.cache);
       assert.equal(keys.length, 1);
       keys.forEach(function(key) {
         assert.equal(typeof loader.cache[key], 'object');
@@ -137,14 +208,43 @@ describe('load-templates', function() {
       });
     });
 
-    it('should load an object of views:', function() {
+    it('should load a view from an object', function() {
+      loader.load({ 'foo/bar.md': { content: 'this is content.', data: { a: 'a' } } });
+      const keys = Object.keys(loader.cache);
+      assert.equal(keys.length, 1);
+      keys.forEach(function(key) {
+        assert.equal(typeof loader.cache[key], 'object');
+        assert.equal(typeof loader.cache[key].path, 'string');
+        assert.equal(typeof loader.cache[key].stat, 'object');
+      });
+    });
+
+    it('should load an object of views', function() {
       loader.load({
-        a: {path: 'test/fixtures/a.md'},
-        b: {path: 'test/fixtures/b.md'},
-        c: {path: 'test/fixtures/c.md'},
+        a: { path: 'test/fixtures/a.md', content: '...' },
+        b: { path: 'test/fixtures/b.md', content: '...' },
+        c: { path: 'test/fixtures/c.md', content: '...' }
       });
 
-      var keys = Object.keys(loader.cache);
+      const keys = Object.keys(loader.cache);
+      assert.equal(keys.join(','), 'a,b,c');
+
+      assert.equal(keys.length, 3);
+      keys.forEach(function(key) {
+        assert.equal(typeof loader.cache[key], 'object');
+        assert.equal(typeof loader.cache[key].path, 'string');
+        assert.equal(typeof loader.cache[key].stat, 'object');
+      });
+    });
+
+    it('should load an object of vinyl files', function() {
+      loader.load({
+        a: new File({ path: 'test/fixtures/a.md', content: '...' }),
+        b: new File({ path: 'test/fixtures/b.md', content: '...' }),
+        c: new File({ path: 'test/fixtures/c.md', content: '...' })
+      });
+
+      const keys = Object.keys(loader.cache);
       assert.equal(keys.join(','), 'a,b,c');
 
       assert.equal(keys.length, 3);
@@ -156,80 +256,52 @@ describe('load-templates', function() {
     });
   });
 
-  describe('array', function() {
-    beforeEach(function() {
-      loader = new Loader();
-    });
-
-    it('should load an array of key-value view objects:', function() {
-      loader.load([{
-        a: {path: 'test/fixtures/a.md'},
-        b: {path: 'test/fixtures/b.md'},
-        c: {path: 'test/fixtures/c.md'},
-      }]);
-
-      var keys = Object.keys(loader.cache);
-      assert.equal(keys.length, 3);
-      keys.forEach(function(key) {
-        assert.equal(typeof loader.cache[key], 'object');
-        assert.equal(typeof loader.cache[key].path, 'string');
-        assert.equal(typeof loader.cache[key].stat, 'object');
-      });
-    });
-
-    it('should load an array with multiple key-value view objects:', function() {
-      loader.load([
-        {
-          a: {path: 'test/fixtures/a.md'},
-          b: {path: 'test/fixtures/b.md'},
-          c: {path: 'test/fixtures/c.md'},
-        },
-        {
-          d: {path: 'test/fixtures/d.md'},
-          e: {path: 'test/fixtures/e.md'},
-          f: {path: 'test/fixtures/f.md'},
-        }
-      ]);
-
-      var keys = Object.keys(loader.cache);
-      assert.equal(keys.length, 6);
-      keys.forEach(function(key) {
-        assert.equal(typeof loader.cache[key], 'object');
-        assert.equal(typeof loader.cache[key].path, 'string');
-        assert.equal(typeof loader.cache[key].stat, 'object');
-      });
-    });
-
-    it('should load an array of view objects:', function() {
-      loader.load([
-        {path: 'test/fixtures/a.md'},
-        {path: 'test/fixtures/b.md'},
-        {path: 'test/fixtures/c.md'},
-      ]);
-
-      var keys = Object.keys(loader.cache);
-      assert.equal(keys.length, 3);
-      keys.forEach(function(key) {
-        assert.equal(typeof loader.cache[key], 'object');
-        assert.equal(typeof loader.cache[key].path, 'string');
-        assert.equal(typeof loader.cache[key].stat, 'object');
-      });
-    });
-  });
-
   describe('options', function() {
-    beforeEach(function() {
-      loader = new Loader();
+    it('should use constructor options', function() {
+      loader = new Loader({cwd: 'test/fixtures'});
+      loader.load('*.txt');
+      assert.equal(Object.keys(loader.cache).length, 3);
+    });
+
+    describe('options.cwd', function() {
+      it('should pass cwd option to matched', function() {
+        loader.load('*.md', {cwd: 'test/fixtures'});
+        const keys = Object.keys(loader.cache);
+        assert(keys.length >= 1);
+        keys.forEach(function(key) {
+          assert.equal(typeof loader.cache[key], 'object');
+          assert.equal(typeof loader.cache[key].path, 'string');
+          assert.equal(typeof loader.cache[key].stat, 'object');
+        });
+      });
+    });
+
+    describe('options.onLoad', function() {
+      it('should take a loader function on the options', function() {
+        loader.options.onLoad = function(view) {
+          view.locals = { foo: 'bar' };
+        };
+
+        const fixture = 'test/fixtures/a.txt';
+        loader.load(fixture);
+        const view = loader.cache[fixture];
+        assert.equal(view.locals.foo, 'bar');
+      });
     });
 
     describe('options.renameKey', function() {
-      it('should support custom renameKey functions on global options:', function() {
-        loader = new Loader({
-          renameKey: function(key, file) {
-            return file.relative;
-          }
-        });
+      it('should use view.key when view.path is not defined', function() {
+        const key = utils.renameKey({ isView: true, key: 'foo' });
+        assert.equal(key, 'foo');
+      });
 
+      it('should use view.path when view.key is not defined', function() {
+        const key = utils.renameKey({ isView: true, path: 'foo' });
+        assert.equal(key, 'foo');
+      });
+
+      it('should support custom renameKey functions on global options', function() {
+        loader = new Loader({ renameKey: view => view.relative });
         loader.load('test/fixtures/a.md');
 
         assert.equal(typeof loader.cache['test/fixtures/a.md'], 'object');
@@ -237,22 +309,14 @@ describe('load-templates', function() {
         assert.equal(typeof loader.cache['test/fixtures/a.md'].stat, 'object');
       });
 
-      it('should support custom renameKey functions:', function() {
-        loader.load('test/fixtures/a.md', {
-          renameKey: function(key, file) {
-            return file.relative;
-          }
-        });
+      it('should support custom renameKey functions', function() {
+        loader.load('test/fixtures/a.md', { renameKey: view => view.relative });
 
         assert.equal(typeof loader.cache['test/fixtures/a.md'], 'object');
         assert.equal(typeof loader.cache['test/fixtures/a.md'].path, 'string');
         assert.equal(typeof loader.cache['test/fixtures/a.md'].stat, 'object');
 
-        loader.load('test/fixtures/*.txt', {
-          renameKey: function(key, file) {
-            return file.stem;
-          }
-        });
+        loader.load('test/fixtures/*.txt', { renameKey: view => view.stem });
 
         assert.equal(typeof loader.cache.a, 'object');
         assert.equal(typeof loader.cache.a.path, 'string');
@@ -265,19 +329,6 @@ describe('load-templates', function() {
         assert.equal(typeof loader.cache.c, 'object');
         assert.equal(typeof loader.cache.c.path, 'string');
         assert.equal(typeof loader.cache.c.stat, 'object');
-      });
-    });
-
-    describe('options.cwd', function() {
-      it('should pass cwd option to matched:', function() {
-        loader.load('*.md', {cwd: 'test/fixtures'});
-        var keys = Object.keys(loader.cache);
-        assert(keys.length >= 1);
-        keys.forEach(function(key) {
-          assert.equal(typeof loader.cache[key], 'object');
-          assert.equal(typeof loader.cache[key].path, 'string');
-          assert.equal(typeof loader.cache[key].stat, 'object');
-        });
       });
     });
   });

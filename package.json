@@ -18,27 +18,27 @@
     "node": ">=0.10.0"
   },
   "scripts": {
-    "test": "mocha"
+    "test": "nyc --reporter=text --reporter=html mocha"
   },
   "dependencies": {
-    "extend-shallow": "^2.0.1",
-    "file-contents": "^1.0.0",
+    "file-contents": "^1.0.1",
     "glob-parent": "^3.1.0",
-    "is-glob": "^3.1.0",
-    "kind-of": "^3.1.0",
-    "lazy-cache": "^2.0.2",
-    "matched": "^0.4.4",
-    "vinyl": "^2.0.1"
+    "is-glob": "^4.0.0",
+    "kind-of": "^6.0.2",
+    "matched": "^1.0.2",
+    "vinyl": "^2.1.0"
   },
   "devDependencies": {
+    "define-property": "^2.0.2",
     "gulp": "^3.9.1",
-    "gulp-eslint": "^3.0.1",
-    "gulp-format-md": "^0.1.11",
-    "gulp-istanbul": "^1.1.1",
-    "gulp-mocha": "^3.0.1",
-    "gulp-unused": "^0.2.1",
-    "mocha": "^3.2.0",
-    "should": "^11.2.0"
+    "gulp-eslint": "^4.0.2",
+    "gulp-format-md": "^1.0.0",
+    "gulp-istanbul": "^1.1.3",
+    "gulp-mocha": "^5.0.0",
+    "inflection": "^1.12.0",
+    "mocha": "^3.5.3",
+    "nyc": "^11.4.1",
+    "should": "^13.2.1"
   },
   "keywords": [
     "file",
@@ -53,6 +53,14 @@
     "views"
   ],
   "verb": {
+    "toc": false,
+    "layout": "default",
+    "tasks": [
+      "readme"
+    ],
+    "plugins": [
+      "gulp-format-md"
+    ],
     "related": {
       "list": [
         "assemble",
@@ -63,9 +71,8 @@
     "reflinks": [
       "matched"
     ],
-    "plugins": [
-      "gulp-format-md"
-    ],
-    "layout": "default"
+    "lint": {
+      "reflinks": true
+    }
   }
 }
